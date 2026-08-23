@@ -8,113 +8,119 @@ extension Sketch {
 
     // MARK: 3D Custom Shapes
 
-    /// 3D カスタムシェイプの頂点記録を開始します。
+    /// Begins recording the vertices of a custom 3D shape.
     ///
-    /// 現在の色は各頂点に 1 回だけ掛かります。`beginShape3D` と `endShape3D` の間で
-    /// 色を変えると、その時点以降の頂点だけが新しい色になります（頂点ごとの色づけ）。
-    /// 使われるのは面モード（`.polygon` / `.triangles` など）では `fill`、
-    /// **`.lines` / `.points` では `stroke`** です（Processing の LINES / POINTS と同じ。
-    /// `noStroke()` のときは `fill` に戻ります）。
+    /// The current color is applied to each vertex exactly once. Changing the color
+    /// between `beginShape3D` and `endShape3D` gives only the vertices added from that
+    /// point on the new color (per-vertex coloring). Face modes (`.polygon`,
+    /// `.triangles`, and so on) use `fill`, while **`.lines` and `.points` use
+    /// `stroke`** (the same as LINES / POINTS in Processing; under `noStroke()` it falls
+    /// back to `fill`).
     ///
-    /// - Note: **3D のみ**に作用します（2D のカスタムシェイプは ``beginShape(_:)`` です。ADR-0005）。
+    /// - Note: Affects **3D only** (the 2D custom shape is ``beginShape(_:)``. ADR-0005).
     ///
-    /// - Parameter mode: シェイプモード（例: polygon、triangles、lines）。
+    /// - Parameter mode: The shape mode (for example polygon, triangles, or lines).
     public func beginShape3D(_ mode: ShapeMode = .polygon) {
         context.beginShape3D(mode)
     }
 
-    /// 現在のシェイプに 3D 頂点を追加します。
+    /// Adds a 3D vertex to the current shape.
     ///
-    /// - Note: 作用先は**記録中のシェイプ**が決めます。``beginShape3D(_:)`` で始めていれば
-    ///   3D へ、2D の ``beginShape(_:)`` で始めていれば z を落として 2D へ流れます
-    ///   （Processing 互換。立体を組んだつもりが平面になるため初回だけ警告します。ADR-0005）。
+    /// - Note: The destination is decided by **the shape being recorded**. If it was
+    ///   started with ``beginShape3D(_:)`` the vertex goes to 3D; if it was started with
+    ///   the 2D ``beginShape(_:)`` the z is dropped and it flows to 2D (Processing
+    ///   compatible. Because a solid you meant to build comes out flat, a warning is
+    ///   emitted the first time only. ADR-0005).
     ///
     /// - Parameters:
-    ///   - x: x 座標。
-    ///   - y: y 座標。
-    ///   - z: z 座標。
+    ///   - x: The x coordinate.
+    ///   - y: The y coordinate.
+    ///   - z: The z coordinate.
     public func vertex(_ x: Float, _ y: Float, _ z: Float) {
         context.vertex(x, y, z)
     }
 
-    /// 現在のシェイプに頂点カラー付き 3D 頂点を追加します。
+    /// Adds a 3D vertex with a vertex color to the current shape.
     ///
-    /// 与えた色は現在の `fill` に左右されず、そのまま出ます。
-    /// `texture()` を貼ったシェイプでは頂点カラーは使われません（テクスチャの色が出ます）。
+    /// The given color is emitted as is, independent of the current `fill`. Vertex colors
+    /// are not used on a shape with a `texture()` applied (the texture color shows
+    /// instead).
     ///
-    /// - Note: 作用先は**記録中のシェイプ**が決めます。``beginShape3D(_:)`` で始めていれば
-    ///   3D へ、2D の ``beginShape(_:)`` で始めていれば z を落として 2D へ流れます
-    ///   （ADR-0005）。
+    /// - Note: The destination is decided by **the shape being recorded**. If it was
+    ///   started with ``beginShape3D(_:)`` the vertex goes to 3D; if it was started with
+    ///   the 2D ``beginShape(_:)`` the z is dropped and it flows to 2D (ADR-0005).
     ///
     /// - Parameters:
-    ///   - x: x 座標。
-    ///   - y: y 座標。
-    ///   - z: z 座標。
-    ///   - color: 頂点カラー。
+    ///   - x: The x coordinate.
+    ///   - y: The y coordinate.
+    ///   - z: The z coordinate.
+    ///   - color: The vertex color.
     public func vertex(_ x: Float, _ y: Float, _ z: Float, _ color: Color) {
         context.vertex(x, y, z, color)
     }
 
-    /// 現在のシェイプにテクスチャ座標付き 3D 頂点を追加します。
+    /// Adds a 3D vertex with texture coordinates to the current shape.
     ///
-    /// `texture(_:)` で画像を設定したシェイプでのみ効果があります。テクスチャ未設定の場合は
-    /// UV が無視され、通常の fill で塗られます。
+    /// This has an effect only on a shape whose image was set with `texture(_:)`. Without
+    /// a texture the UVs are ignored and the shape is painted with the normal fill.
     ///
-    /// - Note: 作用先は**記録中のシェイプ**が決めます。``beginShape3D(_:)`` で始めていれば
-    ///   3D へ、2D の ``beginShape(_:)`` で始めていれば z を落として 2D へ流れます
-    ///   （ADR-0005）。
+    /// - Note: The destination is decided by **the shape being recorded**. If it was
+    ///   started with ``beginShape3D(_:)`` the vertex goes to 3D; if it was started with
+    ///   the 2D ``beginShape(_:)`` the z is dropped and it flows to 2D (ADR-0005).
     ///
     /// - Parameters:
-    ///   - x: x 座標。
-    ///   - y: y 座標。
-    ///   - z: z 座標。
-    ///   - u: 水平テクスチャ座標（0.0〜1.0 に正規化）。
-    ///   - v: 垂直テクスチャ座標（0.0〜1.0 に正規化）。
+    ///   - x: The x coordinate.
+    ///   - y: The y coordinate.
+    ///   - z: The z coordinate.
+    ///   - u: The horizontal texture coordinate (normalized to 0.0 through 1.0).
+    ///   - v: The vertical texture coordinate (normalized to 0.0 through 1.0).
     public func vertex(_ x: Float, _ y: Float, _ z: Float, _ u: Float, _ v: Float) {
         context.vertex(x, y, z, u, v)
     }
 
-    /// 以降の 3D 頂点の法線ベクトルを設定します。
+    /// Sets the normal vector for subsequent 3D vertices.
     ///
-    /// `endShape3D()` まで持続します。リテインドな ``MShape/normal(_:_:_:)`` も
-    /// 同じ範囲です（#876）。頂点ごとに違う法線を入れたいなら頂点ごとに呼びます。
+    /// It stays in effect until `endShape3D()`. The retained ``MShape/normal(_:_:_:)`` has
+    /// the same scope (#876). Call it per vertex to give each vertex a different normal.
     ///
-    /// - Note: **3D のみ**に作用します（2D のシェイプに法線はありません。ADR-0005）。
+    /// - Note: Affects **3D only** (2D shapes have no normals. ADR-0005).
     ///
     /// - Parameters:
-    ///   - nx: 法線の x 成分。
-    ///   - ny: 法線の y 成分。
-    ///   - nz: 法線の z 成分。
+    ///   - nx: The x component of the normal.
+    ///   - ny: The y component of the normal.
+    ///   - nz: The z component of the normal.
     public func normal(_ nx: Float, _ ny: Float, _ nz: Float) {
         context.normal(nx, ny, nz)
     }
 
-    /// 現在の 3D シェイプの記録を終了し描画します。
+    /// Ends recording of the current 3D shape and draws it.
     ///
-    /// - Note: 作用先は**記録中のシェイプ**が決めます。2D の ``beginShape(_:)`` で
-    ///   始めていた場合は ``endShape(_:)`` と同じく 2D で閉じます（ADR-0005）。
+    /// - Note: The destination is decided by **the shape being recorded**. If it was
+    ///   started with the 2D ``beginShape(_:)``, it closes in 2D just like
+    ///   ``endShape(_:)`` (ADR-0005).
     ///
-    /// - Parameter close: 最後の頂点と最初の頂点を接続してシェイプを閉じるかどうか。
+    /// - Parameter close: Whether to close the shape by connecting the last vertex to the first.
     public func endShape3D(_ close: CloseMode = .open) {
         context.endShape3D(close)
     }
 
     // MARK: 3D Camera
 
-    /// eye、center、up ベクトルで 3D カメラを設定します。
+    /// Sets the 3D camera from eye, center, and up vectors.
     ///
-    /// - Note: **3D のみ**に作用します（2D の描画はカメラの影響を受けません。ADR-0005）。
+    /// - Note: Affects **3D only** (2D drawing is not affected by the camera. ADR-0005).
     ///
     /// - Parameters:
-    ///   - eye: カメラの位置。
-    ///   - center: カメラが注視する点。
-    ///   - up: 上方向ベクトル。
+    ///   - eye: The position of the camera.
+    ///   - center: The point the camera looks at.
+    ///   - up: The up direction vector.
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// 既定カメラはキャンバス左上を原点に置くピクセル空間ですが、`camera()` を呼ぶと
-    /// `center` を中心に見る座標系へ移ります（下の例では原点に置いた箱がそのまま
-    /// 画面中央に来るので、``translate(_:_:_:)`` が要りません）。
+    /// The default camera is a pixel space whose origin is the top-left corner of the
+    /// canvas, but calling `camera()` moves to a coordinate system that looks at `center`
+    /// (in the example below a box placed at the origin lands in the middle of the screen
+    /// as is, so ``translate(_:_:_:)`` is not needed).
     ///
     /// <!-- reference-shot -->
     ///
@@ -144,20 +150,21 @@ extension Sketch {
         context.camera(eye: eye, center: center, up: up)
     }
 
-    /// 透視投影を設定します。
+    /// Sets a perspective projection.
     ///
-    /// - Note: **3D のみ**に作用します（2D の描画は投影の影響を受けません。ADR-0005）。
+    /// - Note: Affects **3D only** (2D drawing is not affected by the projection. ADR-0005).
     ///
     /// - Parameters:
-    ///   - fov: ラジアン単位の視野角。
-    ///   - near: ニアクリッピング面の距離。
-    ///   - far: ファークリッピング面の距離。
+    ///   - fov: The field of view in radians.
+    ///   - near: The distance to the near clipping plane.
+    ///   - far: The distance to the far clipping plane.
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// 同じ大きさの箱を奥へ 3 つ並べると、遠いものほど小さく写ります。`fov` を狭めると
-    /// 望遠レンズのように遠近が浅くなります。同じ配置を平行投影で撮ったものが
-    /// ``ortho(left:right:bottom:top:near:far:)`` にあり、並べて見比べられます。
+    /// Lining up three boxes of the same size into the distance makes the farther ones
+    /// look smaller. Narrowing `fov` flattens the perspective like a telephoto lens. The
+    /// same arrangement shot with a parallel projection is in
+    /// ``ortho(left:right:bottom:top:near:far:)``, so the two can be compared side by side.
     ///
     /// <!-- reference-shot -->
     ///
@@ -192,35 +199,42 @@ extension Sketch {
         context.perspective(fov: fov, near: near, far: far)
     }
 
-    /// 正射影を設定します。
+    /// Sets an orthographic projection.
     ///
-    /// 省略した面は**既定カメラと噛み合う範囲**で埋まります。正射影は**ビュー空間**に
-    /// 効くのに対し既定カメラはキャンバス中央を注視しているため、省略時の範囲も原点
-    /// （＝画面中央）を挟む形になります。これで `ortho()` を単独で呼ぶだけで、2D と
-    /// 同じピクセル座標のまま平行投影に切り替わります（#777）。
+    /// Omitted planes are filled in with **the range that lines up with the default
+    /// camera**. An orthographic projection acts on **view space**, while the default
+    /// camera looks at the center of the canvas, so the range used when a plane is
+    /// omitted also straddles the origin (that is, the center of the screen). This way a
+    /// bare `ortho()` call is enough to switch to a parallel projection while keeping the
+    /// same pixel coordinates as 2D (#777).
     ///
-    /// - Important: `bottom` / `top` は投影行列の規約どおり「ビュー空間の y が
-    ///   **小さい**側が `bottom`」です。metaphor の y は 2D と同じく画面下向きなので、
-    ///   `bottom` は画面の**上端**、`top` は**下端**に対応します。上下を逆に渡すと
-    ///   絵が上下反転します。
+    /// - Important: Following the convention of projection matrices, `bottom` is the side
+    ///   where y in view space is **smaller**. Because y in metaphor points down the
+    ///   screen just as it does in 2D, `bottom` corresponds to the **top** edge of the
+    ///   screen and `top` to the **bottom** edge. Passing the two the other way around
+    ///   flips the image vertically.
     ///
-    /// - Note: **3D のみ**に作用します（2D の描画は投影の影響を受けません。ADR-0005）。
+    /// - Note: Affects **3D only** (2D drawing is not affected by the projection. ADR-0005).
     ///
     /// - Parameters:
-    ///   - left: 左クリッピング面（`nil` のときは `-width / 2`）。
-    ///   - right: 右クリッピング面（`nil` のときは `width / 2`）。
-    ///   - bottom: 下クリッピング面（`nil` のときは `-height / 2`）。
-    ///   - top: 上クリッピング面（`nil` のときは `height / 2`）。
-    ///   - near: ニアクリッピング面の距離（`nil` のときは既定カメラ距離の -10 倍）。
-    ///   - far: ファークリッピング面の距離（`nil` のときは既定カメラ距離の 10 倍）。
+    ///   - left: The left clipping plane (`-width / 2` when `nil`).
+    ///   - right: The right clipping plane (`width / 2` when `nil`).
+    ///   - bottom: The bottom clipping plane (`-height / 2` when `nil`).
+    ///   - top: The top clipping plane (`height / 2` when `nil`).
+    ///   - near: The distance to the near clipping plane (-10 times the default camera
+    ///     distance when `nil`).
+    ///   - far: The distance to the far clipping plane (10 times the default camera
+    ///     distance when `nil`).
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// ``perspective(fov:near:far:)`` と**同じ配置**を平行投影で撮ったものです。
-    /// 奥行きをずらしても大きさが変わらないので、3 つの箱が同じ寸法で並びます。
+    /// The **same arrangement** as ``perspective(fov:near:far:)``, shot with a parallel
+    /// projection. Shifting the depth does not change the size, so the three boxes line up
+    /// at identical dimensions.
     ///
-    /// 下の例は範囲を明示していますが、既定カメラのままなら `ortho()` だけでも
-    /// 中央に同じ大きさで写ります（明示するのは写す範囲を絞りたいときです）。
+    /// The example below states the range explicitly, but with the default camera a bare
+    /// `ortho()` also puts them at the same size in the center (state the range only when
+    /// you want to narrow down what is captured).
     ///
     /// <!-- reference-shot -->
     ///
@@ -266,28 +280,31 @@ extension Sketch {
 
     // MARK: 3D Lighting
 
-    /// デフォルトライティング（ディレクショナルライトとアンビエントライト）を有効にします。
+    /// Enables the default lighting (a directional light and an ambient light).
     ///
-    /// アンビエントは `colorMode` のレンジの 30%（既定レンジ 0〜255 なら
-    /// `ambientLight(76.5)` 相当）に設定されます。ライトを個別に足す場合も、
-    /// `ambientLight()` を呼んでいなければ最初のライト追加時に同じ値が入ります。
+    /// The ambient is set to 30% of the `colorMode` range (equivalent to
+    /// `ambientLight(76.5)` with the default range of 0 to 255). The same value is
+    /// installed when the first light is added, even if you add lights one by one, unless
+    /// `ambientLight()` has already been called.
     ///
-    /// 既定リグの灯は**右上手前**から差します（``directionalLight(_:_:_:color:intensity:)``
-    /// でいう `(-0.5, 1, -0.8)`）。``enableShadows(resolution:)`` の影もこの向きに落ちます。
+    /// The light of the default rig shines from **the upper right, in front**
+    /// (`(-0.5, 1, -0.8)` in terms of ``directionalLight(_:_:_:color:intensity:)``). The
+    /// shadows of ``enableShadows(resolution:)`` fall along the same direction.
     ///
-    /// 既定リグの灯は `intensity` 0.7 で、Blinn-Phong（既定）に合わせた明るさです。
-    /// PBR（``pbr(_:)``）では直接光が `albedo / π` で沈むため、同じリグでも
-    /// **3〜4 割暗く**なります（96×96 の球で実測: Blinn-Phong 80.4 / PBR 51.2）。
-    /// PBR で立体感が要るときは ``directionalLight(_:_:_:color:intensity:)`` を
-    /// `intensity` 付きで自分で置いてください。
+    /// The light of the default rig has an `intensity` of 0.7, a brightness tuned for
+    /// Blinn-Phong (the default). Under PBR (``pbr(_:)``) direct light is attenuated by
+    /// `albedo / π`, so the same rig comes out **30 to 40% darker** (measured on a 96×96
+    /// sphere: Blinn-Phong 80.4 / PBR 51.2). When you need a sense of volume under PBR,
+    /// place your own ``directionalLight(_:_:_:color:intensity:)`` with an `intensity`.
     ///
-    /// - Note: **3D のみ**に作用します（2D の描画はライティングの影響を受けません。ADR-0005）。
+    /// - Note: Affects **3D only** (2D drawing is not affected by lighting. ADR-0005).
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// ライトが 1 つも無いと陰影の計算そのものが省かれ、``fill(_:_:_:_:)`` の色で
-    /// べた塗りになります（左）。ライトは描画のたびに評価されるので、同じフレームの
-    /// 途中で足せば以降の形状だけが照らされます（右）。
+    /// With no lights at all the shading computation itself is skipped and shapes are
+    /// filled flat with the ``fill(_:_:_:_:)`` color (left). Lights are evaluated at every
+    /// draw, so adding one partway through the same frame lights only the shapes that
+    /// follow (right).
     ///
     /// <!-- reference-shot -->
     ///
@@ -318,42 +335,44 @@ extension Sketch {
         context.lights()
     }
 
-    /// すべてのライトを無効にします。
+    /// Disables all lights.
     ///
-    /// - Note: **3D のみ**に作用します（ADR-0005）。
+    /// - Note: Affects **3D only** (ADR-0005).
     public func noLights() {
         context.noLights()
     }
 
-    /// ディレクショナルライトを追加します。
+    /// Adds a directional light.
     ///
-    /// 指定するのは「光が**進む**向き」で、y 軸は Processing と同じく画面下向きです。
-    /// つまり `directionalLight(0, 1, 0)` が「真上から差す光」、`(0, -1, 0)` は
-    /// 「真下から差す光」になります（`enableShadows()` 時の影の向きもこれに従う）。
+    /// What you specify is the direction the light **travels**, and the y axis points down
+    /// the screen just as in Processing. That means `directionalLight(0, 1, 0)` is a light
+    /// shining straight down from above, and `(0, -1, 0)` is a light shining straight up
+    /// from below (the direction of the shadows under `enableShadows()` follows this too).
     ///
-    /// `intensity` は色に掛かる強度倍率です。PBR（``pbr(_:)``）の直接光は
-    /// `albedo / π` で減衰し、環境光は ``ambientLight(_:)`` のフォールバックしか
-    /// 無いため、**単灯で立体感を出すには 2〜4 程度**が要ります。
-    /// Blinn-Phong（既定）では 1.0 のままで従来どおりの明るさです。
+    /// `intensity` is a strength multiplier applied to the color. Direct light under PBR
+    /// (``pbr(_:)``) is attenuated by `albedo / π`, and the only ambient available is the
+    /// ``ambientLight(_:)`` fallback, so **a single light needs roughly 2 to 4 to give a
+    /// sense of volume**. Under Blinn-Phong (the default), 1.0 keeps the usual brightness.
     ///
     /// ```swift
     /// pbr(true)
-    /// directionalLight(-0.4, 1, -0.6, intensity: 3)   // キーライトを持ち上げる
+    /// directionalLight(-0.4, 1, -0.6, intensity: 3)   // Lift the key light
     /// ```
     ///
-    /// - Note: **3D のみ**に作用します（2D の描画はライティングの影響を受けません。ADR-0005）。
+    /// - Note: Affects **3D only** (2D drawing is not affected by lighting. ADR-0005).
     ///
     /// - Parameters:
-    ///   - x: ライト方向の x 成分。
-    ///   - y: ライト方向の y 成分。
-    ///   - z: ライト方向の z 成分。
-    ///   - color: ライトの色（デフォルト白）。
-    ///   - intensity: ライトの強度倍率（デフォルト 1.0）。
+    ///   - x: The x component of the light direction.
+    ///   - y: The y component of the light direction.
+    ///   - z: The z component of the light direction.
+    ///   - color: The color of the light (white by default).
+    ///   - intensity: The strength multiplier of the light (1.0 by default).
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// 光の x 成分だけを -1 / 0 / +1 と変えた 3 つ。方向光は位置を持たないので、
-    /// どこに置いた球でも同じ向きから当たります。
+    /// Three spheres with only the x component of the light changed to -1 / 0 / +1. A
+    /// directional light has no position, so a sphere is lit from the same direction
+    /// wherever it is placed.
     ///
     /// <!-- reference-shot -->
     ///
@@ -390,25 +409,28 @@ extension Sketch {
         context.directionalLight(x, y, z, color: color, intensity: intensity)
     }
 
-    /// 指定位置にポイントライトを追加します。
+    /// Adds a point light at the given position.
     ///
-    /// - Note: **3D のみ**に作用します（ADR-0005）。
+    /// - Note: Affects **3D only** (ADR-0005).
     ///
     /// - Parameters:
-    ///   - x: ライト位置の x 座標。
-    ///   - y: ライト位置の y 座標。
-    ///   - z: ライト位置の z 座標。
-    ///   - color: ライトの色。
-    ///   - falloff: 減衰係数。
-    ///   - intensity: ライトの強度倍率（デフォルト 1.0）。PBR で単灯のときは
-    ///     1.0 より大きい値が要ります（``directionalLight(_:_:_:color:intensity:)`` 参照）。
+    ///   - x: The x coordinate of the light position.
+    ///   - y: The y coordinate of the light position.
+    ///   - z: The z coordinate of the light position.
+    ///   - color: The color of the light.
+    ///   - falloff: The attenuation coefficient.
+    ///   - intensity: The strength multiplier of the light (1.0 by default). A single
+    ///     light under PBR needs a value greater than 1.0 (see
+    ///     ``directionalLight(_:_:_:color:intensity:)``).
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// 方向光と違って**位置**を持つので、灯に近い球ほど明るくなります
-    /// （灯はキャンバス中央の手前に 1 つだけ置いています）。`falloff` は距離減衰の
-    /// 係数で、**線形項にそのまま・二次項にその 1/10** が入ります。ピクセル空間では
-    /// 距離が数百のオーダーになるため、既定の 0.1 のままだとほぼ光が届きません。
+    /// Unlike a directional light this one has a **position**, so the closer a sphere is
+    /// to the light the brighter it gets (a single light is placed in front of the center
+    /// of the canvas). `falloff` is the distance attenuation coefficient, and it goes
+    /// **into the linear term as is and into the quadratic term at one tenth of that**. In
+    /// pixel space distances are on the order of hundreds, so with the default of 0.1
+    /// almost no light reaches the geometry.
     ///
     /// <!-- reference-shot -->
     ///
@@ -449,28 +471,30 @@ extension Sketch {
         context.pointLight(x, y, z, color: color, falloff: falloff, intensity: intensity)
     }
 
-    /// 指定位置・方向にスポットライトを追加します。
+    /// Adds a spot light at the given position and direction.
     ///
-    /// - Note: **3D のみ**に作用します（ADR-0005）。
+    /// - Note: Affects **3D only** (ADR-0005).
     ///
     /// - Parameters:
-    ///   - x: ライト位置の x 座標。
-    ///   - y: ライト位置の y 座標。
-    ///   - z: ライト位置の z 座標。
-    ///   - dirX: ライト方向の x 成分。
-    ///   - dirY: ライト方向の y 成分。
-    ///   - dirZ: ライト方向の z 成分。
-    ///   - angle: ラジアン単位のコーン角度。
-    ///   - falloff: 減衰係数。
-    ///   - color: ライトの色。
-    ///   - intensity: ライトの強度倍率（デフォルト 1.0）。PBR で単灯のときは
-    ///     1.0 より大きい値が要ります（``directionalLight(_:_:_:color:intensity:)`` 参照）。
+    ///   - x: The x coordinate of the light position.
+    ///   - y: The y coordinate of the light position.
+    ///   - z: The z coordinate of the light position.
+    ///   - dirX: The x component of the light direction.
+    ///   - dirY: The y component of the light direction.
+    ///   - dirZ: The z component of the light direction.
+    ///   - angle: The cone angle in radians.
+    ///   - falloff: The attenuation coefficient.
+    ///   - color: The color of the light.
+    ///   - intensity: The strength multiplier of the light (1.0 by default). A single
+    ///     light under PBR needs a value greater than 1.0 (see
+    ///     ``directionalLight(_:_:_:color:intensity:)``).
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// 正対させた ``plane(_:_:)`` を手前から照らすと、`angle` で決まる円錐の断面が
-    /// 円として切り取られます。`falloff` は ``pointLight(_:_:_:color:falloff:intensity:)``
-    /// と同じ距離減衰で、ピクセル空間では既定の 0.01 でもほぼ光が届きません。
+    /// Lighting a head-on ``plane(_:_:)`` from the front cuts the cross section of the
+    /// cone determined by `angle` out as a circle. `falloff` is the same distance
+    /// attenuation as in ``pointLight(_:_:_:color:falloff:intensity:)``, and in pixel
+    /// space even the default of 0.01 lets almost no light reach the geometry.
     ///
     /// <!-- reference-shot -->
     ///
@@ -510,28 +534,31 @@ extension Sketch {
         )
     }
 
-    /// グレースケール値でアンビエントライトの強度を設定します。
+    /// Sets the intensity of the ambient light from a grayscale value.
     ///
-    /// 値は `fill` などと同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
-    /// `ambientLight(0.35)` のような 0〜1 のつもりの値はほぼ真っ暗になります
-    /// （既定レンジなら `ambientLight(90)` 相当を指定する）。
+    /// Like `fill` and friends, the value is **relative to the `colorMode` range** (0 to
+    /// 255 by default). A value meant as 0 to 1, such as `ambientLight(0.35)`, comes out
+    /// almost pitch black (with the default range, pass the equivalent of
+    /// `ambientLight(90)` instead).
     ///
-    /// `lights()` や最初のライト追加で自動的に入る既定アンビエントは
-    /// **レンジの 30%**（既定レンジなら `ambientLight(76.5)`）です。
-    /// 既定と同じ明るさを明示したいときは `ambientLight(0.3)` ではなく
-    /// `ambientLight(76.5)` と書きます。
+    /// The default ambient that `lights()`, or the first light you add, installs
+    /// automatically is **30% of the range** (`ambientLight(76.5)` with the default
+    /// range). To state the same brightness as the default explicitly, write
+    /// `ambientLight(76.5)`, not `ambientLight(0.3)`.
     ///
-    /// アンビエントは `enableShadows()` の影の中でも減衰しません（影が掛かるのは
-    /// 直接光の diffuse / specular のみ）。影の中のディテールはこの値で決まります。
+    /// The ambient is not attenuated inside the shadows of `enableShadows()` (only the
+    /// diffuse and specular of direct light are shadowed). The detail inside a shadow is
+    /// determined by this value.
     ///
-    /// - Note: **3D のみ**に作用します（2D の描画はライティングの影響を受けません。ADR-0005）。
+    /// - Note: Affects **3D only** (2D drawing is not affected by lighting. ADR-0005).
     ///
-    /// - Parameter strength: アンビエントライトの強度（`colorMode` のレンジ基準）。
+    /// - Parameter strength: The ambient light intensity (relative to the `colorMode` range).
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// アンビエントは向きを持たないので、単独では陰影が付かず色が一様に持ち上がるだけです
-    /// （左）。立体に見せるには方向を持つ灯と組み合わせます（右）。
+    /// The ambient has no direction, so on its own it produces no shading and merely lifts
+    /// the color uniformly (left). Combine it with a light that has a direction to give a
+    /// sense of volume (right).
     ///
     /// <!-- reference-shot -->
     ///
@@ -563,85 +590,88 @@ extension Sketch {
         context.ambientLight(strength)
     }
 
-    /// RGB 値でアンビエントライトの色を設定します。
+    /// Sets the color of the ambient light from RGB values.
     ///
-    /// 値は `fill` などと同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
+    /// Like `fill` and friends, the values are **relative to the `colorMode` range** (0 to
+    /// 255 by default).
     ///
-    /// - Note: **3D のみ**に作用します（ADR-0005）。
+    /// - Note: Affects **3D only** (ADR-0005).
     ///
     /// - Parameters:
-    ///   - r: 赤成分。
-    ///   - g: 緑成分。
-    ///   - b: 青成分。
+    ///   - r: The red component.
+    ///   - g: The green component.
+    ///   - b: The blue component.
     public func ambientLight(_ r: Float, _ g: Float, _ b: Float) {
         context.ambientLight(r, g, b)
     }
 
     // MARK: Shadow Mapping
 
-    /// シャドウマッピングを有効にします。
+    /// Enables shadow mapping.
     ///
-    /// - Note: **3D のみ**に作用します（影が落ちるのは 3D シェイプだけです。ADR-0005）。
+    /// - Note: Affects **3D only** (only 3D shapes cast shadows. ADR-0005).
     ///
-    /// - Note: **2D と 3D の重ね順**（#832 / ADR-0003 の Amendment 節）。既定
-    ///   （影オフ）の即時経路では、重ね順は**呼び出し順ではなくエンコード順**で決まります。
-    ///   2D はバッチにまとめてフレーム末尾で吐かれるため、**既定では 2D が 3D の手前**に
-    ///   出ます（`box()` の前に描いた 2D も手前に来ます）。ただし 2D バッチが途中で
-    ///   吐かれると、それ以降にエンコードされる 3D の背後へ回ります — 契機は
-    ///   `blendMode()` の変更 / `image()`・`text()` との交互 / `circles()` 等の
-    ///   インスタンス描画との交互 / `beginClip()`・`endClip()` / `loadPixels()` /
-    ///   頂点バッファの上限です。**呼び出し順どおりに重ねたい**場合は、この
-    ///   `enableShadows()` を有効にするか、環境変数 `METAPHOR_COMMAND_RECORD=1` で
-    ///   記録経路に入れてください（どちらも `Canvas3D` が 3D の記録直前に 2D を
-    ///   確定するため、呼び出し順がそのまま復元されます）。
+    /// - Note: **Layering of 2D and 3D** (#832 / the Amendment section of ADR-0003). On
+    ///   the default immediate path (shadows off), the layering is determined by **encode
+    ///   order, not call order**. 2D is collected into a batch and flushed at the end of
+    ///   the frame, so **2D comes in front of 3D by default** (2D drawn before `box()`
+    ///   still ends up in front). If the 2D batch is flushed partway through, however, it
+    ///   falls behind any 3D encoded after that — the triggers are a change of
+    ///   `blendMode()`, alternating with `image()` or `text()`, alternating with instanced
+    ///   drawing such as `circles()`, `beginClip()` / `endClip()`, `loadPixels()`, and the
+    ///   vertex buffer limit. **To layer in call order**, either enable this
+    ///   `enableShadows()` or take the recording path with the environment variable
+    ///   `METAPHOR_COMMAND_RECORD=1` (in both cases `Canvas3D` finalizes the 2D right
+    ///   before it records the 3D, so the call order is restored as is).
     ///
-    /// - Parameter resolution: シャドウマップの解像度（ピクセル単位）。
+    /// - Parameter resolution: The resolution of the shadow map, in pixels.
     public func enableShadows(resolution: Int = 2048) {
         context.enableShadows(resolution: resolution)
     }
 
-    /// シャドウマッピングを無効にします。
+    /// Disables shadow mapping.
     ///
-    /// - Note: **3D のみ**に作用します（ADR-0005）。
+    /// - Note: Affects **3D only** (ADR-0005).
     public func disableShadows() {
         context.disableShadows()
     }
 
-    /// シャドウアクネを軽減するためのシャドウデプスバイアスを設定します。
+    /// Sets the shadow depth bias used to reduce shadow acne.
     ///
-    /// - Note: **3D のみ**に作用します（ADR-0005）。
+    /// - Note: Affects **3D only** (ADR-0005).
     ///
-    /// - Parameter value: バイアス値。
+    /// - Parameter value: The bias value.
     public func shadowBias(_ value: Float) {
         context.shadowBias(value)
     }
 
     // MARK: 3D Material
 
-    /// スペキュラーハイライトの色を設定します。
+    /// Sets the color of specular highlights.
     ///
-    /// - Note: **3D のみ**に作用します（2D の描画はマテリアルの影響を受けません。ADR-0005）。
+    /// - Note: Affects **3D only** (2D drawing is not affected by materials. ADR-0005).
     ///
-    /// - Parameter color: スペキュラー色。
+    /// - Parameter color: The specular color.
     public func specular(_ color: Color) {
         context.specular(color)
     }
 
-    /// チャンネル値でスペキュラーハイライトの色を設定します。
+    /// Sets the color of specular highlights from channel values.
     ///
-    /// 値は `fill` などと同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
+    /// Like `fill` and friends, the values are **relative to the `colorMode` range** (0 to
+    /// 255 by default).
     ///
-    /// - Note: **3D のみ**に作用します（2D の描画はマテリアルの影響を受けません。ADR-0005）。
+    /// - Note: Affects **3D only** (2D drawing is not affected by materials. ADR-0005).
     ///
     /// - Parameters:
-    ///   - v1: 第1カラーチャンネル値（赤または色相）。
-    ///   - v2: 第2カラーチャンネル値（緑または彩度）。
-    ///   - v3: 第3カラーチャンネル値（青または明度）。
+    ///   - v1: The first color channel value (red or hue).
+    ///   - v2: The second color channel value (green or saturation).
+    ///   - v3: The third color channel value (blue or brightness).
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// 同じ暗い ``fill(_:_:_:_:)`` に、赤・緑・青のハイライトを載せた 3 つ。
-    /// 拡散色と違い、ハイライトの色だけが変わります。
+    /// Three spheres with the same dark ``fill(_:_:_:_:)``, given a red, a green, and a
+    /// blue highlight. Unlike the diffuse color, only the color of the highlight changes.
     ///
     /// <!-- reference-shot -->
     ///
@@ -678,26 +708,27 @@ extension Sketch {
         context.specular(v1, v2, v3)
     }
 
-    /// グレースケール値でスペキュラーハイライトの色を設定します。
+    /// Sets the color of specular highlights from a grayscale value.
     ///
-    /// 値は `fill` などと同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
+    /// Like `fill` and friends, the value is **relative to the `colorMode` range** (0 to
+    /// 255 by default).
     ///
-    /// - Note: **3D のみ**に作用します（ADR-0005）。
+    /// - Note: Affects **3D only** (ADR-0005).
     ///
-    /// - Parameter gray: グレースケールの明るさ。
+    /// - Parameter gray: The grayscale brightness.
     public func specular(_ gray: Float) {
         context.specular(gray)
     }
 
-    /// スペキュラーの光沢度指数を設定します。
+    /// Sets the specular shininess exponent.
     ///
-    /// - Note: **3D のみ**に作用します（ADR-0005）。
+    /// - Note: Affects **3D only** (ADR-0005).
     ///
-    /// - Parameter value: 光沢度（値が大きいほどハイライトが小さくなります）。
+    /// - Parameter value: The shininess (the larger the value, the smaller the highlight).
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// 左から 4 / 44 / 84。値が大きいほどハイライトが小さく鋭くなります。
+    /// 4 / 44 / 84 from the left. The larger the value, the smaller and sharper the highlight.
     ///
     /// <!-- reference-shot -->
     ///
@@ -730,51 +761,54 @@ extension Sketch {
         context.shininess(value)
     }
 
-    /// エミッシブ（自己発光）色を設定します。
+    /// Sets the emissive (self-illumination) color.
     ///
-    /// - Note: **3D のみ**に作用します（ADR-0005）。
+    /// - Note: Affects **3D only** (ADR-0005).
     ///
-    /// - Parameter color: エミッシブ色。
+    /// - Parameter color: The emissive color.
     public func emissive(_ color: Color) {
         context.emissive(color)
     }
 
-    /// チャンネル値でエミッシブ色を設定します。
+    /// Sets the emissive color from channel values.
     ///
-    /// 値は `fill` などと同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
+    /// Like `fill` and friends, the values are **relative to the `colorMode` range** (0 to
+    /// 255 by default).
     ///
-    /// - Note: **3D のみ**に作用します（2D の描画はマテリアルの影響を受けません。ADR-0005）。
+    /// - Note: Affects **3D only** (2D drawing is not affected by materials. ADR-0005).
     ///
     /// - Parameters:
-    ///   - v1: 第1カラーチャンネル値（赤または色相）。
-    ///   - v2: 第2カラーチャンネル値（緑または彩度）。
-    ///   - v3: 第3カラーチャンネル値（青または明度）。
+    ///   - v1: The first color channel value (red or hue).
+    ///   - v2: The second color channel value (green or saturation).
+    ///   - v3: The third color channel value (blue or brightness).
     public func emissive(_ v1: Float, _ v2: Float, _ v3: Float) {
         context.emissive(v1, v2, v3)
     }
 
-    /// グレースケール値でエミッシブ色を設定します。
+    /// Sets the emissive color from a grayscale value.
     ///
-    /// 値は `fill` などと同じく **`colorMode` のレンジ基準**（既定 0〜255）です。
+    /// Like `fill` and friends, the value is **relative to the `colorMode` range** (0 to
+    /// 255 by default).
     ///
-    /// - Note: **3D のみ**に作用します（ADR-0005）。
+    /// - Note: Affects **3D only** (ADR-0005).
     ///
-    /// - Parameter gray: グレースケールの明るさ。
+    /// - Parameter gray: The grayscale brightness.
     public func emissive(_ gray: Float) {
         context.emissive(gray)
     }
 
-    /// マテリアルのメタリック係数を設定します。
+    /// Sets the metallic coefficient of the material.
     ///
-    /// - Note: **3D のみ**に作用します（ADR-0005）。
+    /// - Note: Affects **3D only** (ADR-0005).
     ///
-    /// - Parameter value: メタリック値（0 = 誘電体、1 = 金属）。
+    /// - Parameter value: The metallic value (0 = dielectric, 1 = metal).
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// 左から 0 / 0.5 / 1.0。金属に寄るほど拡散色が失われ、灯の映り込みだけで
-    /// 形が見えるようになります。PBR は既定リグでは暗いので、`intensity` を上げた
-    /// 灯を自分で置いています。
+    /// 0 / 0.5 / 1.0 from the left. The closer to metal, the more the diffuse color is
+    /// lost, until the form is visible only through the reflection of the lights. PBR is
+    /// dark under the default rig, so the example places its own light with a raised
+    /// `intensity`.
     ///
     /// <!-- reference-shot -->
     ///
@@ -812,16 +846,17 @@ extension Sketch {
         context.metallic(value)
     }
 
-    /// PBR ラフネスを設定します（自動的に PBR モードに切り替わります）。
+    /// Sets the PBR roughness (this switches to PBR mode automatically).
     ///
-    /// - Note: **3D のみ**に作用します（ADR-0005）。
+    /// - Note: Affects **3D only** (ADR-0005).
     ///
-    /// - Parameter value: ラフネス値（0 = 滑らか、1 = 粗い）。
+    /// - Parameter value: The roughness value (0 = smooth, 1 = rough).
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// 金属（`metallic(1)`）のまま左から 0.1 / 0.45 / 0.8。粗いほどハイライトが
-    /// 広く鈍くなり、磨いた金属からつや消しへ移ります。
+    /// 0.1 / 0.45 / 0.8 from the left, all kept metal (`metallic(1)`). The rougher it
+    /// gets, the wider and duller the highlight, moving from polished metal to a matte
+    /// finish.
     ///
     /// <!-- reference-shot -->
     ///
@@ -859,22 +894,22 @@ extension Sketch {
         context.roughness(value)
     }
 
-    /// PBR アンビエントオクルージョン係数を設定します。
+    /// Sets the PBR ambient occlusion coefficient.
     ///
-    /// - Note: **3D のみ**に作用します（ADR-0005）。
+    /// - Note: Affects **3D only** (ADR-0005).
     ///
-    /// - Parameter value: アンビエントオクルージョン値（0 = 完全に遮蔽、1 = 遮蔽なし）。
+    /// - Parameter value: The ambient occlusion value (0 = fully occluded, 1 = no occlusion).
     public func ambientOcclusion(_ value: Float) {
         context.ambientOcclusion(value)
     }
 
     // MARK: 3D Tone Mapping
 
-    /// 3D のライティング結果に適用するトーンマッピングを設定します。
+    /// Sets the tone mapping applied to the 3D lighting result.
     ///
-    /// レンダーターゲットは LDR（8bit）なので、ライティング結果が 1.0 を超えると
-    /// そのままではクランプされ、ハイライトが白く潰れます。トーンマッピングは
-    /// 高輝度側を滑らかに丸めて階調を残します。
+    /// The render target is LDR (8-bit), so a lighting result above 1.0 is clamped as is
+    /// and the highlights blow out to white. Tone mapping rolls off the high end smoothly
+    /// and keeps the gradation.
     ///
     /// ```swift
     /// toneMapping(.acesFilmic)
@@ -883,47 +918,50 @@ extension Sketch {
     /// sphere(80)
     /// ```
     ///
-    /// 既定は ``ToneMapMode/none`` です（既存のスケッチの絵が変わらないようにするため）。
-    /// **金属や強い光源を使うなら ``ToneMapMode/acesFilmic`` を明示してください。**
+    /// The default is ``ToneMapMode/none`` (so that the image of an existing sketch does
+    /// not change). **Specify ``ToneMapMode/acesFilmic`` explicitly when you use metals or
+    /// strong light sources.**
     ///
-    /// - Note: 掛かるのは **3D のライティング結果だけ**です。2D の描画の色は変わりません
-    ///   （3D の陰影は物理量、2D の色は最終色、という非対称を意図的に採っています）。
-    ///   ライトが 1 つも無いときの描画（無照明パス）にも掛かりません。
+    /// - Note: This applies to **the 3D lighting result only**. The colors of 2D drawing
+    ///   do not change (the asymmetry is deliberate: 3D shading is a physical quantity,
+    ///   while a 2D color is a final color). It does not apply to drawing with no lights
+    ///   at all (the unlit pass) either.
     ///
-    /// - Note: `pushStyle()` / `popStyle()` では**巻き戻りません**。画面全体の性質として
-    ///   扱われます。
+    /// - Note: It is **not restored** by `pushStyle()` / `popStyle()`. It is treated as a
+    ///   property of the whole screen.
     ///
-    /// - Parameter mode: トーンマッピングの方法。
+    /// - Parameter mode: The tone mapping method.
     public func toneMapping(_ mode: ToneMapMode) {
         context.toneMapping(mode)
     }
 
-    /// トーンマッピング前に掛ける露出倍率を設定します。
+    /// Sets the exposure multiplier applied before tone mapping.
     ///
-    /// 露出は ``toneMapping(_:)`` のモードに関わらず掛かります。既定値の 1.0 は
-    /// 恒等倍なので、何も設定しなければ絵は変わりません。
+    /// The exposure applies regardless of the ``toneMapping(_:)`` mode. The default of 1.0
+    /// is the identity multiplier, so the image does not change unless you set it.
     ///
-    /// - Note: **3D のみ**に作用します（ADR-0005）。`pushStyle()` / `popStyle()` では
-    ///   巻き戻りません。
+    /// - Note: Affects **3D only** (ADR-0005). It is not restored by `pushStyle()` /
+    ///   `popStyle()`.
     ///
-    /// - Parameter value: 露出倍率（既定 1.0。大きいほど明るい）。
+    /// - Parameter value: The exposure multiplier (1.0 by default; larger is brighter).
     public func exposure(_ value: Float) {
         context.exposure(value)
     }
 
     // MARK: 3D Environment (IBL / skybox)
 
-    /// 環境（IBL と背景の skybox）を設定します。
+    /// Sets the environment (IBL and the background skybox).
     ///
-    /// PBR では `metallic` を上げるほど拡散反射が消えます（物理的に正しい挙動）。
-    /// 消えた分を埋めるのは**周囲の環境からの反射**なので、環境が無い状態で
-    /// `metallic` を上げると、金属ではなく特徴のない灰色の塊になります。
-    /// `environment()` はその環境を与えるので、これを呼んで初めて
-    /// `metallic` / `roughness` が意図どおりの質感になります。
+    /// Under PBR, the higher `metallic` goes the more the diffuse reflection disappears
+    /// (which is the physically correct behavior). What fills in for what is lost is **the
+    /// reflection of the surrounding environment**, so raising `metallic` with no
+    /// environment present gives a featureless gray lump instead of a metal.
+    /// `environment()` supplies that environment, so only once you call it do `metallic`
+    /// and `roughness` produce the material you intended.
     ///
     /// ```swift
     /// func setup() {
-    ///     environment(.studio)   // これだけで IBL + 背景が入る
+    ///     environment(.studio)   // This alone brings in both the IBL and the background
     /// }
     ///
     /// func draw() {
@@ -936,33 +974,33 @@ extension Sketch {
     /// }
     /// ```
     ///
-    /// プリセットはすべて手続き的に生成されるので、HDR 画像などのアセットは要りません。
-    /// 焼き上げ（キューブマップの生成と畳み込み）はプリセットにつき 1 回だけ走り、
-    /// 以降のフレームのコストはサンプリングだけです。
+    /// Every preset is generated procedurally, so no assets such as HDR images are needed.
+    /// The bake (generating and convolving the cube map) runs only once per preset, and
+    /// the cost on later frames is sampling alone.
     ///
-    /// - Note: **3D のみ**に作用します（ADR-0005）。`pushStyle()` / `popStyle()` では
-    ///   巻き戻りません。画面全体の性質として扱われます。
+    /// - Note: Affects **3D only** (ADR-0005). It is not restored by `pushStyle()` /
+    ///   `popStyle()`; it is treated as a property of the whole screen.
     ///
-    /// - Note: IBL が掛かるのは **PBR 経路だけ**です（``roughness(_:)`` を呼ぶか
-    ///   ``pbr(_:)`` を有効にしたとき）。Blinn-Phong の絵は変わりません。
+    /// - Note: IBL applies to **the PBR path only** (when you call ``roughness(_:)`` or
+    ///   enable ``pbr(_:)``). The Blinn-Phong image does not change.
     ///
-    /// - Note: トーンマッピングが未指定なら ``ToneMapMode/acesFilmic`` へ自動的に
-    ///   昇格します（環境を入れると輝度が 1.0 を超えるため）。``toneMapping(_:)`` を
-    ///   明示していれば、そちらが優先されます。
+    /// - Note: If tone mapping has not been specified, it is promoted automatically to
+    ///   ``ToneMapMode/acesFilmic`` (because adding an environment pushes the luminance
+    ///   above 1.0). If you specified ``toneMapping(_:)`` explicitly, that wins.
     ///
-    /// - Note: `background: true` のとき、skybox は**最初の 3D 描画の直前**に
-    ///   1 回だけ描かれます。したがって、それより前に描いた 2D は skybox に覆われ、
-    ///   後に描いた 2D（HUD などの前景）は上に残ります。3D を 1 つも描かない
-    ///   フレームでは skybox も描かれません。
+    /// - Note: When `background: true`, the skybox is drawn exactly once, **right before
+    ///   the first 3D drawing**. Therefore 2D drawn before that is covered by the skybox,
+    ///   while 2D drawn after it (a HUD or other foreground) stays on top. On a frame that
+    ///   draws no 3D at all, the skybox is not drawn either.
     ///
-    /// - Note: ``ambientLight(_:)`` を明示していない場合、既定のアンビエントは
-    ///   0 になります（IBL の拡散項と二重に足さないため）。
+    /// - Note: If ``ambientLight(_:)`` has not been specified explicitly, the default
+    ///   ambient becomes 0 (so that it is not added twice with the diffuse term of the IBL).
     ///
     /// - Parameters:
-    ///   - preset: 環境プリセット。
-    ///   - intensity: 環境の強度（既定 1.0）。0 以下で無効になります。
-    ///   - background: `true`（既定）なら背景としても描きます。IBL だけ欲しいときは
-    ///     `false` を渡してください。
+    ///   - preset: The environment preset.
+    ///   - intensity: The strength of the environment (1.0 by default). 0 or less disables it.
+    ///   - background: When `true` (the default), it is drawn as the background as well.
+    ///     Pass `false` when you want the IBL only.
     public func environment(
         _ preset: EnvironmentPreset,
         intensity: Float = 1.0,
@@ -971,24 +1009,25 @@ extension Sketch {
         context.environment(preset, intensity: intensity, background: background)
     }
 
-    /// 環境（IBL と skybox）を無効化します。
+    /// Disables the environment (IBL and skybox).
     ///
-    /// - Note: **3D のみ**に作用します（ADR-0005）。
+    /// - Note: Affects **3D only** (ADR-0005).
     public func noEnvironment() {
         context.noEnvironment()
     }
 
-    /// PBR レンダリングモードを明示的に切り替えます。
+    /// Switches the PBR rendering mode explicitly.
     ///
-    /// - Note: **3D のみ**に作用します（ADR-0005）。
+    /// - Note: Affects **3D only** (ADR-0005).
     ///
-    /// - Parameter enabled: PBR レンダリングを有効にするかどうか。
+    /// - Parameter enabled: Whether to enable PBR rendering.
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// 同じ灯・同じ ``fill(_:_:_:_:)`` で、左が既定の Blinn-Phong、右が PBR
-    /// （``metallic(_:)`` と ``roughness(_:)`` 付き）。PBR の直接光は `albedo / π` で
-    /// 沈むので、同じリグでは暗くなります（``lights()`` の説明を参照）。
+    /// The same lights and the same ``fill(_:_:_:_:)``: the default Blinn-Phong on the
+    /// left, PBR on the right (with ``metallic(_:)`` and ``roughness(_:)``). Direct light
+    /// under PBR is attenuated by `albedo / π`, so it comes out darker with the same rig
+    /// (see the description of ``lights()``).
     ///
     /// <!-- reference-shot -->
     ///
@@ -1028,11 +1067,12 @@ extension Sketch {
 
     // MARK: 3D Custom Material
 
-    /// MSL ソースコードからカスタムシェーダーマテリアルを作成します。
+    /// Creates a custom shader material from MSL source code.
     ///
-    /// ``BuiltinShaders/canvas3DPreamble``（stdlib + 3D 用の構造体定義 + ライティング関数）を
-    /// **必ず**先頭へ足すので、フラグメント関数だけを書けば動きます。`Canvas3DUniforms` /
-    /// `Canvas3DVertexOut` などは自分で定義しないでください（#713）。
+    /// ``BuiltinShaders/canvas3DPreamble`` (the stdlib, the struct definitions for 3D, and
+    /// the lighting functions) is **always** prepended, so writing just the fragment
+    /// function is enough. Do not define `Canvas3DUniforms`, `Canvas3DVertexOut`, or the
+    /// like yourself (#713).
     ///
     /// ```swift
     /// let mat = try createMaterial(source: """
@@ -1046,19 +1086,18 @@ extension Sketch {
     /// noMaterial()
     /// ```
     ///
-    /// - Note: 作成されるマテリアルは **3D のみ**に適用されます。2D にカスタムシェーダーを
-    ///   掛けるには ``loadShader(_:fragment:)`` / ``shader(_:)`` を使用してください
-    ///   （ADR-0005）。
+    /// - Note: The material that is created applies to **3D only**. To apply a custom
+    ///   shader to 2D, use ``loadShader(_:fragment:)`` / ``shader(_:)`` (ADR-0005).
     ///
     /// - Parameters:
-    ///   - source: Metal Shading Language のソースコード。
-    ///   - fragmentFunction: フラグメント関数の名前。
-    ///   - vertexFunction: カスタム頂点関数の名前（オプション）。
-    /// - Returns: 新しい ``CustomMaterial`` インスタンス。
-    /// - Throws: ``MetaphorError``。MSL のコンパイルに失敗した場合は
-    ///   ``MetaphorError/shaderCompilationFailed(name:underlying:)``、指定した
-    ///   関数が見つからない場合は ``MetaphorError/material(_:)`` の
-    ///   ``MetaphorError/MaterialFailure/shaderNotFound(_:)``。
+    ///   - source: The Metal Shading Language source code.
+    ///   - fragmentFunction: The name of the fragment function.
+    ///   - vertexFunction: The name of a custom vertex function (optional).
+    /// - Returns: A new ``CustomMaterial`` instance.
+    /// - Throws: ``MetaphorError``. If the MSL fails to compile,
+    ///   ``MetaphorError/shaderCompilationFailed(name:underlying:)``; if the specified
+    ///   function is not found, ``MetaphorError/MaterialFailure/shaderNotFound(_:)`` of
+    ///   ``MetaphorError/material(_:)``.
     public func createMaterial(
         source: String, fragmentFunction: String, vertexFunction: String? = nil
     ) throws -> CustomMaterial {
@@ -1066,80 +1105,80 @@ extension Sketch {
             source: source, fragmentFunction: fragmentFunction, vertexFunction: vertexFunction)
     }
 
-    /// カスタムマテリアルを以降の 3D 描画に適用します。
+    /// Applies a custom material to subsequent 3D drawing.
     ///
-    /// - Note: **3D のみ**に作用します（ADR-0005）。
+    /// - Note: Affects **3D only** (ADR-0005).
     ///
-    /// - Parameter customMaterial: 適用するカスタムマテリアル。
+    /// - Parameter customMaterial: The custom material to apply.
     public func material(_ customMaterial: CustomMaterial) {
         context.material(customMaterial)
     }
 
-    /// アクティブなカスタムマテリアルを解除しデフォルトシェーディングに戻します。
+    /// Clears the active custom material and returns to the default shading.
     ///
-    /// - Note: **3D のみ**に作用します（ADR-0005）。
+    /// - Note: Affects **3D only** (ADR-0005).
     public func noMaterial() {
         context.noMaterial()
     }
 
     // MARK: 3D Texture
 
-    /// 以降の 3D シェイプのテクスチャを設定します。
+    /// Sets the texture for subsequent 3D shapes.
     ///
-    /// - Note: **3D のみ**に作用します（2D で画像を描くには `image()` を
-    ///   使用してください。ADR-0005）。
+    /// - Note: Affects **3D only** (to draw an image in 2D, use `image()`. ADR-0005).
     ///
-    /// - Parameter img: テクスチャ画像。
+    /// - Parameter img: The texture image.
     public func texture(_ img: MImage) {
         context.texture(img)
     }
 
-    /// アクティブなテクスチャを解除します。
+    /// Clears the active texture.
     ///
-    /// - Note: **3D のみ**に作用します（ADR-0005）。
+    /// - Note: Affects **3D only** (ADR-0005).
     public func noTexture() {
         context.noTexture()
     }
 
     // MARK: 3D Transform Stack
 
-    /// 現在の変換行列（2D と 3D の両方）をスタックに保存します。
+    /// Saves the current transform matrix (both 2D and 3D) onto the stack.
     ///
-    /// - Note: **2D と 3D の両方**に作用します。``push()`` との違いは作用先ではなく
-    ///   「スタイルを含むかどうか」で、こちらは変換のみを保存します。
+    /// - Note: Affects **both 2D and 3D**. What sets it apart from ``push()`` is not what
+    ///   it affects but whether style is included: this one saves the transform only.
     public func pushMatrix() {
         context.pushMatrix()
     }
 
-    /// 最後に保存された変換行列（2D と 3D の両方）をスタックから復元します。
+    /// Restores the last saved transform matrix (both 2D and 3D) from the stack.
     ///
-    /// - Note: **2D と 3D の両方**に作用します（``pushMatrix()`` と対）。
+    /// - Note: Affects **both 2D and 3D** (the counterpart of ``pushMatrix()``).
     public func popMatrix() {
         context.popMatrix()
     }
 
-    /// 現在の変換に 3D 平行移動を適用します。
+    /// Applies a 3D translation to the current transform.
     ///
-    /// - Note: **3D のみ**に作用します。2 引数の ``translate(_:_:)`` は 2D と 3D の
-    ///   両方に作用します（ADR-0005 Amendment 2026-08-02）。
+    /// - Note: Affects **3D only**. The two-argument ``translate(_:_:)`` affects both 2D
+    ///   and 3D (ADR-0005 Amendment 2026-08-02).
     ///
     /// - Parameters:
-    ///   - x: x 軸方向の移動量。
-    ///   - y: y 軸方向の移動量。
-    ///   - z: z 軸方向の移動量。
+    ///   - x: The amount to move along the x axis.
+    ///   - y: The amount to move along the y axis.
+    ///   - z: The amount to move along the z axis.
     public func translate(_ x: Float, _ y: Float, _ z: Float) {
         context.translate(x, y, z)
     }
 
-    /// x 軸周りの回転を適用します。
+    /// Applies a rotation around the x axis.
     ///
-    /// - Note: **3D のみ**に作用します（ADR-0005 Amendment 2026-08-02）。
+    /// - Note: Affects **3D only** (ADR-0005 Amendment 2026-08-02).
     ///
-    /// - Parameter angle: ラジアン単位の回転角度。
+    /// - Parameter angle: The rotation angle in radians.
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// 左から順に 0 / 0.5 / 1.0 ラジアン。x 軸（画面の横方向）を軸に、上端が奥へ倒れます。
+    /// 0 / 0.5 / 1.0 radians from the left. Around the x axis (the horizontal direction of
+    /// the screen), the top edge tips away from the viewer.
     ///
     /// <!-- reference-shot -->
     ///
@@ -1171,15 +1210,16 @@ extension Sketch {
         context.rotateX(angle)
     }
 
-    /// y 軸周りの回転を適用します。
+    /// Applies a rotation around the y axis.
     ///
-    /// - Note: **3D のみ**に作用します（ADR-0005 Amendment 2026-08-02）。
+    /// - Note: Affects **3D only** (ADR-0005 Amendment 2026-08-02).
     ///
-    /// - Parameter angle: ラジアン単位の回転角度。
+    /// - Parameter angle: The rotation angle in radians.
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// `frameCount` を角度に使うと、y 軸（画面の縦方向）を軸に回り続けます。
+    /// Using `frameCount` as the angle keeps it turning around the y axis (the vertical
+    /// direction of the screen).
     ///
     /// <!-- reference-shot -->
     ///
@@ -1204,54 +1244,55 @@ extension Sketch {
         context.rotateY(angle)
     }
 
-    /// z 軸周りの回転を適用します。
+    /// Applies a rotation around the z axis.
     ///
-    /// - Note: **3D のみ**に作用します。1 引数の ``rotate(_:)`` は 2D と 3D の両方に
-    ///   作用し、3D 側は本メソッドと同じ z 軸まわりの回転になります
-    ///   （ADR-0005 Amendment 2026-08-02）。
+    /// - Note: Affects **3D only**. The one-argument ``rotate(_:)`` affects both 2D and
+    ///   3D, and on the 3D side it is the same rotation around the z axis as this method
+    ///   (ADR-0005 Amendment 2026-08-02).
     ///
-    /// - Parameter angle: ラジアン単位の回転角度。
+    /// - Parameter angle: The rotation angle in radians.
     public func rotateZ(_ angle: Float) {
         context.rotateZ(angle)
     }
 
-    /// 現在の変換に非均一 3D スケールを適用します。
+    /// Applies a non-uniform 3D scale to the current transform.
     ///
-    /// - Note: **3D のみ**に作用します。2 引数の ``scale(_:_:)`` は 2D と 3D の
-    ///   両方に作用します（ADR-0005 Amendment 2026-08-02）。
+    /// - Note: Affects **3D only**. The two-argument ``scale(_:_:)`` affects both 2D and
+    ///   3D (ADR-0005 Amendment 2026-08-02).
     ///
     /// - Parameters:
-    ///   - x: x 軸方向のスケール係数。
-    ///   - y: y 軸方向のスケール係数。
-    ///   - z: z 軸方向のスケール係数。
+    ///   - x: The scale factor along the x axis.
+    ///   - y: The scale factor along the y axis.
+    ///   - z: The scale factor along the z axis.
     public func scale(_ x: Float, _ y: Float, _ z: Float) {
         context.scale(x, y, z)
     }
 
     // MARK: 3D Shapes
 
-    /// 指定したサイズのボックスを描画します。
+    /// Draws a box of the given size.
     ///
-    /// - Note: **3D のみ**に作用します（3D キャンバスへ描かれます。ADR-0005）。
+    /// - Note: Affects **3D only** (it is drawn on the 3D canvas. ADR-0005).
     ///
     /// - Parameters:
-    ///   - width: ボックスの幅。
-    ///   - height: ボックスの高さ。
-    ///   - depth: ボックスの奥行き。
+    ///   - width: The width of the box.
+    ///   - height: The height of the box.
+    ///   - depth: The depth of the box.
     public func box(_ width: Float, _ height: Float, _ depth: Float) {
         context.box(width, height, depth)
     }
 
-    /// 辺の長さが等しいキューブを描画します。
+    /// Draws a cube whose edges are all the same length.
     ///
-    /// - Note: **3D のみ**に作用します（3D キャンバスへ描かれます。ADR-0005）。
+    /// - Note: Affects **3D only** (it is drawn on the 3D canvas. ADR-0005).
     ///
-    /// - Parameter size: 辺の長さ。
+    /// - Parameter size: The edge length.
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// 既定カメラの原点はキャンバス左上なので、``translate(_:_:_:)`` で中央へ寄せます。
-    /// 正対させると正方形にしか見えないため、2 軸で傾けています。
+    /// The origin of the default camera is the top-left corner of the canvas, so
+    /// ``translate(_:_:_:)`` brings it to the center. Head-on it would look like nothing
+    /// but a square, so it is tilted around two axes.
     ///
     /// <!-- reference-shot -->
     ///
@@ -1276,18 +1317,18 @@ extension Sketch {
         context.box(size)
     }
 
-    /// 球を描画します。
+    /// Draws a sphere.
     ///
-    /// - Note: **3D のみ**に作用します（3D キャンバスへ描かれます。ADR-0005）。
+    /// - Note: Affects **3D only** (it is drawn on the 3D canvas. ADR-0005).
     ///
     /// - Parameters:
-    ///   - radius: 球の半径。
-    ///   - detail: メッシュテッセレーションの分割数。
+    ///   - radius: The radius of the sphere.
+    ///   - detail: The subdivision count of the mesh tessellation.
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// `detail` は球をどれだけ細かく分割するかで、小さくすると多面体になります
-    /// （左が `detail: 5`、右が既定の 24）。
+    /// `detail` is how finely the sphere is subdivided; a small value turns it into a
+    /// polyhedron (`detail: 5` on the left, the default of 24 on the right).
     ///
     /// <!-- reference-shot -->
     ///
@@ -1318,18 +1359,18 @@ extension Sketch {
         context.sphere(radius, detail: detail)
     }
 
-    /// 平面を描画します。
+    /// Draws a plane.
     ///
-    /// - Note: **3D のみ**に作用します（3D キャンバスへ描かれます。ADR-0005）。
+    /// - Note: Affects **3D only** (it is drawn on the 3D canvas. ADR-0005).
     ///
     /// - Parameters:
-    ///   - width: 平面の幅。
-    ///   - height: 平面の高さ。
+    ///   - width: The width of the plane.
+    ///   - height: The height of the plane.
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// 正対させると ``rect(_:_:_:_:)`` と見分けが付かないので、``rotateX(_:)`` で
-    /// 寝かせて奥行きを出しています。
+    /// Head-on it would be indistinguishable from ``rect(_:_:_:_:)``, so ``rotateX(_:)``
+    /// lays it down to bring out the depth.
     ///
     /// <!-- reference-shot -->
     ///
@@ -1353,19 +1394,19 @@ extension Sketch {
         context.plane(width, height)
     }
 
-    /// 円柱を描画します。
+    /// Draws a cylinder.
     ///
-    /// 既定カメラはピクセル空間（ワールド 1 単位 = 1 ピクセル）なので、`radius` /
-    /// `height` はピクセル相当の大きさで指定します。
+    /// The default camera is a pixel space (1 world unit = 1 pixel), so `radius` and
+    /// `height` are given at pixel-equivalent sizes.
     ///
-    /// - Note: **3D のみ**に作用します（3D キャンバスへ描かれます。ADR-0005）。
+    /// - Note: Affects **3D only** (it is drawn on the 3D canvas. ADR-0005).
     ///
     /// - Parameters:
-    ///   - radius: 円柱の半径。
-    ///   - height: 円柱の高さ。
-    ///   - detail: 円周方向の分割数。
+    ///   - radius: The radius of the cylinder.
+    ///   - height: The height of the cylinder.
+    ///   - detail: The subdivision count around the circumference.
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
     /// <!-- reference-shot -->
     ///
@@ -1389,22 +1430,22 @@ extension Sketch {
         context.cylinder(radius: radius, height: height, detail: detail)
     }
 
-    /// 円錐を描画します。
+    /// Draws a cone.
     ///
-    /// 既定カメラはピクセル空間（ワールド 1 単位 = 1 ピクセル）なので、`radius` /
-    /// `height` はピクセル相当の大きさで指定します。
+    /// The default camera is a pixel space (1 world unit = 1 pixel), so `radius` and
+    /// `height` are given at pixel-equivalent sizes.
     ///
-    /// - Note: **3D のみ**に作用します（3D キャンバスへ描かれます。ADR-0005）。
+    /// - Note: Affects **3D only** (it is drawn on the 3D canvas. ADR-0005).
     ///
     /// - Parameters:
-    ///   - radius: 底面の半径。
-    ///   - height: 円錐の高さ。
-    ///   - detail: 円周方向の分割数。
+    ///   - radius: The radius of the base.
+    ///   - height: The height of the cone.
+    ///   - detail: The subdivision count around the circumference.
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// y 軸は画面下向きなので、そのまま描くと**頂点が下**を向きます。上向きの円錐に
-    /// するには ``rotateZ(_:)`` で半回転させてください。
+    /// The y axis points down the screen, so drawn as is the **apex points downward**. To
+    /// get a cone that points up, turn it half a revolution with ``rotateZ(_:)``.
     ///
     /// <!-- reference-shot -->
     ///
@@ -1428,19 +1469,19 @@ extension Sketch {
         context.cone(radius: radius, height: height, detail: detail)
     }
 
-    /// トーラス（ドーナツ形状）を描画します。
+    /// Draws a torus (a doughnut shape).
     ///
-    /// 既定カメラはピクセル空間（ワールド 1 単位 = 1 ピクセル）なので、`ringRadius` /
-    /// `tubeRadius` はピクセル相当の大きさで指定します。
+    /// The default camera is a pixel space (1 world unit = 1 pixel), so `ringRadius` and
+    /// `tubeRadius` are given at pixel-equivalent sizes.
     ///
-    /// - Note: **3D のみ**に作用します（3D キャンバスへ描かれます。ADR-0005）。
+    /// - Note: Affects **3D only** (it is drawn on the 3D canvas. ADR-0005).
     ///
     /// - Parameters:
-    ///   - ringRadius: トーラスの中心からチューブの中心までの距離。
-    ///   - tubeRadius: チューブの半径。
-    ///   - detail: 分割数。
+    ///   - ringRadius: The distance from the center of the torus to the center of the tube.
+    ///   - tubeRadius: The radius of the tube.
+    ///   - detail: The subdivision count.
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
     /// <!-- reference-shot -->
     ///
@@ -1467,19 +1508,20 @@ extension Sketch {
         context.torus(ringRadius: ringRadius, tubeRadius: tubeRadius, detail: detail)
     }
 
-    /// ビルド済みメッシュを描画します。
+    /// Draws a prebuilt mesh.
     ///
-    /// - Note: **3D のみ**に作用します（3D キャンバスへ描かれます。ADR-0005）。
+    /// - Note: Affects **3D only** (it is drawn on the 3D canvas. ADR-0005).
     ///
-    /// - Parameter mesh: 描画するメッシュ。
+    /// - Parameter mesh: The mesh to draw.
     public func mesh(_ mesh: Mesh) {
         context.mesh(mesh)
     }
 
-    /// 同一メッシュを複数のトランスフォームで一括描画します（明示インスタンシング）。
+    /// Draws the same mesh in one batch with multiple transforms (explicit instancing).
     ///
-    /// 各インスタンスは「現在の変換行列 × `transforms[i]`」で描かれます。次のループと同値ですが、
-    /// 状態評価が 1 回で済むぶん CPU 側が軽くなります。
+    /// Each instance is drawn with "the current transform matrix × `transforms[i]`". This
+    /// is equivalent to the loop below, but lighter on the CPU because the state is
+    /// evaluated only once.
     ///
     /// ```swift
     /// for t in transforms {
@@ -1487,55 +1529,58 @@ extension Sketch {
     /// }
     /// ```
     ///
-    /// fill / stroke / material / texture / ライトはインスタンス間で共有されます
-    /// （インスタンスごとに変えられるのは ``drawInstanced(_:transforms:colors:)`` の fill 色のみ）。
+    /// fill, stroke, material, texture, and the lights are shared across instances (the
+    /// only thing that can vary per instance is the fill color of
+    /// ``drawInstanced(_:transforms:colors:)``).
     ///
-    /// - Note: **3D のみ**に作用します（3D キャンバスへ描かれます。ADR-0005）。
+    /// - Note: Affects **3D only** (it is drawn on the 3D canvas. ADR-0005).
     ///
     /// - Parameters:
-    ///   - mesh: 描画するメッシュ。
-    ///   - transforms: インスタンスごとのローカル変換。空配列なら何も描きません。
+    ///   - mesh: The mesh to draw.
+    ///   - transforms: The local transform of each instance. An empty array draws nothing.
     public func drawInstanced(_ mesh: Mesh, transforms: [float4x4]) {
         context.drawInstanced(mesh, transforms: transforms)
     }
 
-    /// 同一メッシュを、インスタンスごとの fill 色つきで一括描画します。
+    /// Draws the same mesh in one batch with a per-instance fill color.
     ///
-    /// - Note: **3D のみ**に作用します（3D キャンバスへ描かれます。ADR-0005）。
+    /// - Note: Affects **3D only** (it is drawn on the 3D canvas. ADR-0005).
     ///
     /// - Parameters:
-    ///   - mesh: 描画するメッシュ。
-    ///   - transforms: インスタンスごとのローカル変換。空配列なら何も描きません。
-    ///   - colors: インスタンスごとの fill 色。`transforms` より短いときは不足分に現在の
-    ///     fill 色を使い、長いときは余りを無視します。stroke 色とマテリアルは共通のままです。
+    ///   - mesh: The mesh to draw.
+    ///   - transforms: The local transform of each instance. An empty array draws nothing.
+    ///   - colors: The fill color of each instance. When it is shorter than `transforms`,
+    ///     the current fill color is used for the shortfall; when it is longer, the excess
+    ///     is ignored. The stroke color and the material stay shared.
     public func drawInstanced(_ mesh: Mesh, transforms: [float4x4], colors: [Color]) {
         context.drawInstanced(mesh, transforms: transforms, colors: colors)
     }
 
-    /// ダイナミックメッシュを描画します。
+    /// Draws a dynamic mesh.
     ///
-    /// - Note: **3D のみ**に作用します（3D キャンバスへ描かれます。ADR-0005）。
+    /// - Note: Affects **3D only** (it is drawn on the 3D canvas. ADR-0005).
     ///
-    /// - Parameter mesh: 描画するダイナミックメッシュ。
+    /// - Parameter mesh: The dynamic mesh to draw.
     public func dynamicMesh(_ mesh: DynamicMesh) {
         context.dynamicMesh(mesh)
     }
 
-    /// 新しい空のダイナミックメッシュを作成します。
+    /// Creates a new, empty dynamic mesh.
     ///
-    /// - Note: 作成されるメッシュを描けるのは **3D のみ**です（``dynamicMesh(_:)``。ADR-0005）。
+    /// - Note: The mesh that is created can be drawn in **3D only**
+    ///   (``dynamicMesh(_:)``. ADR-0005).
     ///
-    /// - Returns: 新しい ``DynamicMesh`` インスタンス。
+    /// - Returns: A new ``DynamicMesh`` instance.
     public func createDynamicMesh() -> DynamicMesh {
         context.createDynamicMesh()
     }
 
     // MARK: - プリミティブメッシュの生成
 
-    /// ボックスのメッシュを生成します（描画はしません）。
+    /// Creates a box mesh (without drawing it).
     ///
-    /// ``box(_:_:_:)`` が「描く」のに対し、こちらは ``Mesh`` を**値として**返します。
-    /// ``mesh(_:)`` や ``drawInstanced(_:transforms:)`` に渡すためのものです。
+    /// Where ``box(_:_:_:)`` draws, this one returns a ``Mesh`` **as a value**, meant to be
+    /// handed to ``mesh(_:)`` or ``drawInstanced(_:transforms:)``.
     ///
     /// ```swift
     /// func setup() {
@@ -1546,144 +1591,149 @@ extension Sketch {
     /// }
     /// ```
     ///
-    /// 同じ引数の再呼び出しは同一インスタンスを返します（``loadModel(_:normalize:cache:)``
-    /// と同じ挙動）。寸法を毎フレーム変えて呼ぶとメッシュを作り直し続けるため、生成は
-    /// `setup()` で行い、大きさの変化は ``scale(_:)`` や `transforms` 側で表現してください。
+    /// Calling it again with the same arguments returns the same instance (the same
+    /// behavior as ``loadModel(_:normalize:cache:)``). Calling it with different dimensions
+    /// every frame keeps rebuilding the mesh, so create it in `setup()` and express changes
+    /// in size with ``scale(_:)`` or on the `transforms` side.
     ///
-    /// - Note: 生成されるメッシュを描けるのは **3D のみ**です
-    ///   （``mesh(_:)`` / ``drawInstanced(_:transforms:)``。ADR-0005）。
+    /// - Note: The mesh that is created can be drawn in **3D only**
+    ///   (``mesh(_:)`` / ``drawInstanced(_:transforms:)``. ADR-0005).
     ///
     /// - Parameters:
-    ///   - width: ボックスの幅。
-    ///   - height: ボックスの高さ。
-    ///   - depth: ボックスの奥行き。
-    /// - Returns: 生成されたメッシュ。GPU バッファを確保できなかった場合は `nil`。
+    ///   - width: The width of the box.
+    ///   - height: The height of the box.
+    ///   - depth: The depth of the box.
+    /// - Returns: The created mesh, or `nil` if the GPU buffer could not be allocated.
     public func createBoxMesh(_ width: Float, _ height: Float, _ depth: Float) -> Mesh? {
         context.createBoxMesh(width, height, depth)
     }
 
-    /// 同じ寸法の立方体メッシュを生成します（描画はしません）。
+    /// Creates a cube mesh with equal dimensions (without drawing it).
     ///
-    /// - Note: 生成されるメッシュを描けるのは **3D のみ**です
-    ///   （``mesh(_:)`` / ``drawInstanced(_:transforms:)``。ADR-0005）。
+    /// - Note: The mesh that is created can be drawn in **3D only**
+    ///   (``mesh(_:)`` / ``drawInstanced(_:transforms:)``. ADR-0005).
     ///
-    /// - Parameter size: 立方体の辺の長さ。
-    /// - Returns: 生成されたメッシュ。GPU バッファを確保できなかった場合は `nil`。
+    /// - Parameter size: The edge length of the cube.
+    /// - Returns: The created mesh, or `nil` if the GPU buffer could not be allocated.
     public func createBoxMesh(_ size: Float) -> Mesh? {
         context.createBoxMesh(size)
     }
 
-    /// 球のメッシュを生成します（描画はしません）。
+    /// Creates a sphere mesh (without drawing it).
     ///
-    /// `detail` の解釈は ``sphere(_:detail:)`` と同じで、同じ引数なら同じジオメトリになります。
+    /// `detail` is interpreted the same way as in ``sphere(_:detail:)``, so the same
+    /// arguments produce the same geometry.
     ///
-    /// - Note: 生成されるメッシュを描けるのは **3D のみ**です
-    ///   （``mesh(_:)`` / ``drawInstanced(_:transforms:)``。ADR-0005）。
+    /// - Note: The mesh that is created can be drawn in **3D only**
+    ///   (``mesh(_:)`` / ``drawInstanced(_:transforms:)``. ADR-0005).
     ///
     /// - Parameters:
-    ///   - radius: 球の半径。
-    ///   - detail: 分割数（デフォルトは 24）。
-    /// - Returns: 生成されたメッシュ。GPU バッファを確保できなかった場合は `nil`。
+    ///   - radius: The radius of the sphere.
+    ///   - detail: The subdivision count (24 by default).
+    /// - Returns: The created mesh, or `nil` if the GPU buffer could not be allocated.
     public func createSphereMesh(_ radius: Float, detail: Int = 24) -> Mesh? {
         context.createSphereMesh(radius, detail: detail)
     }
 
-    /// 平面のメッシュを生成します（描画はしません）。
+    /// Creates a plane mesh (without drawing it).
     ///
-    /// XY 平面上の矩形で、法線は +Z 方向です。
+    /// It is a rectangle on the XY plane, with its normal pointing along +Z.
     ///
-    /// - Note: 生成されるメッシュを描けるのは **3D のみ**です
-    ///   （``mesh(_:)`` / ``drawInstanced(_:transforms:)``。ADR-0005）。
+    /// - Note: The mesh that is created can be drawn in **3D only**
+    ///   (``mesh(_:)`` / ``drawInstanced(_:transforms:)``. ADR-0005).
     ///
     /// - Parameters:
-    ///   - width: 平面の幅。
-    ///   - height: 平面の高さ。
-    /// - Returns: 生成されたメッシュ。GPU バッファを確保できなかった場合は `nil`。
+    ///   - width: The width of the plane.
+    ///   - height: The height of the plane.
+    /// - Returns: The created mesh, or `nil` if the GPU buffer could not be allocated.
     public func createPlaneMesh(_ width: Float, _ height: Float) -> Mesh? {
         context.createPlaneMesh(width, height)
     }
 
-    /// 円柱のメッシュを生成します（描画はしません）。
+    /// Creates a cylinder mesh (without drawing it).
     ///
-    /// - Note: 生成されるメッシュを描けるのは **3D のみ**です
-    ///   （``mesh(_:)`` / ``drawInstanced(_:transforms:)``。ADR-0005）。
+    /// - Note: The mesh that is created can be drawn in **3D only**
+    ///   (``mesh(_:)`` / ``drawInstanced(_:transforms:)``. ADR-0005).
     ///
     /// - Parameters:
-    ///   - radius: 円柱の半径。
-    ///   - height: 円柱の高さ。
-    ///   - detail: 分割数（デフォルトは 24）。
-    /// - Returns: 生成されたメッシュ。GPU バッファを確保できなかった場合は `nil`。
+    ///   - radius: The radius of the cylinder.
+    ///   - height: The height of the cylinder.
+    ///   - detail: The subdivision count (24 by default).
+    /// - Returns: The created mesh, or `nil` if the GPU buffer could not be allocated.
     public func createCylinderMesh(radius: Float, height: Float, detail: Int = 24) -> Mesh? {
         context.createCylinderMesh(radius: radius, height: height, detail: detail)
     }
 
-    /// 円錐のメッシュを生成します（描画はしません）。
+    /// Creates a cone mesh (without drawing it).
     ///
-    /// - Note: 生成されるメッシュを描けるのは **3D のみ**です
-    ///   （``mesh(_:)`` / ``drawInstanced(_:transforms:)``。ADR-0005）。
+    /// - Note: The mesh that is created can be drawn in **3D only**
+    ///   (``mesh(_:)`` / ``drawInstanced(_:transforms:)``. ADR-0005).
     ///
     /// - Parameters:
-    ///   - radius: 底面の半径。
-    ///   - height: 円錐の高さ。
-    ///   - detail: 分割数（デフォルトは 24）。
-    /// - Returns: 生成されたメッシュ。GPU バッファを確保できなかった場合は `nil`。
+    ///   - radius: The radius of the base.
+    ///   - height: The height of the cone.
+    ///   - detail: The subdivision count (24 by default).
+    /// - Returns: The created mesh, or `nil` if the GPU buffer could not be allocated.
     public func createConeMesh(radius: Float, height: Float, detail: Int = 24) -> Mesh? {
         context.createConeMesh(radius: radius, height: height, detail: detail)
     }
 
-    /// トーラスのメッシュを生成します（描画はしません）。
+    /// Creates a torus mesh (without drawing it).
     ///
-    /// `detail` の解釈は ``torus(ringRadius:tubeRadius:detail:)`` と同じで、
-    /// 同じ引数なら同じジオメトリになります。
+    /// `detail` is interpreted the same way as in ``torus(ringRadius:tubeRadius:detail:)``,
+    /// so the same arguments produce the same geometry.
     ///
-    /// - Note: 生成されるメッシュを描けるのは **3D のみ**です
-    ///   （``mesh(_:)`` / ``drawInstanced(_:transforms:)``。ADR-0005）。
+    /// - Note: The mesh that is created can be drawn in **3D only**
+    ///   (``mesh(_:)`` / ``drawInstanced(_:transforms:)``. ADR-0005).
     ///
     /// - Parameters:
-    ///   - ringRadius: トーラスの中心からチューブの中心までの距離。
-    ///   - tubeRadius: チューブの半径。
-    ///   - detail: 分割数（デフォルトは 24）。
-    /// - Returns: 生成されたメッシュ。GPU バッファを確保できなかった場合は `nil`。
+    ///   - ringRadius: The distance from the center of the torus to the center of the tube.
+    ///   - tubeRadius: The radius of the tube.
+    ///   - detail: The subdivision count (24 by default).
+    /// - Returns: The created mesh, or `nil` if the GPU buffer could not be allocated.
     public func createTorusMesh(ringRadius: Float, tubeRadius: Float, detail: Int = 24) -> Mesh? {
         context.createTorusMesh(ringRadius: ringRadius, tubeRadius: tubeRadius, detail: detail)
     }
 
-    /// ファイルから 3D モデルを読み込みます（OBJ、USDZ、ABC）。
+    /// Loads a 3D model from a file (OBJ, USDZ, or ABC).
     ///
-    /// 既定でパスキーのキャッシュが効き、同じパス・同じ `normalize` の再読込は
-    /// 同一の ``Mesh`` インスタンスを返します。
+    /// A path-keyed cache is enabled by default, so reloading the same path with the same
+    /// `normalize` returns the same ``Mesh`` instance.
     ///
-    /// - Note: 読み込まれるメッシュを描けるのは **3D のみ**です
-    ///   （``mesh(_:)`` / ``drawInstanced(_:transforms:)``。ADR-0005）。
+    /// - Note: The mesh that is loaded can be drawn in **3D only**
+    ///   (``mesh(_:)`` / ``drawInstanced(_:transforms:)``. ADR-0005).
     ///
     /// - Parameters:
-    ///   - path: モデルのファイルパス。
-    ///   - normalize: バウンディングボックスを正規化するかどうか（デフォルトは `true`）。
-    ///     正規化すると原点中心・**最大辺が 2 単位**（[-1, 1]）になるので、ピクセル座標系の
-    ///     キャンバスへそのまま描くと数ピクセルの大きさにしかなりません。``scale(_:)`` で
-    ///     大きさを与えてください。モデルの座標をそのまま使うなら `false` を渡します。
-    ///   - cache: キャッシュを使うか（既定 true。`false` で独立したコピーを読み込み）。
-    /// - Returns: 読み込まれたメッシュ。読み込みに失敗した場合は `nil`。
+    ///   - path: The file path of the model.
+    ///   - normalize: Whether to normalize the bounding box (`true` by default).
+    ///     Normalizing centers it on the origin and makes **the longest edge 2 units**
+    ///     ([-1, 1]), so drawing it as is on a canvas in pixel coordinates leaves it only a
+    ///     few pixels across. Give it a size with ``scale(_:)``. Pass `false` to use the
+    ///     coordinates of the model as they are.
+    ///   - cache: Whether to use the cache (`true` by default; `false` loads an independent copy).
+    /// - Returns: The loaded mesh, or `nil` if loading failed.
     public func loadModel(_ path: String, normalize: Bool = true, cache: Bool = true) -> Mesh? {
         context.loadModel(path, normalize: normalize, cache: cache)
     }
 
-    /// 3D モデルを非同期で読み込みます（パース処理をメインスレッド外で実行）。
+    /// Loads a 3D model asynchronously (the parsing runs off the main thread).
     ///
-    /// - Note: 読み込まれるメッシュを描けるのは **3D のみ**です
-    ///   （``mesh(_:)`` / ``drawInstanced(_:transforms:)``。ADR-0005）。
+    /// - Note: The mesh that is loaded can be drawn in **3D only**
+    ///   (``mesh(_:)`` / ``drawInstanced(_:transforms:)``. ADR-0005).
     ///
     /// - Parameters:
-    ///   - path: モデルのファイルパス。
-    ///   - normalize: バウンディングボックスを正規化するかどうか（デフォルトは `true`）。
-    ///     正規化すると原点中心・**最大辺が 2 単位**（[-1, 1]）になるので、ピクセル座標系の
-    ///     キャンバスへそのまま描くと数ピクセルの大きさにしかなりません。``scale(_:)`` で
-    ///     大きさを与えてください。モデルの座標をそのまま使うなら `false` を渡します。
-    ///   - cache: キャッシュを使うか（既定 true。同一インスタンスが返ります）。
-    /// - Returns: 読み込まれたメッシュ。
-    /// - Throws: モデルを解析できない場合（メッシュ・頂点位置が無い、空メッシュなど）は
-    ///   ``MetaphorError/mesh(_:)`` の ``MetaphorError/MeshFailure/parseError(_:)``、
-    ///   GPU バッファを確保できない場合は ``MetaphorError/bufferCreationFailed(size:)``。
+    ///   - path: The file path of the model.
+    ///   - normalize: Whether to normalize the bounding box (`true` by default).
+    ///     Normalizing centers it on the origin and makes **the longest edge 2 units**
+    ///     ([-1, 1]), so drawing it as is on a canvas in pixel coordinates leaves it only a
+    ///     few pixels across. Give it a size with ``scale(_:)``. Pass `false` to use the
+    ///     coordinates of the model as they are.
+    ///   - cache: Whether to use the cache (`true` by default; the same instance is returned).
+    /// - Returns: The loaded mesh.
+    /// - Throws: If the model cannot be parsed (no mesh, no vertex positions, an empty
+    ///   mesh, and so on), ``MetaphorError/MeshFailure/parseError(_:)`` of
+    ///   ``MetaphorError/mesh(_:)``; if the GPU buffer cannot be allocated,
+    ///   ``MetaphorError/bufferCreationFailed(size:)``.
     public func loadModelAsync(
         _ path: String, normalize: Bool = true, cache: Bool = true
     ) async throws -> Mesh {

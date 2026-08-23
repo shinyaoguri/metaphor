@@ -4,17 +4,17 @@ extension Sketch {
 
     // MARK: Shape Mode Settings
 
-    /// 矩形の描画モードを設定します。
+    /// Sets the rectangle drawing mode.
     ///
-    /// - Note: **2D のみ**に作用します（``rect(_:_:_:_:)`` 用で、3D のプリミティブの
-    ///   位置の解釈には効きません。ADR-0005）。
+    /// - Note: Affects **2D only** (it is for ``rect(_:_:_:_:)`` and does not change how the
+    ///   position of 3D primitives is interpreted; ADR-0005).
     ///
-    /// - Parameter mode: 矩形の解釈モード。
+    /// - Parameter mode: The interpretation mode for rectangles.
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// 同じ引数の ``rect(_:_:_:_:)`` が、モードによって別の位置・大きさに出ます
-    /// （左が既定の ``RectMode/corner``、右が ``RectMode/center``）。
+    /// The same ``rect(_:_:_:_:)`` arguments land at a different position and size depending on
+    /// the mode (the default ``RectMode/corner`` on the left, ``RectMode/center`` on the right).
     ///
     /// <!-- reference-shot -->
     ///
@@ -41,17 +41,17 @@ extension Sketch {
         context.rectMode(mode)
     }
 
-    /// 楕円の描画モードを設定します。
+    /// Sets the ellipse drawing mode.
     ///
-    /// - Note: **2D のみ**に作用します（``ellipse(_:_:_:_:)`` 用で、3D のプリミティブの
-    ///   位置の解釈には効きません。ADR-0005）。
+    /// - Note: Affects **2D only** (it is for ``ellipse(_:_:_:_:)`` and does not change how the
+    ///   position of 3D primitives is interpreted; ADR-0005).
     ///
-    /// - Parameter mode: 楕円の解釈モード。
+    /// - Parameter mode: The interpretation mode for ellipses.
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// 同じ引数の ``ellipse(_:_:_:_:)`` が、モードによって別の位置に出ます
-    /// （左が既定の ``EllipseMode/center``、右が ``EllipseMode/corner``）。
+    /// The same ``ellipse(_:_:_:_:)`` arguments land at a different position depending on the mode
+    /// (the default ``EllipseMode/center`` on the left, ``EllipseMode/corner`` on the right).
     ///
     /// <!-- reference-shot -->
     ///
@@ -78,36 +78,36 @@ extension Sketch {
         context.ellipseMode(mode)
     }
 
-    /// 画像の描画モードを設定します。
+    /// Sets the image drawing mode.
     ///
-    /// - Note: **2D のみ**に作用します（`image()` 用で、3D の ``texture(_:)`` には
-    ///   効きません。ADR-0005）。
+    /// - Note: Affects **2D only** (it is for `image()` and has no effect on 3D ``texture(_:)``;
+    ///   ADR-0005).
     ///
-    /// - Parameter mode: 画像の解釈モード。
+    /// - Parameter mode: The interpretation mode for images.
     public func imageMode(_ mode: ImageMode) {
         context.imageMode(mode)
     }
 
     // MARK: Color Mode
 
-    /// チャンネルごとの最大値を指定してカラーモードを設定します。
+    /// Sets the color mode with a maximum value for each channel.
     ///
-    /// 既定のカラーモードは RGB の 0〜255（Processing と同じ）です。
-    /// 未指定のチャンネルは現在の最大値を維持します。
+    /// The default color mode is RGB from 0 to 255 (the same as Processing).
+    /// Channels that are not specified keep their current maximum.
     ///
-    /// - Note: **2D と 3D の両方**に作用します（``fill(_:)-(Color)`` / ``stroke(_:)-(Color)`` の
-    ///   チャンネル解釈が両キャンバスで揃います。ADR-0005）。
+    /// - Note: Affects **both 2D and 3D** (channel interpretation for ``fill(_:)-(Color)`` and
+    ///   ``stroke(_:)-(Color)`` stays in step across both canvases; ADR-0005).
     ///
     /// - Parameters:
-    ///   - space: 使用する色空間。
-    ///   - max1: 第1チャンネルの最大値。省略時は現在値を維持。
-    ///   - max2: 第2チャンネルの最大値。省略時は現在値を維持。
-    ///   - max3: 第3チャンネルの最大値。省略時は現在値を維持。
-    ///   - maxA: アルファチャンネルの最大値。省略時は現在値を維持。
+    ///   - space: The color space to use.
+    ///   - max1: The maximum value of the first channel. Keeps the current value when omitted.
+    ///   - max2: The maximum value of the second channel. Keeps the current value when omitted.
+    ///   - max3: The maximum value of the third channel. Keeps the current value when omitted.
+    ///   - maxA: The maximum value of the alpha channel. Keeps the current value when omitted.
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// ``ColorSpace/hsb`` にすると、第1チャンネルが色相になります。
+    /// With ``ColorSpace/hsb``, the first channel becomes the hue.
     ///
     /// <!-- reference-shot -->
     ///
@@ -134,115 +134,117 @@ extension Sketch {
         context.colorMode(space, max1, max2, max3, maxA)
     }
 
-    /// 全チャンネル共通の最大値を指定してカラーモードを設定します。
+    /// Sets the color mode with a single maximum value shared by every channel.
     ///
-    /// - Note: **2D と 3D の両方**に作用します（``fill(_:)-(Color)`` / ``stroke(_:)-(Color)`` の
-    ///   チャンネル解釈が両キャンバスで揃います。ADR-0005）。
+    /// - Note: Affects **both 2D and 3D** (channel interpretation for ``fill(_:)-(Color)`` and
+    ///   ``stroke(_:)-(Color)`` stays in step across both canvases; ADR-0005).
     ///
     /// - Parameters:
-    ///   - space: 使用する色空間。
-    ///   - maxAll: 全チャンネルの最大値。
+    ///   - space: The color space to use.
+    ///   - maxAll: The maximum value for every channel.
     public func colorMode(_ space: ColorSpace, _ maxAll: Float) {
         context.colorMode(space, maxAll)
     }
 
     // MARK: Background
 
-    /// 指定した色でキャンバスをクリアします。
+    /// Clears the canvas with the given color.
     ///
-    /// **クリアは合成ではなく置き換え**です。`blendMode()` は効かず、α < 1 の背景色は
-    /// 下地と混ざらずにそのまま入ります（`background(0, 0, 0, 0)` はキャンバスを透明に
-    /// 戻します）。前フレームを薄く残したいときは、背景色の `rect()` を画面いっぱいに
-    /// 描いてください（ADR-0012 / #829）。
+    /// **Clearing replaces rather than composites.** `blendMode()` has no effect, and a background
+    /// color with α < 1 is written as it is instead of mixing with what is underneath
+    /// (`background(0, 0, 0, 0)` returns the canvas to transparent). To leave a faint trace of the
+    /// previous frame, draw a `rect()` in the background color across the whole screen
+    /// (ADR-0012 / #829).
     ///
-    /// - Note: **2D と 3D の両方**に作用します。オフスクリーンのキャンバスは 2D と 3D で
-    ///   共有されているため、既に描いた 3D も一緒に消えます（ADR-0005）。
+    /// - Note: Affects **both 2D and 3D**. The offscreen canvas is shared between 2D and 3D, so any
+    ///   3D already drawn is erased along with it (ADR-0005).
     ///
-    /// - Parameter color: 背景色。
+    /// - Parameter color: The background color.
     public func background(_ color: Color) {
         context.background(color)
     }
 
-    /// グレースケール値でキャンバスをクリアします。
+    /// Clears the canvas with a grayscale value.
     ///
-    /// - Note: **2D と 3D の両方**に作用します。オフスクリーンのキャンバスは 2D と 3D で
-    ///   共有されているため、既に描いた 3D も一緒に消えます（ADR-0005）。
+    /// - Note: Affects **both 2D and 3D**. The offscreen canvas is shared between 2D and 3D, so any
+    ///   3D already drawn is erased along with it (ADR-0005).
     ///
-    /// - Parameter gray: グレースケールの明るさ。既定のカラーモードでは 0 = 黒、255 = 白。
+    /// - Parameter gray: The grayscale brightness. In the default color mode, 0 is black and 255 is
+    ///   white.
     public func background(_ gray: Float) {
         context.background(gray)
     }
 
-    /// 指定したカラーチャンネル値でキャンバスをクリアします。
+    /// Clears the canvas with the given color channel values.
     ///
-    /// - Note: **2D と 3D の両方**に作用します。オフスクリーンのキャンバスは 2D と 3D で
-    ///   共有されているため、既に描いた 3D も一緒に消えます（ADR-0005）。
+    /// - Note: Affects **both 2D and 3D**. The offscreen canvas is shared between 2D and 3D, so any
+    ///   3D already drawn is erased along with it (ADR-0005).
     ///
     /// - Parameters:
-    ///   - v1: 第1カラーチャンネル値（赤または色相）。
-    ///   - v2: 第2カラーチャンネル値（緑または彩度）。
-    ///   - v3: 第3カラーチャンネル値（青または明度）。
-    ///   - a: アルファ値（オプション）。
+    ///   - v1: The first color channel value (red or hue).
+    ///   - v2: The second color channel value (green or saturation).
+    ///   - v3: The third color channel value (blue or brightness).
+    ///   - a: The alpha value (optional).
     public func background(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
         context.background(v1, v2, v3, a)
     }
 
     // MARK: Style
 
-    /// 塗りつぶし色を設定します。
+    /// Sets the fill color.
     ///
-    /// - Note: **2D と 3D の両方**に作用します。3D ではプリミティブやメッシュの色になり、
-    ///   ``texture(_:)`` を貼っているときはテクスチャの色に乗算されます（ADR-0005）。
+    /// - Note: Affects **both 2D and 3D**. In 3D it becomes the color of primitives and meshes, and
+    ///   when a ``texture(_:)`` is applied it is multiplied into the texture color (ADR-0005).
     ///
-    /// - Parameter color: 塗りつぶし色。
+    /// - Parameter color: The fill color.
     public func fill(_ color: Color) {
         context.fill(color)
     }
 
-    /// チャンネル値で塗りつぶし色を設定します。
+    /// Sets the fill color from channel values.
     ///
-    /// - Note: **2D と 3D の両方**に作用します（3D ではプリミティブやメッシュの色に
-    ///   なります。ADR-0005）。
+    /// - Note: Affects **both 2D and 3D** (in 3D it becomes the color of primitives and meshes;
+    ///   ADR-0005).
     ///
     /// - Parameters:
-    ///   - v1: 第1カラーチャンネル値（赤または色相）。
-    ///   - v2: 第2カラーチャンネル値（緑または彩度）。
-    ///   - v3: 第3カラーチャンネル値（青または明度）。
-    ///   - a: アルファ値（オプション）。
+    ///   - v1: The first color channel value (red or hue).
+    ///   - v2: The second color channel value (green or saturation).
+    ///   - v3: The third color channel value (blue or brightness).
+    ///   - a: The alpha value (optional).
     public func fill(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
         context.fill(v1, v2, v3, a)
     }
 
-    /// グレースケール値で塗りつぶし色を設定します。
+    /// Sets the fill color from a grayscale value.
     ///
-    /// - Note: **2D と 3D の両方**に作用します（3D ではプリミティブやメッシュの色に
-    ///   なります。ADR-0005）。
+    /// - Note: Affects **both 2D and 3D** (in 3D it becomes the color of primitives and meshes;
+    ///   ADR-0005).
     ///
-    /// - Parameter gray: グレースケールの明るさ。
+    /// - Parameter gray: The grayscale brightness.
     public func fill(_ gray: Float) {
         context.fill(gray)
     }
 
-    /// アルファ付きグレースケール値で塗りつぶし色を設定します。
+    /// Sets the fill color from a grayscale value with alpha.
     ///
-    /// - Note: **2D と 3D の両方**に作用します（3D ではプリミティブやメッシュの色に
-    ///   なります。ADR-0005）。
+    /// - Note: Affects **both 2D and 3D** (in 3D it becomes the color of primitives and meshes;
+    ///   ADR-0005).
     ///
     /// - Parameters:
-    ///   - gray: グレースケールの明るさ。
-    ///   - alpha: アルファ（不透明度）値。
+    ///   - gray: The grayscale brightness.
+    ///   - alpha: The alpha (opacity) value.
     public func fill(_ gray: Float, _ alpha: Float) {
         context.fill(gray, alpha)
     }
 
-    /// 図形の塗りつぶしを無効にします。
+    /// Disables filling shapes.
     ///
-    /// - Note: **2D と 3D の両方**に作用します。3D では面が描かれなくなり、
-    ///   ``noStroke()`` も併せて呼ぶとそのシェイプは何も描かれません（ADR-0005）。
+    /// - Note: Affects **both 2D and 3D**. In 3D the faces stop being drawn, and calling
+    ///   ``noStroke()`` as well leaves that shape drawing nothing at all (ADR-0005).
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// 塗りだけが消え、ストロークは残ります（右が ``noFill()`` を呼んだあと）。
+    /// Only the fill disappears; the stroke remains (the right one is after calling ``noFill()``).
     ///
     /// <!-- reference-shot -->
     ///
@@ -266,60 +268,61 @@ extension Sketch {
         context.noFill()
     }
 
-    /// ストローク色を設定します。
+    /// Sets the stroke color.
     ///
-    /// - Note: **2D と 3D の両方**に作用します。ただし太さを決める ``strokeWeight(_:)``
-    ///   は **2D のみ**なので、3D の線の太さは変えられません（ADR-0005）。
+    /// - Note: Affects **both 2D and 3D**. However, ``strokeWeight(_:)``, which decides the
+    ///   thickness, is **2D only**, so the thickness of 3D lines cannot be changed (ADR-0005).
     ///
-    /// - Parameter color: ストローク色。
+    /// - Parameter color: The stroke color.
     public func stroke(_ color: Color) {
         context.stroke(color)
     }
 
-    /// チャンネル値でストローク色を設定します。
+    /// Sets the stroke color from channel values.
     ///
-    /// - Note: **2D と 3D の両方**に作用します（太さを決める ``strokeWeight(_:)`` は
-    ///   2D のみ。ADR-0005）。
+    /// - Note: Affects **both 2D and 3D** (``strokeWeight(_:)``, which decides the thickness, is
+    ///   2D only; ADR-0005).
     ///
     /// - Parameters:
-    ///   - v1: 第1カラーチャンネル値（赤または色相）。
-    ///   - v2: 第2カラーチャンネル値（緑または彩度）。
-    ///   - v3: 第3カラーチャンネル値（青または明度）。
-    ///   - a: アルファ値（オプション）。
+    ///   - v1: The first color channel value (red or hue).
+    ///   - v2: The second color channel value (green or saturation).
+    ///   - v3: The third color channel value (blue or brightness).
+    ///   - a: The alpha value (optional).
     public func stroke(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
         context.stroke(v1, v2, v3, a)
     }
 
-    /// グレースケール値でストローク色を設定します。
+    /// Sets the stroke color from a grayscale value.
     ///
-    /// - Note: **2D と 3D の両方**に作用します（太さを決める ``strokeWeight(_:)`` は
-    ///   2D のみ。ADR-0005）。
+    /// - Note: Affects **both 2D and 3D** (``strokeWeight(_:)``, which decides the thickness, is
+    ///   2D only; ADR-0005).
     ///
-    /// - Parameter gray: グレースケールの明るさ。
+    /// - Parameter gray: The grayscale brightness.
     public func stroke(_ gray: Float) {
         context.stroke(gray)
     }
 
-    /// アルファ付きグレースケール値でストローク色を設定します。
+    /// Sets the stroke color from a grayscale value with alpha.
     ///
-    /// - Note: **2D と 3D の両方**に作用します（太さを決める ``strokeWeight(_:)`` は
-    ///   2D のみ。ADR-0005）。
+    /// - Note: Affects **both 2D and 3D** (``strokeWeight(_:)``, which decides the thickness, is
+    ///   2D only; ADR-0005).
     ///
     /// - Parameters:
-    ///   - gray: グレースケールの明るさ。
-    ///   - alpha: アルファ（不透明度）値。
+    ///   - gray: The grayscale brightness.
+    ///   - alpha: The alpha (opacity) value.
     public func stroke(_ gray: Float, _ alpha: Float) {
         context.stroke(gray, alpha)
     }
 
-    /// 図形のストロークを無効にします。
+    /// Disables stroking shapes.
     ///
-    /// - Note: **2D と 3D の両方**に作用します。3D の既定は元からストローク無しなので、
-    ///   ``stroke(_:)-(Color)`` を呼んでいなければ見た目は変わりません（ADR-0005）。
+    /// - Note: Affects **both 2D and 3D**. 3D has no stroke by default to begin with, so the
+    ///   appearance does not change unless ``stroke(_:)-(Color)`` has been called (ADR-0005).
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// 輪郭だけが消え、塗りは残ります（右が ``noStroke()`` を呼んだあと）。
+    /// Only the outline disappears; the fill remains (the right one is after calling
+    /// ``noStroke()``).
     ///
     /// <!-- reference-shot -->
     ///
@@ -343,13 +346,13 @@ extension Sketch {
         context.noStroke()
     }
 
-    /// ストロークの太さ（線幅）を設定します。
+    /// Sets the stroke weight (line width).
     ///
-    /// - Note: **2D のみ**に作用します（3D のワイヤーフレームには効きません。ADR-0005）。
+    /// - Note: Affects **2D only** (it has no effect on 3D wireframes; ADR-0005).
     ///
-    /// - Parameter weight: ストローク幅（ピクセル単位）。
+    /// - Parameter weight: The stroke width, in pixels.
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
     /// <!-- reference-shot -->
     ///
@@ -374,17 +377,17 @@ extension Sketch {
         context.strokeWeight(weight)
     }
 
-    /// ストロークの端点スタイルを設定します。
+    /// Sets the stroke cap style.
     ///
-    /// - Note: **2D のみ**に作用します（``strokeWeight(_:)`` と同じく、3D の線には
-    ///   効きません。ADR-0005）。
+    /// - Note: Affects **2D only** (like ``strokeWeight(_:)``, it has no effect on 3D lines;
+    ///   ADR-0005).
     ///
-    /// - Parameter cap: 線の端点スタイル。
+    /// - Parameter cap: The line cap style.
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// 上から ``StrokeCap/butt``（既定）/ ``StrokeCap/round`` /
-    /// ``StrokeCap/square``。太い線ほど差が出ます。
+    /// From the top: ``StrokeCap/butt`` (the default) / ``StrokeCap/round`` /
+    /// ``StrokeCap/square``. The thicker the line, the more the difference shows.
     ///
     /// <!-- reference-shot -->
     ///
@@ -413,18 +416,19 @@ extension Sketch {
         context.strokeCap(cap)
     }
 
-    /// ストロークの接続スタイルを設定します。
+    /// Sets the stroke join style.
     ///
-    /// - Note: **2D のみ**に作用します（``strokeWeight(_:)`` と同じく、3D の線には
-    ///   効きません。ADR-0005）。
+    /// - Note: Affects **2D only** (like ``strokeWeight(_:)``, it has no effect on 3D lines;
+    ///   ADR-0005).
     ///
-    /// - Parameter join: 線の接続スタイル。
+    /// - Parameter join: The line join style.
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// 左から ``StrokeJoin/miter``（既定。角を尖らせる）/ ``StrokeJoin/round``
-    /// （半径 `strokeWeight / 2` の弧で丸める）/ ``StrokeJoin/bevel``（平らに落とす）。
-    /// 太い線ほど差が出ます。
+    /// From the left: ``StrokeJoin/miter`` (the default; keeps corners sharp) /
+    /// ``StrokeJoin/round`` (rounds them with an arc of radius `strokeWeight / 2`) /
+    /// ``StrokeJoin/bevel`` (cuts them off flat). The thicker the line, the more the difference
+    /// shows.
     ///
     /// <!-- reference-shot -->
     ///
@@ -458,29 +462,29 @@ extension Sketch {
         context.strokeJoin(join)
     }
 
-    /// 以降の描画操作のブレンドモードを設定します。
+    /// Sets the blend mode for subsequent drawing operations.
     ///
-    /// `fill` / `stroke` のアルファは、どのモードでも**混ぜ方をどれだけ効かせるか**を表します
-    /// （ADR-0012）。`α = 0` はどのモードでも何も起こらず、`α = 0.5` は下地とそのモードの
-    /// 合成結果のちょうど中間になります。結果のアルファはモードによらず
-    /// `src.a + dst.a · (1 − src.a)` で、``blendMode(_:)`` が塗った領域の不透明度を
-    /// 削ることはありません。
+    /// In every mode, the alpha of `fill` and `stroke` expresses **how strongly the blend takes
+    /// effect** (ADR-0012). `α = 0` does nothing in any mode, and `α = 0.5` lands exactly halfway
+    /// between the backdrop and the result that mode composites. The resulting alpha is
+    /// `src.a + dst.a · (1 − src.a)` regardless of the mode, so ``blendMode(_:)`` never eats into
+    /// the opacity of the area it paints.
     ///
-    /// - Note: **2D のみ**に作用します（3D は不透明/加算のマテリアル設定に従います。
-    ///   ADR-0005）。
+    /// - Note: Affects **2D only** (3D follows the opaque/additive material settings;
+    ///   ADR-0005).
     ///
     /// - Note: ``BlendMode/multiply`` / ``BlendMode/screen`` / ``BlendMode/subtract`` /
     ///   ``BlendMode/lightest`` / ``BlendMode/darkest`` / ``BlendMode/difference`` /
-    ///   ``BlendMode/exclusion`` は描き込み先の色を読む専用フラグメントで実装されているため、
-    ///   **カスタム 2D シェーダとは併用できません**（適用中は ``BlendMode/alpha`` へ落ち、
-    ///   コンソールへ 1 度だけ警告が出ます）。
+    ///   ``BlendMode/exclusion`` are implemented with dedicated fragments that read the destination
+    ///   color, so they **cannot be combined with a custom 2D shader** (while one is applied they
+    ///   fall back to ``BlendMode/alpha`` and warn once on the console).
     ///
-    /// - Parameter mode: 適用するブレンドモード。
+    /// - Parameter mode: The blend mode to apply.
     ///
-    /// ### 実行結果
+    /// ### Result
     ///
-    /// ``BlendMode/additive`` は重なりが明るくなり、``BlendMode/alpha``（既定）は
-    /// 後から描いたほうが上に乗ります。
+    /// ``BlendMode/additive`` brightens the overlaps, while ``BlendMode/alpha`` (the default) puts
+    /// whatever is drawn later on top.
     ///
     /// <!-- reference-shot -->
     ///
@@ -509,57 +513,57 @@ extension Sketch {
 
     // MARK: Tint
 
-    /// 画像のティント色を設定します。
+    /// Sets the tint color for images.
     ///
-    /// - Note: **2D のみ**に作用します。掛かるのは `image()` で描く画像だけで、
-    ///   3D の ``texture(_:)`` には効きません——3D のテクスチャは ``fill(_:)-(Color)`` の色を
-    ///   乗算して着色するため、ティント専用のスロットがそもそもありません（ADR-0005）。
-    ///   テクスチャ付きの 3D に色を掛けたいときは ``fill(_:)-(Color)`` を使ってください。
+    /// - Note: Affects **2D only**. It applies to images drawn with `image()` and has no effect on
+    ///   3D ``texture(_:)`` — a 3D texture is tinted by multiplying in the ``fill(_:)-(Color)``
+    ///   color, so there is no dedicated tint slot to begin with (ADR-0005). Use
+    ///   ``fill(_:)-(Color)`` when you want to multiply a color into textured 3D.
     ///
-    /// - Parameter color: ティント色。
+    /// - Parameter color: The tint color.
     public func tint(_ color: Color) {
         context.tint(color)
     }
 
-    /// チャンネル値で画像のティント色を設定します。
+    /// Sets the image tint color from channel values.
     ///
-    /// - Note: **2D のみ**に作用します（3D のテクスチャは ``fill(_:)-(Color)`` の色で着色します。
-    ///   ADR-0005）。
+    /// - Note: Affects **2D only** (a 3D texture is tinted with the ``fill(_:)-(Color)`` color;
+    ///   ADR-0005).
     ///
     /// - Parameters:
-    ///   - v1: 第1カラーチャンネル値（赤または色相）。
-    ///   - v2: 第2カラーチャンネル値（緑または彩度）。
-    ///   - v3: 第3カラーチャンネル値（青または明度）。
-    ///   - a: アルファ値（オプション）。
+    ///   - v1: The first color channel value (red or hue).
+    ///   - v2: The second color channel value (green or saturation).
+    ///   - v3: The third color channel value (blue or brightness).
+    ///   - a: The alpha value (optional).
     public func tint(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil) {
         context.tint(v1, v2, v3, a)
     }
 
-    /// グレースケール値で画像のティントを設定します。
+    /// Sets the image tint from a grayscale value.
     ///
-    /// - Note: **2D のみ**に作用します（3D のテクスチャは ``fill(_:)-(Color)`` の色で着色します。
-    ///   ADR-0005）。
+    /// - Note: Affects **2D only** (a 3D texture is tinted with the ``fill(_:)-(Color)`` color;
+    ///   ADR-0005).
     ///
-    /// - Parameter gray: グレースケールの明るさ。
+    /// - Parameter gray: The grayscale brightness.
     public func tint(_ gray: Float) {
         context.tint(gray)
     }
 
-    /// アルファ付きグレースケール値で画像のティントを設定します。
+    /// Sets the image tint from a grayscale value with alpha.
     ///
-    /// - Note: **2D のみ**に作用します（3D のテクスチャは ``fill(_:)-(Color)`` の色で着色します。
-    ///   ADR-0005）。
+    /// - Note: Affects **2D only** (a 3D texture is tinted with the ``fill(_:)-(Color)`` color;
+    ///   ADR-0005).
     ///
     /// - Parameters:
-    ///   - gray: グレースケールの明るさ。
-    ///   - alpha: アルファ（不透明度）値。
+    ///   - gray: The grayscale brightness.
+    ///   - alpha: The alpha (opacity) value.
     public func tint(_ gray: Float, _ alpha: Float) {
         context.tint(gray, alpha)
     }
 
-    /// 画像のティントを解除します。
+    /// Clears the image tint.
     ///
-    /// - Note: **2D のみ**に作用します（``tint(_:)-(Color)`` と対。ADR-0005）。
+    /// - Note: Affects **2D only** (the counterpart to ``tint(_:)-(Color)``; ADR-0005).
     public func noTint() {
         context.noTint()
     }

@@ -66,7 +66,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var isKeyRepeat: Bool { get }` -- 最新のキーダウンイベントがオートリピートかどうか。
 - `var isLooping: Bool { get }` -- アニメーションループが現在実行中かどうか。
 - `var isMousePressed: Bool { get }` -- マウスボタンが現在押されているかどうか。
-- `var isOfflineRendering: Bool { get }` -- オフラインレンダリングモードがアクティブかどうかを示します。
+- `var isOfflineRendering: Bool { get }` -- A Boolean value indicating whether offline rendering mode is active.
 - `var key: Character? { get }` -- 最後に**押された**キー。
 - `var keyCode: UInt16? { get }` -- 最後に**押された**キーのキーコード。
 - `var mouseButton: MouseButton? { get }` -- 最後に**押された**マウスボタン。まだ一度も押されていなければ `nil`。
@@ -75,8 +75,8 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var orbitCamera: OrbitCamera { get }` -- 手動設定用のオービットカメラへのアクセス。
 - `var params: ParameterStore { get }` -- `@Param` で宣言されたパラメータのストア。
 - `var performance: SketchPerformance { get }` -- 実測 fps・フレーム時間・メモリ・CPU・熱状態のスナップショット。
-- `var pixels: UnsafeMutableBufferPointer<UInt32> { get }` -- キャンバスのピクセルデータへの直接アクセス（パック済み UInt32 値）。
-  - Note: 読み取り系なので**決してクラッシュしません**（ADR-0005 / #356）。`loadPixels()` 前でも、SketchRunner が context を用意する前（`init` やプロパティ初期化子）でも、teardown 後でも空バッファを返します。描画 API と違い `Sketch/context` を経由しないのはこのためです。
+- `var pixels: UnsafeMutableBufferPointer<UInt32> { get }` -- Direct access to the canvas pixel data, as packed `UInt32` values.
+  - Note: Because this is a read accessor it **never crashes** (ADR-0005 / #356). It returns an empty buffer before `loadPixels()`, before SketchRunner has prepared the context (in `init` or a property initializer), and after teardown. That is why, unlike the drawing APIs, it does not go through `Sketch/context`.
 - `var pmouseX: Float { get }` -- 前フレームのマウス x 座標。
 - `var pmouseY: Float { get }` -- 前フレームのマウス y 座標。
 - `var scrollX: Float { get }` -- 現在のフレームの水平スクロール量。
@@ -87,281 +87,281 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 ### Methods
 
 - `func addPostEffect(_ effect: any PostEffect)` -- ポストプロセスエフェクトをパイプラインに追加します。
-- `func ambientLight(_ strength: Float)` -- グレースケール値でアンビエントライトの強度を設定します。
-  - Note: **3D のみ**に作用します（2D の描画はライティングの影響を受けません。ADR-0005）。
-- `func ambientLight(_ r: Float, _ g: Float, _ b: Float)` -- RGB 値でアンビエントライトの色を設定します。
-  - Note: **3D のみ**に作用します（ADR-0005）。
-- `func ambientOcclusion(_ value: Float)` -- PBR アンビエントオクルージョン係数を設定します。
-  - Note: **3D のみ**に作用します（ADR-0005）。
-- `func applyMatrix(_ matrix: float3x3)` -- 現在の 2D 変換に 3x3 行列を乗算します。
-  - Note: **2D のみ**に作用します。3D は `applyMatrix(_:)`（`float4x4` 版）を使用してください。P3D 意味論への統一は `translate(_:_:)` / `rotate(_:)` / `scale(_:_:)` の 3 本に限っており、行列の直接適用は対象外です（ADR-0005 Amendment 2026-08-02）。
-- `func applyMatrix(_ matrix: float4x4)` -- 現在の 3D 変換に 4x4 行列を乗算します。
-  - Note: **3D のみ**に作用します。2D は `applyMatrix(_:)`（`float3x3` 版）を使用してください（ADR-0005）。
-- `func applyMatrix(_ n00: Float, _ n01: Float, _ n02: Float, _ n10: Float, _ n11: Float, _ n12: Float)` -- 現在の 2D 変換に Processing 形式の 6 成分アフィン行列を乗算します。
-  - Note: **2D のみ**に作用します（ADR-0005 Amendment 2026-08-02。P3D 統一の対象外）。
-- `func arc(_ x: Float, _ y: Float, _ w: Float, _ h: Float, _ startAngle: Float, _ stopAngle: Float, _ mode: ArcMode = .default)` -- 円弧を描画します（`stopAngle` は `startAngle` より大きいこと。2π 超は 1 周にクランプ）。
-  - Note: **2D のみ**に作用します（3D に対応するプリミティブはありません。ADR-0005）。
-- `func background(_ color: Color)` -- 指定した色でキャンバスをクリアします。
-  - Note: **2D と 3D の両方**に作用します。オフスクリーンのキャンバスは 2D と 3D で共有されているため、既に描いた 3D も一緒に消えます（ADR-0005）。
-- `func background(_ gray: Float)` -- グレースケール値でキャンバスをクリアします。
-  - Note: **2D と 3D の両方**に作用します。オフスクリーンのキャンバスは 2D と 3D で共有されているため、既に描いた 3D も一緒に消えます（ADR-0005）。
-- `func background(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil)` -- 指定したカラーチャンネル値でキャンバスをクリアします。
-  - Note: **2D と 3D の両方**に作用します。オフスクリーンのキャンバスは 2D と 3D で共有されているため、既に描いた 3D も一緒に消えます（ADR-0005）。
-- `func beginClip(_ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- 以降の描画を指定した矩形にクリッピングします。
-  - Note: **2D のみ**に作用します（3D の描画はクリップされません。ADR-0005）。
-- `func beginContour()` -- 現在のシェイプ内にコンター（穴）の定義を開始します（2D シェイプ専用）。
-  - Note: **2D のみ**に作用します（`beginShape3D(_:)` の記録中は何もせず、初回だけ警告します。#736 / ADR-0005）。
-- `func beginFrameRecord(directory: String? = nil, pattern: String = "frame_%05d.png")` -- フレーム連番の画像ファイルとしての記録を開始します。
+- `func ambientLight(_ strength: Float)` -- Sets the intensity of the ambient light from a grayscale value.
+  - Note: Affects **3D only** (2D drawing is not affected by lighting. ADR-0005).
+- `func ambientLight(_ r: Float, _ g: Float, _ b: Float)` -- Sets the color of the ambient light from RGB values.
+  - Note: Affects **3D only** (ADR-0005).
+- `func ambientOcclusion(_ value: Float)` -- Sets the PBR ambient occlusion coefficient.
+  - Note: Affects **3D only** (ADR-0005).
+- `func applyMatrix(_ matrix: float3x3)` -- Multiplies the current 2D transform by a 3x3 matrix.
+  - Note: Affects **2D only**. For 3D, use `applyMatrix(_:)` (the `float4x4` version). The unification with P3D semantics is limited to `translate(_:_:)` / `rotate(_:)` / `scale(_:_:)`, and applying a matrix directly is out of scope (ADR-0005 Amendment 2026-08-02).
+- `func applyMatrix(_ matrix: float4x4)` -- Multiplies the current 3D transform by a 4x4 matrix.
+  - Note: Affects **3D only**. For 2D, use `applyMatrix(_:)` (the `float3x3` version) (ADR-0005).
+- `func applyMatrix(_ n00: Float, _ n01: Float, _ n02: Float, _ n10: Float, _ n11: Float, _ n12: Float)` -- Multiplies the current 2D transform by a Processing-style six-component affine matrix.
+  - Note: Affects **2D only** (ADR-0005 Amendment 2026-08-02; out of scope for the P3D unification).
+- `func arc(_ x: Float, _ y: Float, _ w: Float, _ h: Float, _ startAngle: Float, _ stopAngle: Float, _ mode: ArcMode = .default)` -- Draws an arc (`stopAngle` must be greater than `startAngle`; a sweep past 2π is clamped
+  - Note: Affects **2D only** (there is no corresponding 3D primitive; ADR-0005).
+- `func background(_ color: Color)` -- Clears the canvas with the given color.
+  - Note: Affects **both 2D and 3D**. The offscreen canvas is shared between 2D and 3D, so any 3D already drawn is erased along with it (ADR-0005).
+- `func background(_ gray: Float)` -- Clears the canvas with a grayscale value.
+  - Note: Affects **both 2D and 3D**. The offscreen canvas is shared between 2D and 3D, so any 3D already drawn is erased along with it (ADR-0005).
+- `func background(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil)` -- Clears the canvas with the given color channel values.
+  - Note: Affects **both 2D and 3D**. The offscreen canvas is shared between 2D and 3D, so any 3D already drawn is erased along with it (ADR-0005).
+- `func beginClip(_ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- Clips subsequent drawing to the given rectangle.
+  - Note: Affects **2D only** (3D drawing is not clipped; ADR-0005).
+- `func beginContour()` -- Starts defining a contour (a hole) inside the current shape. 2D shapes only.
+  - Note: Affects **2D only** (while `beginShape3D(_:)` is recording it does nothing and warns once. #736 / ADR-0005).
+- `func beginFrameRecord(directory: String? = nil, pattern: String = "frame_%05d.png")` -- Starts recording as a numbered sequence of image files.
 - `func beginGIFRecord(fps: Int = 15)` -- GIF エクスポート用のフレーム記録を開始します。
-- `func beginOfflineRender(fps: Double = 60)` -- 決定論的タイミングのオフラインレンダリングモードを有効にします。
-- `func beginShape(_ mode: ShapeMode = .polygon)` -- カスタムシェイプの頂点記録を開始します。
-  - Note: **2D のみ**に作用します（3D のカスタムシェイプは `beginShape3D(_:)` です。ADR-0005）。
-- `func beginShape3D(_ mode: ShapeMode = .polygon)` -- 3D カスタムシェイプの頂点記録を開始します。
-  - Note: **3D のみ**に作用します（2D のカスタムシェイプは `beginShape(_:)` です。ADR-0005）。
-- `func beginSVGRecord(_ path: String)` -- SVG 記録を開始します（Processing の `beginRecord(SVG, path)` 相当）。
-- `func beginVideoRecord(_ path: String? = nil, config: VideoExportConfig = VideoExportConfig())` -- 動画出力の録画を開始します。
-- `func bezier(_ x1: Float, _ y1: Float, _ cx1: Float, _ cy1: Float, _ cx2: Float, _ cy2: Float, _ x2: Float, _ y2: Float)` -- 3次ベジェ曲線を描画します。
-  - Note: **2D のみ**に作用します（3D のベジェ曲線はありません。ADR-0005）。
-- `func bezierVertex(_ cx1: Float, _ cy1: Float, _ cx2: Float, _ cy2: Float, _ x: Float, _ y: Float)` -- 現在のシェイプに3次ベジェ頂点を追加します。
-  - Note: **2D のみ**に作用します（3D のシェイプにベジェ頂点はありません。ADR-0005）。
-- `func blendMode(_ mode: BlendMode)` -- 以降の描画操作のブレンドモードを設定します。
-  - Note: **2D のみ**に作用します（3D は不透明/加算のマテリアル設定に従います。ADR-0005）。
-  - Note: `BlendMode/multiply` / `BlendMode/screen` / `BlendMode/subtract` / `BlendMode/lightest` / `BlendMode/darkest` / `BlendMode/difference` / `BlendMode/exclusion` は描き込み先の色を読む専用フラグメントで実装されているため、**カスタム 2D シェーダとは併用できません**（適用中は `BlendMode/alpha` へ落ち、コンソールへ 1 度だけ警告が出ます）。
-- `func box(_ size: Float)` -- 辺の長さが等しいキューブを描画します。
-  - Note: **3D のみ**に作用します（3D キャンバスへ描かれます。ADR-0005）。
-- `func box(_ width: Float, _ height: Float, _ depth: Float)` -- 指定したサイズのボックスを描画します。
-  - Note: **3D のみ**に作用します（3D キャンバスへ描かれます。ADR-0005）。
-- `func camera(eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float> = SIMD3(0, 1, 0))` -- eye、center、up ベクトルで 3D カメラを設定します。
-  - Note: **3D のみ**に作用します（2D の描画はカメラの影響を受けません。ADR-0005）。
-- `func ciFilter(_ image: MImage, _ preset: CIFilterPreset)` -- CoreImage フィルタプリセットを画像に適用します。
-- `func ciFilter(_ image: MImage, name: String, parameters: [String : Any] = [:])` -- 名前とカスタムパラメータを指定して CoreImage フィルタを画像に適用します。
-- `func ciGenerate(_ preset: CIFilterPreset, width: Int, height: Int) -> MImage?` -- CoreImage ジェネレーターフィルタを使用して画像を生成します。
-- `func circle(_ x: Float, _ y: Float, _ diameter: Float)` -- 円を描画します。
-  - Note: **2D のみ**に作用します（3D の球は `sphere(_:detail:)` です。ADR-0005）。
-- `func circles(_ instances: [CircleInstance])` -- 複数の円を一括描画します。
-  - Note: **2D のみ**に作用します（3D の一括描画は `drawInstanced(_:transforms:)` です。ADR-0005）。
-- `func circles(_ instances: GPUBuffer<CircleInstance>, count: Int? = nil)` -- GPU バッファ上の円インスタンスを一括描画します。
-  - Note: **2D のみ**に作用します（3D の一括描画は `drawInstanced(_:transforms:)` です。ADR-0005）。
+- `func beginOfflineRender(fps: Double = 60)` -- Enables offline rendering mode with deterministic timing.
+- `func beginShape(_ mode: ShapeMode = .polygon)` -- Starts recording the vertices of a custom shape.
+  - Note: Affects **2D only** (the 3D custom shape is `beginShape3D(_:)`. ADR-0005).
+- `func beginShape3D(_ mode: ShapeMode = .polygon)` -- Begins recording the vertices of a custom 3D shape.
+  - Note: Affects **3D only** (the 2D custom shape is `beginShape(_:)`. ADR-0005).
+- `func beginSVGRecord(_ path: String)` -- Starts SVG recording (the equivalent of Processing's `beginRecord(SVG, path)`).
+- `func beginVideoRecord(_ path: String? = nil, config: VideoExportConfig = VideoExportConfig())` -- Starts recording the video output.
+- `func bezier(_ x1: Float, _ y1: Float, _ cx1: Float, _ cy1: Float, _ cx2: Float, _ cy2: Float, _ x2: Float, _ y2: Float)` -- Draws a cubic Bézier curve.
+  - Note: Affects **2D only** (there is no 3D Bézier curve; ADR-0005).
+- `func bezierVertex(_ cx1: Float, _ cy1: Float, _ cx2: Float, _ cy2: Float, _ x: Float, _ y: Float)` -- Adds a cubic Bézier vertex to the current shape.
+  - Note: Affects **2D only** (a 3D shape has no Bézier vertices; ADR-0005).
+- `func blendMode(_ mode: BlendMode)` -- Sets the blend mode for subsequent drawing operations.
+  - Note: Affects **2D only** (3D follows the opaque/additive material settings; ADR-0005).
+  - Note: `BlendMode/multiply` / `BlendMode/screen` / `BlendMode/subtract` / `BlendMode/lightest` / `BlendMode/darkest` / `BlendMode/difference` / `BlendMode/exclusion` are implemented with dedicated fragments that read the destination color, so they **cannot be combined with a custom 2D shader** (while one is applied they fall back to `BlendMode/alpha` and warn once on the console).
+- `func box(_ size: Float)` -- Draws a cube whose edges are all the same length.
+  - Note: Affects **3D only** (it is drawn on the 3D canvas. ADR-0005).
+- `func box(_ width: Float, _ height: Float, _ depth: Float)` -- Draws a box of the given size.
+  - Note: Affects **3D only** (it is drawn on the 3D canvas. ADR-0005).
+- `func camera(eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float> = SIMD3(0, 1, 0))` -- Sets the 3D camera from eye, center, and up vectors.
+  - Note: Affects **3D only** (2D drawing is not affected by the camera. ADR-0005).
+- `func ciFilter(_ image: MImage, _ preset: CIFilterPreset)` -- Applies a CoreImage filter preset to an image.
+- `func ciFilter(_ image: MImage, name: String, parameters: [String : Any] = [:])` -- Applies a CoreImage filter to an image by name, with custom parameters.
+- `func ciGenerate(_ preset: CIFilterPreset, width: Int, height: Int) -> MImage?` -- Generates an image using a CoreImage generator filter.
+- `func circle(_ x: Float, _ y: Float, _ diameter: Float)` -- Draws a circle.
+  - Note: Affects **2D only** (the 3D sphere is `sphere(_:detail:)`. ADR-0005).
+- `func circles(_ instances: [CircleInstance])` -- Draws many circles in a single batch.
+  - Note: Affects **2D only** (the 3D batch draw is `drawInstanced(_:transforms:)`. ADR-0005).
+- `func circles(_ instances: GPUBuffer<CircleInstance>, count: Int? = nil)` -- Draws circle instances held in a GPU buffer in a single batch.
+  - Note: Affects **2D only** (the 3D batch draw is `drawInstanced(_:transforms:)`. ADR-0005).
 - `func clearCaches()` -- GPU メモリを解放するためにすべての内部キャッシュをクリアします。
 - `func clearPostEffects()` -- パイプラインからすべてのポストプロセスエフェクトを削除します。
 - `func closeAllWindows()` -- このスケッチから作成されたすべてのセカンダリウィンドウを閉じます。
-- `func colorMode(_ space: ColorSpace, _ maxAll: Float)` -- 全チャンネル共通の最大値を指定してカラーモードを設定します。
-  - Note: **2D と 3D の両方**に作用します（`fill(_:)-(Color)` / `stroke(_:)-(Color)` のチャンネル解釈が両キャンバスで揃います。ADR-0005）。
-- `func colorMode(_ space: ColorSpace, _ max1: Float? = nil, _ max2: Float? = nil, _ max3: Float? = nil, _ maxA: Float? = nil)` -- チャンネルごとの最大値を指定してカラーモードを設定します。
-  - Note: **2D と 3D の両方**に作用します（`fill(_:)-(Color)` / `stroke(_:)-(Color)` のチャンネル解釈が両キャンバスで揃います。ADR-0005）。
+- `func colorMode(_ space: ColorSpace, _ maxAll: Float)` -- Sets the color mode with a single maximum value shared by every channel.
+  - Note: Affects **both 2D and 3D** (channel interpretation for `fill(_:)-(Color)` and `stroke(_:)-(Color)` stays in step across both canvases; ADR-0005).
+- `func colorMode(_ space: ColorSpace, _ max1: Float? = nil, _ max2: Float? = nil, _ max3: Float? = nil, _ maxA: Float? = nil)` -- Sets the color mode with a maximum value for each channel.
+  - Note: Affects **both 2D and 3D** (channel interpretation for `fill(_:)-(Color)` and `stroke(_:)-(Color)` stays in step across both canvases; ADR-0005).
 - `func compute()` -- 各フレームの前に GPU コンピュート処理を実行します（オプション）。
 - `func computeBarrier()` -- ディスパッチ間の同期のためにコンピュートコマンドエンコーダーにバリアを挿入します。
-- `func cone(radius: Float, height: Float, detail: Int = 24)` -- 円錐を描画します。
-  - Note: **3D のみ**に作用します（3D キャンバスへ描かれます。ADR-0005）。
-- `func copy(_ sx: Float, _ sy: Float, _ sw: Float, _ sh: Float, _ dx: Float, _ dy: Float, _ dw: Float, _ dh: Float)` -- キャンバスの矩形領域を別の矩形領域へコピーします（Processing の `copy()` 互換）。
-- `func createAudioInput(fftSize: Int = 1024) -> AudioAnalyzer` -- リアルタイム FFT およびビート検出用のオーディオ入力アナライザーを作成します。
-- `func createBoxMesh(_ size: Float) -> Mesh?` -- 同じ寸法の立方体メッシュを生成します（描画はしません）。
-  - Note: 生成されるメッシュを描けるのは **3D のみ**です（`mesh(_:)` / `drawInstanced(_:transforms:)`。ADR-0005）。
-- `func createBoxMesh(_ width: Float, _ height: Float, _ depth: Float) -> Mesh?` -- ボックスのメッシュを生成します（描画はしません）。
-  - Note: 生成されるメッシュを描けるのは **3D のみ**です（`mesh(_:)` / `drawInstanced(_:transforms:)`。ADR-0005）。
+- `func cone(radius: Float, height: Float, detail: Int = 24)` -- Draws a cone.
+  - Note: Affects **3D only** (it is drawn on the 3D canvas. ADR-0005).
+- `func copy(_ sx: Float, _ sy: Float, _ sw: Float, _ sh: Float, _ dx: Float, _ dy: Float, _ dw: Float, _ dh: Float)` -- Copies a rectangular region of the canvas into another rectangular region (compatible with
+- `func createAudioInput(fftSize: Int = 1024) -> AudioAnalyzer` -- Creates an audio input analyzer for real-time FFT and beat detection.
+- `func createBoxMesh(_ size: Float) -> Mesh?` -- Creates a cube mesh with equal dimensions (without drawing it).
+  - Note: The mesh that is created can be drawn in **3D only** (`mesh(_:)` / `drawInstanced(_:transforms:)`. ADR-0005).
+- `func createBoxMesh(_ width: Float, _ height: Float, _ depth: Float) -> Mesh?` -- Creates a box mesh (without drawing it).
+  - Note: The mesh that is created can be drawn in **3D only** (`mesh(_:)` / `drawInstanced(_:transforms:)`. ADR-0005).
 - `func createBuffer<T>(_ data: [T]) -> GPUBuffer<T>?` -- 指定したデータで初期化された GPU バッファを作成します。
 - `func createBuffer<T>(count: Int, type: T.Type) -> GPUBuffer<T>?` -- 指定した要素数と型の GPU バッファを作成します。
 - `func createCanvas(width: Int, height: Int)` -- キャンバスサイズを設定します（`setup()` 内で呼び出してください、p5.js スタイル）。
   - Important: `draw()` の中からの呼び出しは警告を出して無視されます（#856）。リサイズは全インフライトフレームの完了待ちを伴うため、フレームの中では成立しません。
-- `func createCapture(width: Int = 1280, height: Int = 720, device: CaptureDeviceInfo) -> CaptureDevice` -- 指定したカメラでキャプチャデバイスを作成し、**自動的にキャプチャを開始**します。
-- `func createCapture(width: Int = 1280, height: Int = 720, deviceName: String) -> CaptureDevice` -- 名前でカメラを選択してキャプチャデバイスを作成し、**自動的にキャプチャを開始**します。
-- `func createCapture(width: Int = 1280, height: Int = 720, position: CameraPosition? = nil) -> CaptureDevice` -- カメラキャプチャデバイスを作成し、**自動的にキャプチャを開始**します
-  - Note: カメラ権限が拒否されている場合は `isAvailable == false` のデバイスが返ります。使用中のカメラの切断は `CaptureDevice/onDisconnect` で検知できます。
+- `func createCapture(width: Int = 1280, height: Int = 720, device: CaptureDeviceInfo) -> CaptureDevice` -- Creates a capture device for the given camera and **starts capturing automatically**.
+- `func createCapture(width: Int = 1280, height: Int = 720, deviceName: String) -> CaptureDevice` -- Creates a capture device by selecting a camera by name and **starts capturing
+- `func createCapture(width: Int = 1280, height: Int = 720, position: CameraPosition? = nil) -> CaptureDevice` -- Creates a camera capture device and **starts capturing automatically**
+  - Note: A device with `isAvailable == false` is returned when camera permission has been denied. Disconnection of the camera in use can be detected with `CaptureDevice/onDisconnect`.
 - `func createComputeKernel(source: String, function: String) throws -> ComputeKernel` -- MSL ソースコードから GPU コンピュートカーネルを作成します。
-- `func createConeMesh(radius: Float, height: Float, detail: Int = 24) -> Mesh?` -- 円錐のメッシュを生成します（描画はしません）。
-  - Note: 生成されるメッシュを描けるのは **3D のみ**です（`mesh(_:)` / `drawInstanced(_:transforms:)`。ADR-0005）。
-- `func createCylinderMesh(radius: Float, height: Float, detail: Int = 24) -> Mesh?` -- 円柱のメッシュを生成します（描画はしません）。
-  - Note: 生成されるメッシュを描けるのは **3D のみ**です（`mesh(_:)` / `drawInstanced(_:transforms:)`。ADR-0005）。
-- `func createDynamicMesh() -> DynamicMesh` -- 新しい空のダイナミックメッシュを作成します。
-  - Note: 作成されるメッシュを描けるのは **3D のみ**です（`dynamicMesh(_:)`。ADR-0005）。
-- `func createEffectPass(_ input: any RenderPassNode, effects: [any PostEffect]) -> EffectPass?` -- レンダーパスにポストプロセスエフェクトを適用するエフェクトパスを作成します。
-- `func createGraphics(_ w: Int, _ h: Int) -> Graphics?` -- 2D オフスクリーングラフィックスバッファを作成します。
-- `func createGraphics3D(_ w: Int, _ h: Int) -> Graphics3D?` -- 3D オフスクリーングラフィックスバッファを作成します。
-- `func createImage(_ width: Int, _ height: Int) -> MImage?` -- 指定したサイズの空白画像を作成します。
-- `func createMaterial(source: String, fragmentFunction: String, vertexFunction: String? = nil) throws -> CustomMaterial` -- MSL ソースコードからカスタムシェーダーマテリアルを作成します。
-  - Note: 作成されるマテリアルは **3D のみ**に適用されます。2D にカスタムシェーダーを掛けるには `loadShader(_:fragment:)` / `shader(_:)` を使用してください（ADR-0005）。
+- `func createConeMesh(radius: Float, height: Float, detail: Int = 24) -> Mesh?` -- Creates a cone mesh (without drawing it).
+  - Note: The mesh that is created can be drawn in **3D only** (`mesh(_:)` / `drawInstanced(_:transforms:)`. ADR-0005).
+- `func createCylinderMesh(radius: Float, height: Float, detail: Int = 24) -> Mesh?` -- Creates a cylinder mesh (without drawing it).
+  - Note: The mesh that is created can be drawn in **3D only** (`mesh(_:)` / `drawInstanced(_:transforms:)`. ADR-0005).
+- `func createDynamicMesh() -> DynamicMesh` -- Creates a new, empty dynamic mesh.
+  - Note: The mesh that is created can be drawn in **3D only** (`dynamicMesh(_:)`. ADR-0005).
+- `func createEffectPass(_ input: any RenderPassNode, effects: [any PostEffect]) -> EffectPass?` -- Creates an effect pass that applies post-processing effects to a render pass.
+- `func createGraphics(_ w: Int, _ h: Int) -> Graphics?` -- Creates a 2D offscreen graphics buffer.
+- `func createGraphics3D(_ w: Int, _ h: Int) -> Graphics3D?` -- Creates a 3D offscreen graphics buffer.
+- `func createImage(_ width: Int, _ height: Int) -> MImage?` -- Creates a blank image of the given size.
+- `func createMaterial(source: String, fragmentFunction: String, vertexFunction: String? = nil) throws -> CustomMaterial` -- Creates a custom shader material from MSL source code.
+  - Note: The material that is created applies to **3D only**. To apply a custom shader to 2D, use `loadShader(_:fragment:)` / `shader(_:)` (ADR-0005).
 - `func createMaterialFromFile(path: String, fragmentFunction: String, vertexFunction: String? = nil) throws -> CustomMaterial` -- 外部ファイルから MSL ソースを読み込んでカスタムマテリアルを作成します。
-- `func createMergePass(_ a: any RenderPassNode, _ b: any RenderPassNode, blend: MergePass.BlendType) -> MergePass?` -- 2つのレンダーパスを合成するマージパスを作成します。
-- `func createMIDI() -> MIDIManager` -- 入出力用の MIDI マネージャーを作成します。
-- `func createMLTextureConverter() -> MLTextureConverter` -- Metal-CoreML 相互運用のためのテクスチャコンバーターを作成します。
-- `func createMPSFilter() -> MPSImageFilterWrapper` -- MPS（Metal Performance Shaders）画像フィルタを作成します。
-- `func createNode(_ name: String = "") -> Node` -- シーングラフノードを作成します。
-- `func createNoise(_ type: NoiseType, config: NoiseConfig = NoiseConfig()) -> GKNoiseWrapper` -- GameplayKit ノイズジェネレーターを作成します。
-- `func createOSCReceiver(port: UInt16) -> OSCReceiver` -- OSC（Open Sound Control）レシーバーを作成します。
-- `func createOSCSender(host: String, port: UInt16) -> OSCSender?` -- OSC メッセージ送信用のセンダーを作成します。
+- `func createMergePass(_ a: any RenderPassNode, _ b: any RenderPassNode, blend: MergePass.BlendType) -> MergePass?` -- Creates a merge pass that composites two render passes.
+- `func createMIDI() -> MIDIManager` -- Creates a MIDI manager for input and output.
+- `func createMLTextureConverter() -> MLTextureConverter` -- Creates a texture converter for Metal-CoreML interoperation.
+- `func createMPSFilter() -> MPSImageFilterWrapper` -- Creates an MPS (Metal Performance Shaders) image filter.
+- `func createNode(_ name: String = "") -> Node` -- Creates a scene graph node.
+- `func createNoise(_ type: NoiseType, config: NoiseConfig = NoiseConfig()) -> GKNoiseWrapper` -- Creates a GameplayKit noise generator.
+- `func createOSCReceiver(port: UInt16) -> OSCReceiver` -- Creates an OSC (Open Sound Control) receiver.
+- `func createOSCSender(host: String, port: UInt16) -> OSCSender?` -- Creates a sender for outgoing OSC messages.
 - `func createParticleSystem(count: Int = 100_000) throws -> ParticleSystem` -- GPU パーティクルシステムを作成します。
-- `func createPhysics2D(cellSize: Float = 50) -> Physics2D` -- 2D物理シミュレーションワールドを作成します。
-- `func createPlaneMesh(_ width: Float, _ height: Float) -> Mesh?` -- 平面のメッシュを生成します（描画はしません）。
-  - Note: 生成されるメッシュを描けるのは **3D のみ**です（`mesh(_:)` / `drawInstanced(_:transforms:)`。ADR-0005）。
+- `func createPhysics2D(cellSize: Float = 50) -> Physics2D` -- Creates a 2D physics simulation world.
+- `func createPlaneMesh(_ width: Float, _ height: Float) -> Mesh?` -- Creates a plane mesh (without drawing it).
+  - Note: The mesh that is created can be drawn in **3D only** (`mesh(_:)` / `drawInstanced(_:transforms:)`. ADR-0005).
 - `func createPostEffect(name: String, source: String, fragmentFunction: String) throws -> CustomPostEffect` -- MSL ソースコードからカスタムポストプロセスエフェクトを作成します。
 - `func createPostEffectFromFile(name: String, path: String, fragmentFunction: String) throws -> CustomPostEffect` -- 外部 MSL ファイルからカスタムポストプロセスエフェクトを作成します。
-- `func createRayTracer(width: Int, height: Int) throws -> MPSRayTracer` -- GPU アクセラレーションによるレイ交差クエリ用のレイトレーサーを作成します。
-- `func createShader(source: String, fragment: String) throws -> Shader2D` -- MSL ソースからカスタム 2D フラグメントシェーダを作成します。
-- `func createShape() -> MShape` -- カスタムジオメトリ用の空のリテインドシェイプを作成します。
-- `func createShape(_ kind: ShapeKind) -> MShape` -- `ShapeKind` からリテインドシェイプを作成します。
-- `func createSourcePass(label: String, width: Int, height: Int) -> SourcePass?` -- レンダーグラフ用のソースパスを作成します。
-- `func createSphereMesh(_ radius: Float, detail: Int = 24) -> Mesh?` -- 球のメッシュを生成します（描画はしません）。
-  - Note: 生成されるメッシュを描けるのは **3D のみ**です（`mesh(_:)` / `drawInstanced(_:transforms:)`。ADR-0005）。
-- `func createTorusMesh(ringRadius: Float, tubeRadius: Float, detail: Int = 24) -> Mesh?` -- トーラスのメッシュを生成します（描画はしません）。
-  - Note: 生成されるメッシュを描けるのは **3D のみ**です（`mesh(_:)` / `drawInstanced(_:transforms:)`。ADR-0005）。
+- `func createRayTracer(width: Int, height: Int) throws -> MPSRayTracer` -- Creates a ray tracer for GPU-accelerated ray intersection queries.
+- `func createShader(source: String, fragment: String) throws -> Shader2D` -- Creates a custom 2D fragment shader from MSL source.
+- `func createShape() -> MShape` -- Creates an empty retained shape for custom geometry.
+- `func createShape(_ kind: ShapeKind) -> MShape` -- Creates a retained shape from a `ShapeKind`.
+- `func createSourcePass(label: String, width: Int, height: Int) -> SourcePass?` -- Creates a source pass for a render graph.
+- `func createSphereMesh(_ radius: Float, detail: Int = 24) -> Mesh?` -- Creates a sphere mesh (without drawing it).
+  - Note: The mesh that is created can be drawn in **3D only** (`mesh(_:)` / `drawInstanced(_:transforms:)`. ADR-0005).
+- `func createTorusMesh(ringRadius: Float, tubeRadius: Float, detail: Int = 24) -> Mesh?` -- Creates a torus mesh (without drawing it).
+  - Note: The mesh that is created can be drawn in **3D only** (`mesh(_:)` / `drawInstanced(_:transforms:)`. ADR-0005).
 - `func createVector(_ x: Float = 0, _ y: Float = 0) -> Vec2` -- 2D ベクトルを作成します（Processing PVector 互換）。
 - `func createVector(_ x: Float, _ y: Float, _ z: Float) -> Vec3` -- 3D ベクトルを作成します（Processing PVector 互換）。
 - `func createWindow(_ config: SketchWindowConfig = SketchWindowConfig()) -> SketchWindow?` -- マルチウィンドウ出力用のセカンダリウィンドウを作成します。
 - `func cursor()` -- カーソルを表示します。
-- `func curve(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float, _ x3: Float, _ y3: Float, _ x4: Float, _ y4: Float)` -- 4点を通る Catmull-Rom スプラインカーブを描画します。
-  - Note: **2D のみ**に作用します（3D のスプライン曲線はありません。ADR-0005）。
-- `func curveDetail(_ n: Int)` -- カーブ補間のセグメント数を設定します。
-  - Note: **2D のみ**に作用します（`curveVertex(_:_:)` / `curve(_:_:_:_:_:_:_:_:)` 用で、3D には効きません。ADR-0005）。
-- `func curveTightness(_ t: Float)` -- Catmull-Rom スプラインカーブの張り具合を設定します。
-  - Note: **2D のみ**に作用します（`curveVertex(_:_:)` / `curve(_:_:_:_:_:_:_:_:)` 用で、3D には効きません。ADR-0005）。
-  - Note: `-5.0` 〜 `5.0` が目安です。範囲外の値も受け付けます（Processing と同じく clamp しません）が、曲線が制御点から大きく外れます。
-- `func curveVertex(_ x: Float, _ y: Float)` -- 現在のシェイプに Catmull-Rom スプライン頂点を追加します。
-  - Note: **2D のみ**に作用します（3D のシェイプにスプライン頂点はありません。ADR-0005）。
-- `func cylinder(radius: Float, height: Float, detail: Int = 24)` -- 円柱を描画します。
-  - Note: **3D のみ**に作用します（3D キャンバスへ描かれます。ADR-0005）。
+- `func curve(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float, _ x3: Float, _ y3: Float, _ x4: Float, _ y4: Float)` -- Draws a Catmull-Rom spline curve through four points.
+  - Note: Affects **2D only** (there is no 3D spline curve; ADR-0005).
+- `func curveDetail(_ n: Int)` -- Sets the number of segments used for curve interpolation.
+  - Note: Affects **2D only** (it is for `curveVertex(_:_:)` / `curve(_:_:_:_:_:_:_:_:)` and has no effect on 3D. ADR-0005).
+- `func curveTightness(_ t: Float)` -- Sets how tightly Catmull-Rom spline curves are drawn.
+  - Note: Affects **2D only** (it is for `curveVertex(_:_:)` / `curve(_:_:_:_:_:_:_:_:)` and has no effect on 3D. ADR-0005).
+  - Note: `-5.0` to `5.0` is the useful range. Values outside it are accepted as well (there is no clamping, as in Processing), but the curve strays far from the control points.
+- `func curveVertex(_ x: Float, _ y: Float)` -- Adds a Catmull-Rom spline vertex to the current shape.
+  - Note: Affects **2D only** (a 3D shape has no spline vertices; ADR-0005).
+- `func cylinder(radius: Float, height: Float, detail: Int = 24)` -- Draws a cylinder.
+  - Note: Affects **3D only** (it is drawn on the 3D canvas. ADR-0005).
 - `func decodeState<T>(_ data: Data, as type: T.Type = T.self) -> T? where T : Decodable` -- `restoreState(_:)` で受け取ったデータをデコードします。失敗したら `nil`。
-- `func directionalLight(_ x: Float, _ y: Float, _ z: Float, color: Color = .white, intensity: Float = 1.0)` -- ディレクショナルライトを追加します。
-  - Note: **3D のみ**に作用します（2D の描画はライティングの影響を受けません。ADR-0005）。
-- `func disableFeedback()` -- フレームバッファフィードバックを無効にします。
+- `func directionalLight(_ x: Float, _ y: Float, _ z: Float, color: Color = .white, intensity: Float = 1.0)` -- Adds a directional light.
+  - Note: Affects **3D only** (2D drawing is not affected by lighting. ADR-0005).
+- `func disableFeedback()` -- Disables framebuffer feedback.
 - `func disablePerformanceHUD()` -- パフォーマンスヘッドアップディスプレイオーバーレイを無効にします。
-- `func disableShadows()` -- シャドウマッピングを無効にします。
-  - Note: **3D のみ**に作用します（ADR-0005）。
+- `func disableShadows()` -- Disables shadow mapping.
+  - Note: Affects **3D only** (ADR-0005).
 - `func dispatch(_ kernel: ComputeKernel, threads: Int, configure: (any MTLComputeCommandEncoder) -> Void)` -- 1D コンピュートカーネルをディスパッチします。
 - `func dispatch(_ kernel: ComputeKernel, width: Int, height: Int, configure: (any MTLComputeCommandEncoder) -> Void)` -- 2D コンピュートカーネルをディスパッチします。
 - `func draw()` -- 1フレームを描画します（描画メソッドを直接呼び出します）。
-- `func drawInstanced(_ mesh: Mesh, transforms: [float4x4])` -- 同一メッシュを複数のトランスフォームで一括描画します（明示インスタンシング）。
-  - Note: **3D のみ**に作用します（3D キャンバスへ描かれます。ADR-0005）。
-- `func drawInstanced(_ mesh: Mesh, transforms: [float4x4], colors: [Color])` -- 同一メッシュを、インスタンスごとの fill 色つきで一括描画します。
-  - Note: **3D のみ**に作用します（3D キャンバスへ描かれます。ADR-0005）。
+- `func drawInstanced(_ mesh: Mesh, transforms: [float4x4])` -- Draws the same mesh in one batch with multiple transforms (explicit instancing).
+  - Note: Affects **3D only** (it is drawn on the 3D canvas. ADR-0005).
+- `func drawInstanced(_ mesh: Mesh, transforms: [float4x4], colors: [Color])` -- Draws the same mesh in one batch with a per-instance fill color.
+  - Note: Affects **3D only** (it is drawn on the 3D canvas. ADR-0005).
 - `func drawParticles(_ system: ParticleSystem)` -- パーティクルシステムを描画します（`draw()` 内で呼び出してください）。
-- `func drawScene(_ root: Node)` -- 指定ルートノードからシーングラフを描画します。
-- `func dynamicMesh(_ mesh: DynamicMesh)` -- ダイナミックメッシュを描画します。
-  - Note: **3D のみ**に作用します（3D キャンバスへ描かれます。ADR-0005）。
-- `func ellipse(_ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- 楕円を描画します。
-  - Note: **2D のみ**に作用します（3D の球は `sphere(_:detail:)` です。ADR-0005）。
-- `func ellipseMode(_ mode: EllipseMode)` -- 楕円の描画モードを設定します。
-  - Note: **2D のみ**に作用します（`ellipse(_:_:_:_:)` 用で、3D のプリミティブの位置の解釈には効きません。ADR-0005）。
-- `func emissive(_ color: Color)` -- エミッシブ（自己発光）色を設定します。
-  - Note: **3D のみ**に作用します（ADR-0005）。
-- `func emissive(_ gray: Float)` -- グレースケール値でエミッシブ色を設定します。
-  - Note: **3D のみ**に作用します（ADR-0005）。
-- `func emissive(_ v1: Float, _ v2: Float, _ v3: Float)` -- チャンネル値でエミッシブ色を設定します。
-  - Note: **3D のみ**に作用します（2D の描画はマテリアルの影響を受けません。ADR-0005）。
-- `func enableFeedback()` -- フレームバッファフィードバック（前フレームアクセス）を有効にします。
+- `func drawScene(_ root: Node)` -- Renders a scene graph from the given root node.
+- `func dynamicMesh(_ mesh: DynamicMesh)` -- Draws a dynamic mesh.
+  - Note: Affects **3D only** (it is drawn on the 3D canvas. ADR-0005).
+- `func ellipse(_ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- Draws an ellipse.
+  - Note: Affects **2D only** (the 3D sphere is `sphere(_:detail:)`. ADR-0005).
+- `func ellipseMode(_ mode: EllipseMode)` -- Sets the ellipse drawing mode.
+  - Note: Affects **2D only** (it is for `ellipse(_:_:_:_:)` and does not change how the position of 3D primitives is interpreted; ADR-0005).
+- `func emissive(_ color: Color)` -- Sets the emissive (self-illumination) color.
+  - Note: Affects **3D only** (ADR-0005).
+- `func emissive(_ gray: Float)` -- Sets the emissive color from a grayscale value.
+  - Note: Affects **3D only** (ADR-0005).
+- `func emissive(_ v1: Float, _ v2: Float, _ v3: Float)` -- Sets the emissive color from channel values.
+  - Note: Affects **3D only** (2D drawing is not affected by materials. ADR-0005).
+- `func enableFeedback()` -- Enables framebuffer feedback, giving access to the previous frame.
 - `func enablePerformanceHUD()` -- パフォーマンスヘッドアップディスプレイオーバーレイを有効にします。
-- `func enableShadows(resolution: Int = 2048)` -- シャドウマッピングを有効にします。
-  - Note: **3D のみ**に作用します（影が落ちるのは 3D シェイプだけです。ADR-0005）。
-  - Note: **2D と 3D の重ね順**（#832 / ADR-0003 の Amendment 節）。既定（影オフ）の即時経路では、重ね順は**呼び出し順ではなくエンコード順**で決まります。2D はバッチにまとめてフレーム末尾で吐かれるため、**既定では 2D が 3D の手前**に出ます（`box()` の前に描いた 2D も手前に来ます）。ただし 2D バッチが途中で吐かれると、それ以降にエンコードされる 3D の背後へ回ります — 契機は `blendMode()` の変更 / `image()`・`text()` との交互 / `circles()` 等のインスタンス描画との交互 / `beginClip()`・`endClip()` / `loadPixels()` / 頂点バッファの上限です。**呼び出し順どおりに重ねたい**場合は、この `enableShadows()` を有効にするか、環境変数 `METAPHOR_COMMAND_RECORD=1` で記録経路に入れてください（どちらも `Canvas3D` が 3D の記録直前に 2D を確定するため、呼び出し順がそのまま復元されます）。
+- `func enableShadows(resolution: Int = 2048)` -- Enables shadow mapping.
+  - Note: Affects **3D only** (only 3D shapes cast shadows. ADR-0005).
+  - Note: **Layering of 2D and 3D** (#832 / the Amendment section of ADR-0003). On the default immediate path (shadows off), the layering is determined by **encode order, not call order**. 2D is collected into a batch and flushed at the end of the frame, so **2D comes in front of 3D by default** (2D drawn before `box()` still ends up in front). If the 2D batch is flushed partway through, however, it falls behind any 3D encoded after that — the triggers are a change of `blendMode()`, alternating with `image()` or `text()`, alternating with instanced drawing such as `circles()`, `beginClip()` / `endClip()`, `loadPixels()`, and the vertex buffer limit. **To layer in call order**, either enable this `enableShadows()` or take the recording path with the environment variable `METAPHOR_COMMAND_RECORD=1` (in both cases `Canvas3D` finalizes the 2D right before it records the 3D, so the call order is restored as is).
 - `func encodeState<T>(_ value: T) -> Data? where T : Encodable` -- 状態を JSON へエンコードします。失敗したら `nil`（= 状態を保存しない）。
-- `func endClip()` -- 現在のクリップ領域を終了し、前の状態に復元します。
-  - Note: **2D のみ**に作用します（3D の描画はクリップされません。ADR-0005）。
-- `func endContour()` -- 現在のコンター定義を終了します（2D シェイプ専用）。
-  - Note: **2D のみ**に作用します（`beginShape3D(_:)` の記録中は何もせず、初回だけ警告します。#736 / ADR-0005）。
-- `func endFrameRecord()` -- フレーム連番の記録を停止します。
+- `func endClip()` -- Ends the current clip region and restores the previous state.
+  - Note: Affects **2D only** (3D drawing is not clipped; ADR-0005).
+- `func endContour()` -- Ends the current contour definition. 2D shapes only.
+  - Note: Affects **2D only** (while `beginShape3D(_:)` is recording it does nothing and warns once. #736 / ADR-0005).
+- `func endFrameRecord()` -- Stops the numbered frame recording.
 - `func endGIFRecord(_ path: String? = nil) throws` -- 記録を停止し GIF ファイルに書き出します。
 - `func endGIFRecordAsync(_ path: String? = nil) async throws` -- 記録を停止し GIF ファイルを非同期で書き出します。
-- `func endOfflineRender()` -- オフラインレンダリングモードを無効にしリアルタイムタイミングに戻します。
-- `func endShape(_ close: CloseMode = .open)` -- 現在のシェイプの記録を終了し描画します。
-  - Note: 作用先は**記録中のシェイプ**が決めます。`beginShape3D(_:)` で始めていたシェイプもこれで閉じられます（`endShape3D(_:)` と同じ結果。ADR-0005）。
-  - Note: 自己交差する頂点列（五芒星など）の塗りは **nonzero winding** 規則に従います（Processing / p5.js と同じ）。巻き数が 0 でない領域が塗られるので、五芒星は中央の五角形まで塗られたべた塗りの星になります。
-- `func endShape3D(_ close: CloseMode = .open)` -- 現在の 3D シェイプの記録を終了し描画します。
-  - Note: 作用先は**記録中のシェイプ**が決めます。2D の `beginShape(_:)` で始めていた場合は `endShape(_:)` と同じく 2D で閉じます（ADR-0005）。
-- `func endSVGRecord()` -- SVG 記録を終了し、`beginSVGRecord(_:)` で指定したパスへ書き出します。
-- `func endVideoRecord(completion: ( () -> Void)? = nil)` -- 動画の録画を停止しファイルを完成させます。
-- `func endVideoRecordAsync() async` -- 動画の録画を非同期で停止しファイルを完成させます。
-- `func environment(_ preset: EnvironmentPreset, intensity: Float = 1.0, background: Bool = true)` -- 環境（IBL と背景の skybox）を設定します。
-  - Note: **3D のみ**に作用します（ADR-0005）。`pushStyle()` / `popStyle()` では巻き戻りません。画面全体の性質として扱われます。
-  - Note: IBL が掛かるのは **PBR 経路だけ**です（`roughness(_:)` を呼ぶか `pbr(_:)` を有効にしたとき）。Blinn-Phong の絵は変わりません。
-  - Note: トーンマッピングが未指定なら `ToneMapMode/acesFilmic` へ自動的に昇格します（環境を入れると輝度が 1.0 を超えるため）。`toneMapping(_:)` を明示していれば、そちらが優先されます。
-  - Note: `background: true` のとき、skybox は**最初の 3D 描画の直前**に 1 回だけ描かれます。したがって、それより前に描いた 2D は skybox に覆われ、後に描いた 2D（HUD などの前景）は上に残ります。3D を 1 つも描かないフレームでは skybox も描かれません。
-  - Note: `ambientLight(_:)` を明示していない場合、既定のアンビエントは 0 になります（IBL の拡散項と二重に足さないため）。
-- `func exposure(_ value: Float)` -- トーンマッピング前に掛ける露出倍率を設定します。
-  - Note: **3D のみ**に作用します（ADR-0005）。`pushStyle()` / `popStyle()` では巻き戻りません。
+- `func endOfflineRender()` -- Disables offline rendering mode and returns to real-time timing.
+- `func endShape(_ close: CloseMode = .open)` -- Ends recording the current shape and draws it.
+  - Note: What it affects is decided by **the shape being recorded**. A shape started with `beginShape3D(_:)` can be closed with this one as well (with the same result as `endShape3D(_:)`. ADR-0005).
+  - Note: Filling a self-intersecting vertex sequence, such as a pentagram, follows the **nonzero winding** rule (the same as Processing and p5.js). Regions whose winding number is not 0 are filled, so a pentagram comes out as a solid star with the central pentagon filled in as well.
+- `func endShape3D(_ close: CloseMode = .open)` -- Ends recording of the current 3D shape and draws it.
+  - Note: The destination is decided by **the shape being recorded**. If it was started with the 2D `beginShape(_:)`, it closes in 2D just like `endShape(_:)` (ADR-0005).
+- `func endSVGRecord()` -- Ends SVG recording and writes the result to the path given to `beginSVGRecord(_:)`.
+- `func endVideoRecord(completion: ( () -> Void)? = nil)` -- Stops the video recording and finalizes the file.
+- `func endVideoRecordAsync() async` -- Stops the video recording asynchronously and finalizes the file.
+- `func environment(_ preset: EnvironmentPreset, intensity: Float = 1.0, background: Bool = true)` -- Sets the environment (IBL and the background skybox).
+  - Note: Affects **3D only** (ADR-0005). It is not restored by `pushStyle()` / `popStyle()`; it is treated as a property of the whole screen.
+  - Note: IBL applies to **the PBR path only** (when you call `roughness(_:)` or enable `pbr(_:)`). The Blinn-Phong image does not change.
+  - Note: If tone mapping has not been specified, it is promoted automatically to `ToneMapMode/acesFilmic` (because adding an environment pushes the luminance above 1.0). If you specified `toneMapping(_:)` explicitly, that wins.
+  - Note: When `background: true`, the skybox is drawn exactly once, **right before the first 3D drawing**. Therefore 2D drawn before that is covered by the skybox, while 2D drawn after it (a HUD or other foreground) stays on top. On a frame that draws no 3D at all, the skybox is not drawn either.
+  - Note: If `ambientLight(_:)` has not been specified explicitly, the default ambient becomes 0 (so that it is not added twice with the diffuse term of the IBL).
+- `func exposure(_ value: Float)` -- Sets the exposure multiplier applied before tone mapping.
+  - Note: Affects **3D only** (ADR-0005). It is not restored by `pushStyle()` / `popStyle()`.
 - `func fileDropped(_ paths: [String])` -- ファイルがウィンドウへドラッグ＆ドロップされた時に呼ばれます。
-- `func fill(_ color: Color)` -- 塗りつぶし色を設定します。
-  - Note: **2D と 3D の両方**に作用します。3D ではプリミティブやメッシュの色になり、`texture(_:)` を貼っているときはテクスチャの色に乗算されます（ADR-0005）。
-- `func fill(_ gray: Float)` -- グレースケール値で塗りつぶし色を設定します。
-  - Note: **2D と 3D の両方**に作用します（3D ではプリミティブやメッシュの色になります。ADR-0005）。
-- `func fill(_ gray: Float, _ alpha: Float)` -- アルファ付きグレースケール値で塗りつぶし色を設定します。
-  - Note: **2D と 3D の両方**に作用します（3D ではプリミティブやメッシュの色になります。ADR-0005）。
-- `func fill(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil)` -- チャンネル値で塗りつぶし色を設定します。
-  - Note: **2D と 3D の両方**に作用します（3D ではプリミティブやメッシュの色になります。ADR-0005）。
-- `func filter(_ image: MImage, _ type: FilterType)` -- 画像に GPU 画像フィルタを適用します（in-place）。
+- `func fill(_ color: Color)` -- Sets the fill color.
+  - Note: Affects **both 2D and 3D**. In 3D it becomes the color of primitives and meshes, and when a `texture(_:)` is applied it is multiplied into the texture color (ADR-0005).
+- `func fill(_ gray: Float)` -- Sets the fill color from a grayscale value.
+  - Note: Affects **both 2D and 3D** (in 3D it becomes the color of primitives and meshes; ADR-0005).
+- `func fill(_ gray: Float, _ alpha: Float)` -- Sets the fill color from a grayscale value with alpha.
+  - Note: Affects **both 2D and 3D** (in 3D it becomes the color of primitives and meshes; ADR-0005).
+- `func fill(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil)` -- Sets the fill color from channel values.
+  - Note: Affects **both 2D and 3D** (in 3D it becomes the color of primitives and meshes; ADR-0005).
+- `func filter(_ image: MImage, _ type: FilterType)` -- Applies a GPU image filter to an image, in place.
 - `func frameRate(_ fps: Int)` -- フレームレートを動的に変更します。
-- `func get(_ x: Int, _ y: Int) -> Color` -- 1 画素の色を読みます（Processing の `get(x, y)` 互換）。
-  - Important: **暗黙の読み戻しはしません。** `loadPixels()` を先に呼んでください（呼んでいなければ黒を返し、初回だけ警告します）。Processing の `get()` は単に遅いだけですが、metaphor の読み戻しは GPU 待ちに加えて**レンダーパスの分割** を伴い、深度クリアと 2D/3D の重ね順を通じて**絵そのものを変えます**（`loadPixels()` の Note 群）。1 画素を読むたびにそれが起きないよう、読み戻しは明示的な `loadPixels()` だけに限っています。
-  - Important: 影を有効にしている場合（`enableShadows()`）は `loadPixels()` が同一フレームを読み戻せず、**直近にコミット済みのフレーム内容**が読めます。`get()` はその結果を読むので、同じ制約がそのまま乗ります。
-  - Note: 読み取り系なので**決してクラッシュしません**（ADR-0005 / #356）。context が用意される前（`init` やプロパティ初期化子）でも黒を返します。
-- `func get(_ x: Int, _ y: Int, _ w: Int, _ h: Int) -> MImage?` -- キャンバスの矩形領域を `MImage` として切り出します（Processing の
-  - Important: `get(_:_:)` と同じく**暗黙の読み戻しはしません**。影オン時の制約も同じです（`loadPixels()` の `- Important:` を参照）。
-- `func image(_ capture: CaptureDevice, _ x: Float, _ y: Float)` -- キャプチャデバイスの最新フレームを指定位置に描画します。
-- `func image(_ pg: Graphics, _ x: Float, _ y: Float)` -- 2D オフスクリーングラフィックスバッファを指定位置に描画します。
-- `func image(_ pg: Graphics3D, _ x: Float, _ y: Float)` -- 3D オフスクリーングラフィックスバッファを指定位置に描画します。
-- `func image(_ img: MImage, _ x: Float, _ y: Float)` -- 画像を指定位置に描画します。
-- `func image(_ video: VideoPlayer, _ x: Float, _ y: Float)` -- ビデオプレーヤーの現在のフレームを指定位置に描画します。
-- `func image(_ capture: CaptureDevice, _ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- キャプチャデバイスの最新フレームを指定位置・サイズで描画します。
-- `func image(_ pg: Graphics, _ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- 2D オフスクリーングラフィックスバッファを指定位置・サイズで描画します。
-- `func image(_ pg: Graphics3D, _ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- 3D オフスクリーングラフィックスバッファを指定位置・サイズで描画します。
-- `func image(_ img: MImage, _ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- 画像を指定位置・サイズで描画します。
-- `func image(_ video: VideoPlayer, _ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- ビデオプレーヤーの現在のフレームを指定位置・サイズで描画します。
-- `func image(_ img: MImage, _ dx: Float, _ dy: Float, _ dw: Float, _ dh: Float, _ sx: Float, _ sy: Float, _ sw: Float, _ sh: Float)` -- 画像のサブ領域を描画します（スプライトシートやタイルマップ用）。
-- `func imageMode(_ mode: ImageMode)` -- 画像の描画モードを設定します。
-  - Note: **2D のみ**に作用します（`image()` 用で、3D の `texture(_:)` には効きません。ADR-0005）。
-- `func isInFront(_ x: Float, _ y: Float, _ z: Float) -> Bool` -- 3D モデル座標の点がカメラ平面より前にあるかを返します。
-  - Note: **3D のみ**に作用します（カメラ平面を持つのは 3D だけです。ADR-0005）。
-  - Note: true は「反転していない」ことだけを保証し、「画面内にある」ことは保証しません。正射影では反転が起きないため常に true を返します。
+- `func get(_ x: Int, _ y: Int) -> Color` -- Reads the color of a single pixel (compatible with Processing's `get(x, y)`).
+  - Important: **It does not read back implicitly.** Call `loadPixels()` first (without it, the call returns black and warns once). Processing's `get()` is merely slow, but a read back in metaphor also **splits the render pass** on top of waiting for the GPU, and through the depth clear and the 2D/3D stacking order that **changes the image itself** (see the Notes on `loadPixels()`). To keep that from happening on every single pixel read, the read back is confined to an explicit `loadPixels()`.
+  - Important: With shadows enabled (`enableShadows()`), `loadPixels()` cannot read back the same frame and instead reads **the contents of the most recently committed frame**. `get()` reads that result, so it carries the same restriction.
+  - Note: Because this is a read accessor it **never crashes** (ADR-0005 / #356). It returns black even before the context is prepared (in `init` or a property initializer).
+- `func get(_ x: Int, _ y: Int, _ w: Int, _ h: Int) -> MImage?` -- Extracts a rectangular region of the canvas as an `MImage` (compatible with Processing's
+  - Important: Just like `get(_:_:)`, **it does not read back implicitly**. The restriction with shadows on is the same as well (see the `- Important:` on `loadPixels()`).
+- `func image(_ capture: CaptureDevice, _ x: Float, _ y: Float)` -- Draws the latest frame of a capture device at the given position.
+- `func image(_ pg: Graphics, _ x: Float, _ y: Float)` -- Draws a 2D offscreen graphics buffer at the given position.
+- `func image(_ pg: Graphics3D, _ x: Float, _ y: Float)` -- Draws a 3D offscreen graphics buffer at the given position.
+- `func image(_ img: MImage, _ x: Float, _ y: Float)` -- Draws an image at the given position.
+- `func image(_ video: VideoPlayer, _ x: Float, _ y: Float)` -- Draws the video player's current frame at the given position.
+- `func image(_ capture: CaptureDevice, _ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- Draws the latest frame of a capture device at the given position and size.
+- `func image(_ pg: Graphics, _ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- Draws a 2D offscreen graphics buffer at the given position and size.
+- `func image(_ pg: Graphics3D, _ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- Draws a 3D offscreen graphics buffer at the given position and size.
+- `func image(_ img: MImage, _ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- Draws an image at the given position and size.
+- `func image(_ video: VideoPlayer, _ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- Draws the video player's current frame at the given position and size.
+- `func image(_ img: MImage, _ dx: Float, _ dy: Float, _ dw: Float, _ dh: Float, _ sx: Float, _ sy: Float, _ sw: Float, _ sh: Float)` -- Draws a subregion of an image, for sprite sheets and tile maps.
+- `func imageMode(_ mode: ImageMode)` -- Sets the image drawing mode.
+  - Note: Affects **2D only** (it is for `image()` and has no effect on 3D `texture(_:)`; ADR-0005).
+- `func isInFront(_ x: Float, _ y: Float, _ z: Float) -> Bool` -- Returns whether a point in 3D model coordinates lies in front of the camera plane.
+  - Note: Affects **3D only** (only 3D has a camera plane; ADR-0005).
+  - Note: true guarantees only that the value is not flipped; it does not guarantee that the point is on screen. An orthographic projection never flips, so it always returns true.
 - `func isKeyDown(_ keyCode: UInt16) -> Bool` -- 特定のキーが現在押下されているかを確認します。
 - `func keyPressed()` -- キー押下時に呼ばれます。
 - `func keyReleased()` -- キー離し時に呼ばれます。
 - `func keyTyped()` -- 文字入力を生成するキー押下時に呼ばれます（Processing の `keyTyped()` 互換）。
-- `func lights()` -- デフォルトライティング（ディレクショナルライトとアンビエントライト）を有効にします。
-  - Note: **3D のみ**に作用します（2D の描画はライティングの影響を受けません。ADR-0005）。
-- `func line(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float)` -- 2点間に線を描画します。
-  - Note: **2D のみ**に作用します（3D の線は `beginShape3D(_:)` に `ShapeMode/lines` を渡します。ADR-0005）。
-- `func linearGradient(_ x: Float, _ y: Float, _ w: Float, _ h: Float, _ c1: Color, _ c2: Color, axis: GradientAxis = .vertical)` -- リニアグラデーション矩形を描画します。
-  - Note: **2D のみ**に作用します（3D のグラデーションはシェーダか頂点カラーで作ります。ADR-0005）。
-- `func listCaptureDevices() -> [CaptureDeviceInfo]` -- 接続中のカメラを列挙します。
-- `func loadFont(_ path: String, cache: Bool = true) throws -> MFont` -- 指定したファイルパスからフォントを読み込みます。
-- `func loadImage(_ path: String, cache: Bool = true) throws -> MImage` -- 指定したファイルパスから画像を読み込みます。
-- `func loadImageAsync(_ path: String, cache: Bool = true) async throws -> MImage` -- 画像を非同期で読み込みます（ファイル I/O をメインスレッド外で実行）。
-- `func loadImageAsync(named name: String) async throws -> MImage` -- 名前付き画像リソースを非同期で読み込みます。
+- `func lights()` -- Enables the default lighting (a directional light and an ambient light).
+  - Note: Affects **3D only** (2D drawing is not affected by lighting. ADR-0005).
+- `func line(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float)` -- Draws a line between two points.
+  - Note: Affects **2D only** (for a 3D line, pass `ShapeMode/lines` to `beginShape3D(_:)`. ADR-0005).
+- `func linearGradient(_ x: Float, _ y: Float, _ w: Float, _ h: Float, _ c1: Color, _ c2: Color, axis: GradientAxis = .vertical)` -- Draws a rectangle filled with a linear gradient.
+  - Note: Affects **2D only** (a 3D gradient is built with a shader or with vertex colors. ADR-0005).
+- `func listCaptureDevices() -> [CaptureDeviceInfo]` -- Lists the connected cameras.
+- `func loadFont(_ path: String, cache: Bool = true) throws -> MFont` -- Loads a font from the given file path.
+- `func loadImage(_ path: String, cache: Bool = true) throws -> MImage` -- Loads an image from the given file path.
+- `func loadImageAsync(_ path: String, cache: Bool = true) async throws -> MImage` -- Loads an image asynchronously, running the file I/O off the main thread.
+- `func loadImageAsync(named name: String) async throws -> MImage` -- Loads a named image resource asynchronously.
 - `func loadJSON(_ source: String) throws -> JSONValue` -- JSON ファイル/URL を動的な `JSONValue` として読み込みます。
 - `func loadJSON<T>(_ source: String, as type: T.Type) throws -> T where T : Decodable` -- JSON ファイル/URL を `Decodable` な型として読み込みます。
 - `func loadJSONAsync(_ source: String) async throws -> JSONValue` -- JSON ファイル/URL を動的な `JSONValue` として非同期で読み込みます。
 - `func loadJSONAsync<T>(_ source: String, as type: T.Type) async throws -> T where T : Decodable` -- JSON ファイル/URL を `Decodable` な型として非同期で読み込みます。
-- `func loadModel(_ path: String, normalize: Bool = true, cache: Bool = true) -> Mesh?` -- ファイルから 3D モデルを読み込みます（OBJ、USDZ、ABC）。
-  - Note: 読み込まれるメッシュを描けるのは **3D のみ**です（`mesh(_:)` / `drawInstanced(_:transforms:)`。ADR-0005）。
-- `func loadModelAsync(_ path: String, normalize: Bool = true, cache: Bool = true) async throws -> Mesh` -- 3D モデルを非同期で読み込みます（パース処理をメインスレッド外で実行）。
-  - Note: 読み込まれるメッシュを描けるのは **3D のみ**です（`mesh(_:)` / `drawInstanced(_:transforms:)`。ADR-0005）。
-- `func loadPixels()` -- **呼び出し時点の**キャンバス内容を `pixels` 配列へ読み戻します（Processing 互換）。
-  - Important: 同一フレームの読み戻しは**影オフの通常経路**で有効です。影を有効にしている場合（`enableShadows()`）は `draw()` が記録パスとして先に実行されるため分割できず、**直近にコミット済みのフレーム内容**が読めます（初回のみ警告）。`draw()` の外（`setup()` やフレーム間）で呼んだ場合も同じです。
-  - Note: GPU の完了を待つためメインスレッドをブロックします（Processing と同等）。`loadPixels()` を呼ばないスケッチには一切コストがかかりません。
-  - Note: 読み戻しのために内部でレンダーパスを分割するため、`loadPixels()` をまたいだ 3D 同士は深度比較されません（継続パスでデプスがクリアされます）。
-  - Note: `loadPixels()` は 2D バッチの確定点でもあります。影オフの即時経路では重ね順が呼び出し順ではなく**エンコード順**で決まるため、`loadPixels()` より **前**に描いた 2D は、**後**に描いた 3D の背後へ回ります。3D の手前に置きたい 2D は `loadPixels()` の後に描いてください（#832。契機の一覧は [ADR-0003](https://github.com/shinyaoguri/metaphor/blob/main/docs/adr/0003-unified-command-stream.md) の 2026-08-16 追記）。`loadPixels()` の前後それぞれの中では、フレーム末尾と同じく 2D が 3D の手前に出ます。
-- `func loadShader(_ path: String, fragment: String) throws -> Shader2D` -- 外部 MSL ファイルからカスタム 2D フラグメントシェーダを読み込みます。
-- `func loadSound(_ path: String) throws -> SoundFile` -- 再生と解析用のオーディオファイルを読み込みます。
+- `func loadModel(_ path: String, normalize: Bool = true, cache: Bool = true) -> Mesh?` -- Loads a 3D model from a file (OBJ, USDZ, or ABC).
+  - Note: The mesh that is loaded can be drawn in **3D only** (`mesh(_:)` / `drawInstanced(_:transforms:)`. ADR-0005).
+- `func loadModelAsync(_ path: String, normalize: Bool = true, cache: Bool = true) async throws -> Mesh` -- Loads a 3D model asynchronously (the parsing runs off the main thread).
+  - Note: The mesh that is loaded can be drawn in **3D only** (`mesh(_:)` / `drawInstanced(_:transforms:)`. ADR-0005).
+- `func loadPixels()` -- Reads the canvas contents **as of the moment of the call** back into the `pixels` array
+  - Important: Reading back the same frame works on the **normal path with shadows off**. With shadows enabled (`enableShadows()`), `draw()` runs first as a recording pass and cannot be split, so what you read is **the contents of the most recently committed frame** (warned once). The same applies when it is called outside `draw()` (in `setup()` or between frames).
+  - Note: It blocks the main thread to wait for the GPU to finish (the same as Processing). Sketches that never call `loadPixels()` pay no cost at all.
+  - Note: Because the read back splits the render pass internally, 3D geometry drawn on opposite sides of a `loadPixels()` is not depth compared (depth is cleared in the continuation pass).
+  - Note: `loadPixels()` is also a flush point for the 2D batch. On the immediate path with shadows off, stacking order is decided by **encode order** rather than call order, so 2D drawn **before** `loadPixels()` ends up behind 3D drawn **after** it. Draw the 2D you want in front of the 3D after `loadPixels()` (#832; the full list of triggers is in the 2026-08-16 addendum to [ADR-0003](https://github.com/shinyaoguri/metaphor/blob/main/docs/adr/0003-unified-command-stream.md)). Within each side of a `loadPixels()`, 2D still appears in front of 3D just as it does at the end of a frame.
+- `func loadShader(_ path: String, fragment: String) throws -> Shader2D` -- Loads a custom 2D fragment shader from an external MSL file.
+- `func loadSound(_ path: String) throws -> SoundFile` -- Loads an audio file for playback and analysis.
 - `func loadStrings(_ source: String) throws -> [String]` -- テキストファイル/URL を行の配列として読み込みます。
 - `func loadStringsAsync(_ source: String) async throws -> [String]` -- テキストファイル/URL を行の配列として非同期で読み込みます。
 - `func loadTable(_ source: String, format: TableFormat? = nil, header: Bool = true) throws -> Table` -- CSV/TSV ファイル/URL を `Table` として読み込みます。
 - `func loadTableAsync(_ source: String, format: TableFormat? = nil, header: Bool = true) async throws -> Table` -- CSV/TSV ファイル/URL を `Table` として非同期で読み込みます。
-- `func loadVideo(_ path: String) throws -> VideoPlayer` -- 再生用のビデオファイルを読み込みます。
+- `func loadVideo(_ path: String) throws -> VideoPlayer` -- Loads a video file for playback.
 - `func loop()` -- アニメーションループを再開します。
 - `static func main()` -- スケッチアプリケーションを起動します（`@main` 属性から呼ばれます）。
-- `func material(_ customMaterial: CustomMaterial)` -- カスタムマテリアルを以降の 3D 描画に適用します。
-  - Note: **3D のみ**に作用します（ADR-0005）。
-- `func mesh(_ mesh: Mesh)` -- ビルド済みメッシュを描画します。
-  - Note: **3D のみ**に作用します（3D キャンバスへ描かれます。ADR-0005）。
-- `func metallic(_ value: Float)` -- マテリアルのメタリック係数を設定します。
-  - Note: **3D のみ**に作用します（ADR-0005）。
-- `func modelX(_ x: Float, _ y: Float, _ z: Float) -> Float` -- 現在の変換を通した 3D モデル座標のワールド x 座標を返します。
-  - Note: **3D のみ**。スクリーン座標（ピクセル）が欲しいときは `screenX(_:_:_:)` を使ってください。
-  - Important: 返るのは**ワールド座標**で、カメラには依存しません。`camera(eye:center:up:)` や `perspective(fov:near:far:)` を変えても値は変わりません（Processing の `modelX()` と同じ意味論）。
-- `func modelY(_ x: Float, _ y: Float, _ z: Float) -> Float` -- 現在の変換を通した 3D モデル座標のワールド y 座標を返します。
-  - Note: **3D のみ**。用例と注意点は `modelX(_:_:_:)` を参照してください。
-  - Important: カメラには依存しません（Processing の `modelY()` と同じ意味論）。
-- `func modelZ(_ x: Float, _ y: Float, _ z: Float) -> Float` -- 現在の変換を通した 3D モデル座標のワールド z 座標を返します。
-  - Note: **3D のみ**。用例と注意点は `modelX(_:_:_:)` を参照してください。スクリーン深度（0...1）が欲しいときは `screenZ(_:_:_:)` です。
-  - Important: カメラには依存しません（Processing の `modelZ()` と同じ意味論）。
+- `func material(_ customMaterial: CustomMaterial)` -- Applies a custom material to subsequent 3D drawing.
+  - Note: Affects **3D only** (ADR-0005).
+- `func mesh(_ mesh: Mesh)` -- Draws a prebuilt mesh.
+  - Note: Affects **3D only** (it is drawn on the 3D canvas. ADR-0005).
+- `func metallic(_ value: Float)` -- Sets the metallic coefficient of the material.
+  - Note: Affects **3D only** (ADR-0005).
+- `func modelX(_ x: Float, _ y: Float, _ z: Float) -> Float` -- Returns the world x coordinate of a 3D model coordinate taken through the current transform.
+  - Note: **3D only**. Use `screenX(_:_:_:)` when you want screen coordinates in pixels.
+  - Important: What comes back is a **world coordinate**, independent of the camera. Changing `camera(eye:center:up:)` or `perspective(fov:near:far:)` does not change the value (the same semantics as Processing's `modelX()`).
+- `func modelY(_ x: Float, _ y: Float, _ z: Float) -> Float` -- Returns the world y coordinate of a 3D model coordinate taken through the current transform.
+  - Note: **3D only**. See `modelX(_:_:_:)` for an example and the caveats.
+  - Important: It is independent of the camera (same semantics as Processing's `modelY()`).
+- `func modelZ(_ x: Float, _ y: Float, _ z: Float) -> Float` -- Returns the world z coordinate of a 3D model coordinate taken through the current transform.
+  - Note: **3D only**. See `modelX(_:_:_:)` for an example and the caveats. Use `screenZ(_:_:_:)` when you want the screen depth (0...1).
+  - Important: It is independent of the camera (same semantics as Processing's `modelZ()`).
 - `func mouseClicked()` -- マウスクリック時（ドラッグなしの押下→離し）に呼ばれます。
 - `func mouseDragged()` -- マウスドラッグ時に呼ばれます。
 - `func mouseMoved()` -- マウス移動時に呼ばれます。
@@ -369,50 +369,50 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func mouseReleased()` -- マウスボタン離し時に呼ばれます。
 - `func mouseScrolled()` -- マウススクロール時に呼ばれます。
 - `func noCursor()` -- カーソルを非表示にします。
-- `func noEnvironment()` -- 環境（IBL と skybox）を無効化します。
-  - Note: **3D のみ**に作用します（ADR-0005）。
-- `func noFill()` -- 図形の塗りつぶしを無効にします。
-  - Note: **2D と 3D の両方**に作用します。3D では面が描かれなくなり、`noStroke()` も併せて呼ぶとそのシェイプは何も描かれません（ADR-0005）。
-- `func noiseTexture(_ type: NoiseType, width: Int, height: Int, config: NoiseConfig = NoiseConfig()) -> MImage?` -- ノイズテクスチャを画像として生成します（便利メソッド）。
-- `func noLights()` -- すべてのライトを無効にします。
-  - Note: **3D のみ**に作用します（ADR-0005）。
+- `func noEnvironment()` -- Disables the environment (IBL and skybox).
+  - Note: Affects **3D only** (ADR-0005).
+- `func noFill()` -- Disables filling shapes.
+  - Note: Affects **both 2D and 3D**. In 3D the faces stop being drawn, and calling `noStroke()` as well leaves that shape drawing nothing at all (ADR-0005).
+- `func noiseTexture(_ type: NoiseType, width: Int, height: Int, config: NoiseConfig = NoiseConfig()) -> MImage?` -- Generates a noise texture as an image (a convenience method).
+- `func noLights()` -- Disables all lights.
+  - Note: Affects **3D only** (ADR-0005).
 - `func noLoop()` -- アニメーションループを停止します。
-- `func noMaterial()` -- アクティブなカスタムマテリアルを解除しデフォルトシェーディングに戻します。
-  - Note: **3D のみ**に作用します（ADR-0005）。
-- `func normal(_ nx: Float, _ ny: Float, _ nz: Float)` -- 以降の 3D 頂点の法線ベクトルを設定します。
-  - Note: **3D のみ**に作用します（2D のシェイプに法線はありません。ADR-0005）。
-- `func noStroke()` -- 図形のストロークを無効にします。
-  - Note: **2D と 3D の両方**に作用します。3D の既定は元からストローク無しなので、`stroke(_:)-(Color)` を呼んでいなければ見た目は変わりません（ADR-0005）。
-- `func noTexture()` -- アクティブなテクスチャを解除します。
-  - Note: **3D のみ**に作用します（ADR-0005）。
-- `func noTint()` -- 画像のティントを解除します。
-  - Note: **2D のみ**に作用します（`tint(_:)-(Color)` と対。ADR-0005）。
+- `func noMaterial()` -- Clears the active custom material and returns to the default shading.
+  - Note: Affects **3D only** (ADR-0005).
+- `func normal(_ nx: Float, _ ny: Float, _ nz: Float)` -- Sets the normal vector for subsequent 3D vertices.
+  - Note: Affects **3D only** (2D shapes have no normals. ADR-0005).
+- `func noStroke()` -- Disables stroking shapes.
+  - Note: Affects **both 2D and 3D**. 3D has no stroke by default to begin with, so the appearance does not change unless `stroke(_:)-(Color)` has been called (ADR-0005).
+- `func noTexture()` -- Clears the active texture.
+  - Note: Affects **3D only** (ADR-0005).
+- `func noTint()` -- Clears the image tint.
+  - Note: Affects **2D only** (the counterpart to `tint(_:)-(Color)`; ADR-0005).
 - `func orbitControl()` -- オービットカメラコントロールを有効にします（`draw()` 内で呼び出してください）。
-- `func ortho(left: Float? = nil, right: Float? = nil, bottom: Float? = nil, top: Float? = nil, near: Float? = nil, far: Float? = nil)` -- 正射影を設定します。
-  - Important: `bottom` / `top` は投影行列の規約どおり「ビュー空間の y が **小さい**側が `bottom`」です。metaphor の y は 2D と同じく画面下向きなので、`bottom` は画面の**上端**、`top` は**下端**に対応します。上下を逆に渡すと絵が上下反転します。
-  - Note: **3D のみ**に作用します（2D の描画は投影の影響を受けません。ADR-0005）。
-- `func pbr(_ enabled: Bool)` -- PBR レンダリングモードを明示的に切り替えます。
-  - Note: **3D のみ**に作用します（ADR-0005）。
-- `func perspective(fov: Float = Float.pi / 3, near: Float = 0.1, far: Float = 10000)` -- 透視投影を設定します。
-  - Note: **3D のみ**に作用します（2D の描画は投影の影響を受けません。ADR-0005）。
-- `func plane(_ width: Float, _ height: Float)` -- 平面を描画します。
-  - Note: **3D のみ**に作用します（3D キャンバスへ描かれます。ADR-0005）。
+- `func ortho(left: Float? = nil, right: Float? = nil, bottom: Float? = nil, top: Float? = nil, near: Float? = nil, far: Float? = nil)` -- Sets an orthographic projection.
+  - Important: Following the convention of projection matrices, `bottom` is the side where y in view space is **smaller**. Because y in metaphor points down the screen just as it does in 2D, `bottom` corresponds to the **top** edge of the screen and `top` to the **bottom** edge. Passing the two the other way around flips the image vertically.
+  - Note: Affects **3D only** (2D drawing is not affected by the projection. ADR-0005).
+- `func pbr(_ enabled: Bool)` -- Switches the PBR rendering mode explicitly.
+  - Note: Affects **3D only** (ADR-0005).
+- `func perspective(fov: Float = Float.pi / 3, near: Float = 0.1, far: Float = 10000)` -- Sets a perspective projection.
+  - Note: Affects **3D only** (2D drawing is not affected by the projection. ADR-0005).
+- `func plane(_ width: Float, _ height: Float)` -- Draws a plane.
+  - Note: Affects **3D only** (it is drawn on the 3D canvas. ADR-0005).
 - `func plugin(id: String) -> (any MetaphorPlugin)?` -- 識別子を指定して登録済みプラグインを検索します。
-- `func point(_ x: Float, _ y: Float)` -- 単一の点を描画します。
-  - Note: **2D のみ**に作用します（3D の点は `beginShape3D(_:)` に `ShapeMode/points` を渡します。ADR-0005）。
-- `func pointLight(_ x: Float, _ y: Float, _ z: Float, color: Color = .white, falloff: Float = 0.1, intensity: Float = 1.0)` -- 指定位置にポイントライトを追加します。
-  - Note: **3D のみ**に作用します（ADR-0005）。
-- `func polygon(_ points: [(Float, Float)])` -- 座標タプルの配列からポリゴンを描画します。
-  - Note: **2D のみ**に作用します（3D は `beginShape3D(_:)` で組みます。ADR-0005）。
-- `func polygon(_ points: [Vec2])` -- `Vec2` 配列からポリゴンを描画します。
-  - Note: **2D のみ**に作用します（3D は `beginShape3D(_:)` で組みます。ADR-0005）。
-- `func pop()` -- 最後に保存された変換とスタイル状態をスタックから復元します。
-  - Note: **2D と 3D の両方**に作用します（`push()` と対）。
-- `func popMatrix()` -- 最後に保存された変換行列（2D と 3D の両方）をスタックから復元します。
-  - Note: **2D と 3D の両方**に作用します（`pushMatrix()` と対）。
-- `func popStyle()` -- 最後に保存されたスタイル状態をスタックから復元します。
-  - Note: **2D と 3D の両方**に作用します（`pushStyle()` と対）。
-- `func previousFrame() -> MImage?` -- 前フレームのレンダリング結果を取得します。
+- `func point(_ x: Float, _ y: Float)` -- Draws a single point.
+  - Note: Affects **2D only** (for a 3D point, pass `ShapeMode/points` to `beginShape3D(_:)`. ADR-0005).
+- `func pointLight(_ x: Float, _ y: Float, _ z: Float, color: Color = .white, falloff: Float = 0.1, intensity: Float = 1.0)` -- Adds a point light at the given position.
+  - Note: Affects **3D only** (ADR-0005).
+- `func polygon(_ points: [(Float, Float)])` -- Draws a polygon from an array of coordinate tuples.
+  - Note: Affects **2D only** (3D is built with `beginShape3D(_:)`. ADR-0005).
+- `func polygon(_ points: [Vec2])` -- Draws a polygon from an array of `Vec2` values.
+  - Note: Affects **2D only** (3D is built with `beginShape3D(_:)`. ADR-0005).
+- `func pop()` -- Restores the most recently saved transform and style state from the stack.
+  - Note: Affects **both 2D and 3D** (the counterpart to `push()`).
+- `func popMatrix()` -- Restores the last saved transform matrix (both 2D and 3D) from the stack.
+  - Note: Affects **both 2D and 3D** (the counterpart of `pushMatrix()`).
+- `func popStyle()` -- Restores the most recently saved style state from the stack.
+  - Note: Affects **both 2D and 3D** (the counterpart to `pushStyle()`).
+- `func previousFrame() -> MImage?` -- Returns the rendering result of the previous frame.
 - `func probe(_ name: String, _ value: Double)` -- 数値（Double）として記録します。
 - `func probe(_ name: String, _ value: Int)` -- 数値（Int）として記録します。
 - `func probe(_ name: String, _ value: Float)` -- 数値（Float）として記録します。Double に昇格して保存されます。
@@ -421,165 +421,165 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func probe(_ name: String, _ value: SIMD2<Float>)` -- 2 成分ベクトルとして記録します。`[x, y]` の JSON 配列になります。
 - `func probe(_ name: String, _ value: SIMD3<Float>)` -- 3 成分ベクトルとして記録します。
 - `func probe(_ name: String, _ value: SIMD4<Float>)` -- 4 成分ベクトルとして記録します。
-- `func push()` -- 現在の変換とスタイル状態をスタックに保存します。
-  - Note: **2D と 3D の両方**に作用します。`pushMatrix()` との違いは作用先ではなく「スタイルを含むかどうか」で、こちらは変換 + スタイル、`pushMatrix()` は変換のみです。
-- `func pushMatrix()` -- 現在の変換行列（2D と 3D の両方）をスタックに保存します。
-  - Note: **2D と 3D の両方**に作用します。`push()` との違いは作用先ではなく「スタイルを含むかどうか」で、こちらは変換のみを保存します。
-- `func pushStyle()` -- 現在のスタイル状態（fill、stroke など）をスタックに保存します。
-  - Note: **2D と 3D の両方**に作用します。`push()` との違いは変換を含まないことで、こちらはスタイルのみを保存します（ADR-0005 Amendment 2026-08-02）。
-- `func quad(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float, _ x3: Float, _ y3: Float, _ x4: Float, _ y4: Float)` -- 4つの頂点で定義される四角形を描画します。
-  - Note: **2D のみ**に作用します（3D で任意の四角形を組むには `beginShape3D(_:)` を使います。ADR-0005）。
-- `func radialGradient(_ cx: Float, _ cy: Float, _ radius: Float, _ innerColor: Color, _ outerColor: Color, segments: Int = 36)` -- 放射状グラデーション円を描画します。
-  - Note: **2D のみ**に作用します（3D のグラデーションはシェーダか頂点カラーで作ります。ADR-0005）。
-- `func rect(_ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- 矩形を描画します。
-  - Note: **2D のみ**に作用します（3D の直方体は `box(_:_:_:)`、平面は `plane(_:_:)` です。ADR-0005）。
-- `func rect(_ x: Float, _ y: Float, _ w: Float, _ h: Float, _ r: Float)` -- 均一な角丸半径の角丸矩形を描画します。
-  - Note: **2D のみ**に作用します（3D に角丸のプリミティブはありません。ADR-0005）。
-- `func rect(_ x: Float, _ y: Float, _ w: Float, _ h: Float, _ tl: Float, _ tr: Float, _ br: Float, _ bl: Float)` -- 各角に個別の角丸半径を持つ角丸矩形を描画します。
-  - Note: **2D のみ**に作用します（3D に角丸のプリミティブはありません。ADR-0005）。
-- `func rectMode(_ mode: RectMode)` -- 矩形の描画モードを設定します。
-  - Note: **2D のみ**に作用します（`rect(_:_:_:_:)` 用で、3D のプリミティブの位置の解釈には効きません。ADR-0005）。
+- `func push()` -- Saves the current transform and style state onto the stack.
+  - Note: Affects **both 2D and 3D**. What separates it from `pushMatrix()` is not what it affects but whether style is included: this one saves transform + style, while `pushMatrix()` saves the transform only.
+- `func pushMatrix()` -- Saves the current transform matrix (both 2D and 3D) onto the stack.
+  - Note: Affects **both 2D and 3D**. What sets it apart from `push()` is not what it affects but whether style is included: this one saves the transform only.
+- `func pushStyle()` -- Saves the current style state (fill, stroke, and so on) onto the stack.
+  - Note: Affects **both 2D and 3D**. What separates it from `push()` is that it does not include the transform: this one saves the style only (ADR-0005 Amendment 2026-08-02).
+- `func quad(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float, _ x3: Float, _ y3: Float, _ x4: Float, _ y4: Float)` -- Draws a quadrilateral defined by four vertices.
+  - Note: Affects **2D only** (to build an arbitrary quadrilateral in 3D, use `beginShape3D(_:)`. ADR-0005).
+- `func radialGradient(_ cx: Float, _ cy: Float, _ radius: Float, _ innerColor: Color, _ outerColor: Color, segments: Int = 36)` -- Draws a circle filled with a radial gradient.
+  - Note: Affects **2D only** (a 3D gradient is built with a shader or with vertex colors. ADR-0005).
+- `func rect(_ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- Draws a rectangle.
+  - Note: Affects **2D only** (the 3D box is `box(_:_:_:)` and the 3D plane is `plane(_:_:)`. ADR-0005).
+- `func rect(_ x: Float, _ y: Float, _ w: Float, _ h: Float, _ r: Float)` -- Draws a rounded rectangle with a uniform corner radius.
+  - Note: Affects **2D only** (there is no rounded 3D primitive; ADR-0005).
+- `func rect(_ x: Float, _ y: Float, _ w: Float, _ h: Float, _ tl: Float, _ tr: Float, _ br: Float, _ bl: Float)` -- Draws a rounded rectangle with a separate corner radius for each corner.
+  - Note: Affects **2D only** (there is no rounded 3D primitive; ADR-0005).
+- `func rectMode(_ mode: RectMode)` -- Sets the rectangle drawing mode.
+  - Note: Affects **2D only** (it is for `rect(_:_:_:_:)` and does not change how the position of 3D primitives is interpreted; ADR-0005).
 - `func redraw()` -- 単一フレームをレンダリングします（`noLoop()` 呼び出し後に使用）。
 - `func registerPlugin(_ plugin: any MetaphorPlugin)` -- このスケッチにプラグインを登録します。
 - `func reloadShader(key: String, source: String) throws` -- シェーダーをソースから再コンパイルしパイプラインキャッシュをクリアします。
 - `func reloadShaderFromFile(key: String, path: String) throws` -- 外部ファイルからシェーダーをリロードしパイプラインキャッシュをクリアします。
 - `func removePlugin(id: String)` -- 識別子を指定して登録済みプラグインを削除します。
 - `func removePostEffect(at index: Int)` -- 指定インデックスのポストプロセスエフェクトを削除します。
-- `func resetMatrix()` -- 現在の変換行列を単位行列にリセットします。
-  - Note: **2D と 3D の両方**に作用します（`pushMatrix()`/`popMatrix()` と同カテゴリ。ADR-0005）。
-- `func resetShader()` -- カスタム 2D シェーダを解除し、組み込みシェーダへ戻します。
+- `func resetMatrix()` -- Resets the current transformation matrix to the identity matrix.
+  - Note: Affects **both 2D and 3D** (the same category as `pushMatrix()`/`popMatrix()`; ADR-0005).
+- `func resetShader()` -- Clears the custom 2D shader and restores the built-in shader.
 - `func restoreState(_ data: Data)` -- `saveState()` が返した状態を復元します（オプション）。
-- `func rotate(_ angle: Float)` -- 現在の変換に回転を適用します。
-  - Note: **2D と 3D の両方**に作用します（3D は z 軸まわりの回転 = `rotateZ(_:)` と同じ。Processing P3D 互換。ADR-0005 Amendment 2026-08-02）。
-- `func rotateX(_ angle: Float)` -- x 軸周りの回転を適用します。
-  - Note: **3D のみ**に作用します（ADR-0005 Amendment 2026-08-02）。
-- `func rotateY(_ angle: Float)` -- y 軸周りの回転を適用します。
-  - Note: **3D のみ**に作用します（ADR-0005 Amendment 2026-08-02）。
-- `func rotateZ(_ angle: Float)` -- z 軸周りの回転を適用します。
-  - Note: **3D のみ**に作用します。1 引数の `rotate(_:)` は 2D と 3D の両方に作用し、3D 側は本メソッドと同じ z 軸まわりの回転になります（ADR-0005 Amendment 2026-08-02）。
-- `func roughness(_ value: Float)` -- PBR ラフネスを設定します（自動的に PBR モードに切り替わります）。
-  - Note: **3D のみ**に作用します（ADR-0005）。
-- `func save()` -- 現在のフレームを `output/metaphor_<timestamp>.png` に保存します。
-- `func save(_ path: String)` -- 現在のフレームを指定したファイルパスに保存します。
-- `func saveFrame(_ filename: String? = nil)` -- 単一フレームを画像ファイルに保存します。
+- `func rotate(_ angle: Float)` -- Applies a rotation to the current transform.
+  - Note: Affects **both 2D and 3D** (in 3D it rotates around the z axis, the same as `rotateZ(_:)`, compatible with Processing P3D; ADR-0005 Amendment 2026-08-02).
+- `func rotateX(_ angle: Float)` -- Applies a rotation around the x axis.
+  - Note: Affects **3D only** (ADR-0005 Amendment 2026-08-02).
+- `func rotateY(_ angle: Float)` -- Applies a rotation around the y axis.
+  - Note: Affects **3D only** (ADR-0005 Amendment 2026-08-02).
+- `func rotateZ(_ angle: Float)` -- Applies a rotation around the z axis.
+  - Note: Affects **3D only**. The one-argument `rotate(_:)` affects both 2D and 3D, and on the 3D side it is the same rotation around the z axis as this method (ADR-0005 Amendment 2026-08-02).
+- `func roughness(_ value: Float)` -- Sets the PBR roughness (this switches to PBR mode automatically).
+  - Note: Affects **3D only** (ADR-0005).
+- `func save()` -- Saves the current frame to `output/metaphor_<timestamp>.png`.
+- `func save(_ path: String)` -- Saves the current frame to the given file path.
+- `func saveFrame(_ filename: String? = nil)` -- Saves a single frame to an image file.
 - `func saveJSON(_ value: some Encodable, _ path: String, pretty: Bool = true) throws` -- `Encodable` な値（`JSONValue` を含む）を JSON ファイルへ書き込みます。
 - `func saveState() -> Data?` -- リロードをまたいで保持したい状態を返します（オプション）。
 - `func saveStrings(_ lines: [String], _ path: String) throws` -- 行の配列をテキストファイルへ書き込みます（UTF-8・各行に改行を付与）。
 - `func saveTable(_ table: Table, _ path: String, format: TableFormat? = nil, header: Bool = true) throws` -- `Table` を CSV/TSV ファイルへ書き込みます。
-- `func scale(_ s: Float)` -- 現在の変換に均一スケールを適用します。
-  - Note: **2D と 3D の両方**に作用します。
-- `func scale(_ sx: Float, _ sy: Float)` -- 現在の変換に非均一スケールを適用します。
-  - Note: **2D と 3D の両方**に作用します（3D は z 軸を等倍とするスケール。Processing P3D 互換。ADR-0005 Amendment 2026-08-02）。
-- `func scale(_ x: Float, _ y: Float, _ z: Float)` -- 現在の変換に非均一 3D スケールを適用します。
-  - Note: **3D のみ**に作用します。2 引数の `scale(_:_:)` は 2D と 3D の両方に作用します（ADR-0005 Amendment 2026-08-02）。
-- `func screenX(_ x: Float, _ y: Float) -> Float` -- 2D モデル座標が描画されるスクリーン x 座標を返します。
-  - Note: **2D のみ**。3D は `screenX(_:_:_:)`（3 引数）を使用してください。
-- `func screenX(_ x: Float, _ y: Float, _ z: Float) -> Float` -- 3D モデル座標が描画されるスクリーン x 座標を返します。
-  - Note: **3D のみ**に作用します（2D の座標は `screenX(_:_:)`（2 引数）です。ADR-0005）。
-  - Important: カメラ背後の点では値が原点対称に反転します。`isInFront(_:_:_:)` で判別してください。
-- `func screenY(_ x: Float, _ y: Float) -> Float` -- 2D モデル座標が描画されるスクリーン y 座標を返します。
-  - Note: **2D のみ**。3D は `screenY(_:_:_:)`（3 引数）を使用してください。
-- `func screenY(_ x: Float, _ y: Float, _ z: Float) -> Float` -- 3D モデル座標が描画されるスクリーン y 座標を返します。
-  - Note: **3D のみ**に作用します（2D の座標は `screenY(_:_:)`（2 引数）です。ADR-0005）。
-  - Important: カメラ背後の点では値が原点対称に反転します。`isInFront(_:_:_:)` で判別してください。
-- `func screenZ(_ x: Float, _ y: Float, _ z: Float) -> Float` -- 3D モデル座標の正規化デバイス深度（0...1）を返します。
-  - Note: **3D のみ**に作用します（2D の描画に深度はありません。ADR-0005）。
-  - Important: 0...1 に収まるのは点が視錐台の内側にあるときだけです。カメラ背後では 1 を超え、カメラとニア平面のあいだでは負になります。`isInFront(_:_:_:)` で背後を弾いてから使ってください。
+- `func scale(_ s: Float)` -- Applies a uniform scale to the current transform.
+  - Note: Affects **both 2D and 3D**.
+- `func scale(_ sx: Float, _ sy: Float)` -- Applies a non-uniform scale to the current transform.
+  - Note: Affects **both 2D and 3D** (in 3D it scales with the z axis left at 1, compatible with Processing P3D; ADR-0005 Amendment 2026-08-02).
+- `func scale(_ x: Float, _ y: Float, _ z: Float)` -- Applies a non-uniform 3D scale to the current transform.
+  - Note: Affects **3D only**. The two-argument `scale(_:_:)` affects both 2D and 3D (ADR-0005 Amendment 2026-08-02).
+- `func screenX(_ x: Float, _ y: Float) -> Float` -- Returns the screen x coordinate at which a 2D model coordinate is drawn.
+  - Note: **2D only**. For 3D, use `screenX(_:_:_:)` (the three-argument version).
+- `func screenX(_ x: Float, _ y: Float, _ z: Float) -> Float` -- Returns the screen x coordinate at which a 3D model coordinate is drawn.
+  - Note: Affects **3D only** (for 2D coordinates use `screenX(_:_:)`, the two-argument version; ADR-0005).
+  - Important: For points behind the camera the value is flipped through the origin. Tell them apart with `isInFront(_:_:_:)`.
+- `func screenY(_ x: Float, _ y: Float) -> Float` -- Returns the screen y coordinate at which a 2D model coordinate is drawn.
+  - Note: **2D only**. For 3D, use `screenY(_:_:_:)` (the three-argument version).
+- `func screenY(_ x: Float, _ y: Float, _ z: Float) -> Float` -- Returns the screen y coordinate at which a 3D model coordinate is drawn.
+  - Note: Affects **3D only** (for 2D coordinates use `screenY(_:_:)`, the two-argument version; ADR-0005).
+  - Important: For points behind the camera the value is flipped through the origin. Tell them apart with `isInFront(_:_:_:)`.
+- `func screenZ(_ x: Float, _ y: Float, _ z: Float) -> Float` -- Returns the normalized device depth (0...1) of a 3D model coordinate.
+  - Note: Affects **3D only** (2D drawing has no depth; ADR-0005).
+  - Important: The value stays within 0...1 only while the point is inside the view frustum. Behind the camera it goes above 1, and between the camera and the near plane it goes negative. Reject points behind the camera with `isInFront(_:_:_:)` before using it.
 - `func selectInput(_ prompt: String = "Select a file", _ callback: @MainActor (String?) -> Void)` -- ファイルを開くダイアログを表示します（Processing の `selectInput()` 互換）。
 - `func selectOutput(_ prompt: String = "Save as", _ callback: @MainActor (String?) -> Void)` -- ファイルを保存するダイアログを表示します（Processing の `selectOutput()` 互換）。
-- `func set(_ x: Int, _ y: Int, _ color: Color)` -- 1 画素の色を書き込みます（Processing の `set(x, y, c)` 互換）。
-  - Important: 書き込み先は CPU 側の `pixels` バッファです。キャンバスへ出すには `updatePixels()` が必要で、Processing の `set()` が即座に反映されるのとは異なります。`loadPixels()` を呼んでいなければ何もしません（初回だけ警告）。
+- `func set(_ x: Int, _ y: Int, _ color: Color)` -- Writes the color of a single pixel (compatible with Processing's `set(x, y, c)`).
+  - Important: The write goes to the CPU-side `pixels` buffer. Putting it on the canvas requires `updatePixels()`, unlike Processing's `set()`, which takes effect immediately. It does nothing if `loadPixels()` has not been called (warned once).
 - `func setPostEffects(_ effects: [any PostEffect])` -- すべてのポストプロセスエフェクトを指定した配列で置き換えます。
-- `func setRenderGraph(_ graph: RenderGraph?)` -- アクティブなレンダーグラフを設定またはクリアします。
+- `func setRenderGraph(_ graph: RenderGraph?)` -- Sets or clears the active render graph.
 - `func setup()` -- 一度だけ実行される初期化処理（オプション）。
-- `func shader(_ shader: Shader2D)` -- 以降の 2D 描画にカスタムフラグメントシェーダを適用します。
-- `func shadowBias(_ value: Float)` -- シャドウアクネを軽減するためのシャドウデプスバイアスを設定します。
-  - Note: **3D のみ**に作用します（ADR-0005）。
-- `func shape(_ s: MShape)` -- リテインドシェイプを原点に描画します。
-- `func shape(_ s: MShape, _ x: Float, _ y: Float)` -- リテインドシェイプを指定位置に描画します。
-- `func shape(_ s: MShape, _ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- リテインドシェイプを指定位置・サイズで描画します。
-- `func shearX(_ angle: Float)` -- 現在の変換に x 軸方向のせん断（シアー）を適用します。
-  - Note: **2D のみ**に作用します。P3D 意味論への統一は `translate(_:_:)` / `rotate(_:)` / `scale(_:_:)` の 3 本に限っており、せん断は対象外です（ADR-0005 Amendment 2026-08-02）。
-- `func shearY(_ angle: Float)` -- 現在の変換に y 軸方向のせん断（シアー）を適用します。
-  - Note: **2D のみ**に作用します。P3D 意味論への統一は `translate(_:_:)` / `rotate(_:)` / `scale(_:_:)` の 3 本に限っており、せん断は対象外です（ADR-0005 Amendment 2026-08-02）。
-- `func shininess(_ value: Float)` -- スペキュラーの光沢度指数を設定します。
-  - Note: **3D のみ**に作用します（ADR-0005）。
-- `func specular(_ color: Color)` -- スペキュラーハイライトの色を設定します。
-  - Note: **3D のみ**に作用します（2D の描画はマテリアルの影響を受けません。ADR-0005）。
-- `func specular(_ gray: Float)` -- グレースケール値でスペキュラーハイライトの色を設定します。
-  - Note: **3D のみ**に作用します（ADR-0005）。
-- `func specular(_ v1: Float, _ v2: Float, _ v3: Float)` -- チャンネル値でスペキュラーハイライトの色を設定します。
-  - Note: **3D のみ**に作用します（2D の描画はマテリアルの影響を受けません。ADR-0005）。
-- `func sphere(_ radius: Float, detail: Int = 24)` -- 球を描画します。
-  - Note: **3D のみ**に作用します（3D キャンバスへ描かれます。ADR-0005）。
-- `func spotLight(_ x: Float, _ y: Float, _ z: Float, _ dirX: Float, _ dirY: Float, _ dirZ: Float, angle: Float = Float.pi / 6, falloff: Float = 0.01, color: Color = .white, intensity: Float = 1.0)` -- 指定位置・方向にスポットライトを追加します。
-  - Note: **3D のみ**に作用します（ADR-0005）。
-- `func square(_ x: Float, _ y: Float, _ size: Float)` -- 正方形を描画します。
-  - Note: **2D のみ**に作用します（3D の立方体は `box(_:)` です。ADR-0005）。
-- `func stroke(_ color: Color)` -- ストローク色を設定します。
-  - Note: **2D と 3D の両方**に作用します。ただし太さを決める `strokeWeight(_:)` は **2D のみ**なので、3D の線の太さは変えられません（ADR-0005）。
-- `func stroke(_ gray: Float)` -- グレースケール値でストローク色を設定します。
-  - Note: **2D と 3D の両方**に作用します（太さを決める `strokeWeight(_:)` は 2D のみ。ADR-0005）。
-- `func stroke(_ gray: Float, _ alpha: Float)` -- アルファ付きグレースケール値でストローク色を設定します。
-  - Note: **2D と 3D の両方**に作用します（太さを決める `strokeWeight(_:)` は 2D のみ。ADR-0005）。
-- `func stroke(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil)` -- チャンネル値でストローク色を設定します。
-  - Note: **2D と 3D の両方**に作用します（太さを決める `strokeWeight(_:)` は 2D のみ。ADR-0005）。
-- `func strokeCap(_ cap: StrokeCap)` -- ストロークの端点スタイルを設定します。
-  - Note: **2D のみ**に作用します（`strokeWeight(_:)` と同じく、3D の線には効きません。ADR-0005）。
-- `func strokeJoin(_ join: StrokeJoin)` -- ストロークの接続スタイルを設定します。
-  - Note: **2D のみ**に作用します（`strokeWeight(_:)` と同じく、3D の線には効きません。ADR-0005）。
-- `func strokeWeight(_ weight: Float)` -- ストロークの太さ（線幅）を設定します。
-  - Note: **2D のみ**に作用します（3D のワイヤーフレームには効きません。ADR-0005）。
-- `func text(_ string: String, _ x: Float, _ y: Float)` -- 指定位置にテキスト文字列を描画します。
-- `func text(_ string: String, _ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- バウンディングボックス内にテキスト文字列を描画します。
-- `func textAlign(_ horizontal: TextAlignH, _ vertical: TextAlignV = .baseline)` -- テキストの配置を設定します。
-- `func textAscent() -> Float` -- 現在のフォントのアセント値を返します。
-- `func textDescent() -> Float` -- 現在のフォントのディセント値を返します。
-- `func textFont(_ family: String)` -- 以降のテキスト描画のフォントファミリーを設定します。
-- `func textFont(_ font: MFont)` -- 以降のテキスト描画に使うフォントを `loadFont(_:cache:)` の結果から設定します。
-- `func textLeading(_ leading: Float)` -- 複数行テキストの行間（行の高さ）を設定します。
-- `func textSize(_ size: Float)` -- 以降のテキスト描画のテキストサイズを設定します。
-- `func textToContours(_ string: String, _ x: Float, _ y: Float, sampleFactor: Float = 0.25) -> [[Vec2]]` -- テキストのグリフアウトラインを、輪郭ごとの閉じたポリラインとして返します。
-- `func textToPoints(_ string: String, _ x: Float, _ y: Float, sampleFactor: Float = 0.25) -> [Vec2]` -- テキストのグリフアウトライン上の点を 1 本の配列で返します（p5 の `textToPoints` 相当）。
-- `func textToShape(_ string: String, _ x: Float, _ y: Float, sampleFactor: Float = 0.25) -> MShape` -- テキストのアウトラインを、穴つきで描けるリテインドシェイプへ変換します。
-- `func texture(_ img: MImage)` -- 以降の 3D シェイプのテクスチャを設定します。
-  - Note: **3D のみ**に作用します（2D で画像を描くには `image()` を使用してください。ADR-0005）。
-- `func textWidth(_ string: String) -> Float` -- 現在のフォント設定でテキスト文字列の幅を計算します。
-- `func tint(_ color: Color)` -- 画像のティント色を設定します。
-  - Note: **2D のみ**に作用します。掛かるのは `image()` で描く画像だけで、3D の `texture(_:)` には効きません——3D のテクスチャは `fill(_:)-(Color)` の色を乗算して着色するため、ティント専用のスロットがそもそもありません（ADR-0005）。テクスチャ付きの 3D に色を掛けたいときは `fill(_:)-(Color)` を使ってください。
-- `func tint(_ gray: Float)` -- グレースケール値で画像のティントを設定します。
-  - Note: **2D のみ**に作用します（3D のテクスチャは `fill(_:)-(Color)` の色で着色します。ADR-0005）。
-- `func tint(_ gray: Float, _ alpha: Float)` -- アルファ付きグレースケール値で画像のティントを設定します。
-  - Note: **2D のみ**に作用します（3D のテクスチャは `fill(_:)-(Color)` の色で着色します。ADR-0005）。
-- `func tint(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil)` -- チャンネル値で画像のティント色を設定します。
-  - Note: **2D のみ**に作用します（3D のテクスチャは `fill(_:)-(Color)` の色で着色します。ADR-0005）。
-- `func toneMapping(_ mode: ToneMapMode)` -- 3D のライティング結果に適用するトーンマッピングを設定します。
-  - Note: 掛かるのは **3D のライティング結果だけ**です。2D の描画の色は変わりません（3D の陰影は物理量、2D の色は最終色、という非対称を意図的に採っています）。ライトが 1 つも無いときの描画（無照明パス）にも掛かりません。
-  - Note: `pushStyle()` / `popStyle()` では**巻き戻りません**。画面全体の性質として扱われます。
-- `func torus(ringRadius: Float, tubeRadius: Float, detail: Int = 24)` -- トーラス（ドーナツ形状）を描画します。
-  - Note: **3D のみ**に作用します（3D キャンバスへ描かれます。ADR-0005）。
-- `func translate(_ x: Float, _ y: Float)` -- 現在の変換に平行移動を適用します。
-  - Note: **2D と 3D の両方**に作用します（3D は z = 0 の平行移動。Processing P3D 互換。ADR-0005 Amendment 2026-08-02）。
-- `func translate(_ x: Float, _ y: Float, _ z: Float)` -- 現在の変換に 3D 平行移動を適用します。
-  - Note: **3D のみ**に作用します。2 引数の `translate(_:_:)` は 2D と 3D の両方に作用します（ADR-0005 Amendment 2026-08-02）。
-- `func triangle(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float, _ x3: Float, _ y3: Float)` -- 3つの頂点で定義される三角形を描画します。
-  - Note: **2D のみ**に作用します（3D の三角形は `beginShape3D(_:)` で組みます。ADR-0005）。
+- `func shader(_ shader: Shader2D)` -- Applies a custom fragment shader to subsequent 2D drawing.
+- `func shadowBias(_ value: Float)` -- Sets the shadow depth bias used to reduce shadow acne.
+  - Note: Affects **3D only** (ADR-0005).
+- `func shape(_ s: MShape)` -- Draws a retained shape at the origin.
+- `func shape(_ s: MShape, _ x: Float, _ y: Float)` -- Draws a retained shape at the given position.
+- `func shape(_ s: MShape, _ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- Draws a retained shape at the given position and size.
+- `func shearX(_ angle: Float)` -- Applies a shear along the x axis to the current transform.
+  - Note: Affects **2D only**. The unification with P3D semantics is limited to `translate(_:_:)` / `rotate(_:)` / `scale(_:_:)`, and shear is out of scope (ADR-0005 Amendment 2026-08-02).
+- `func shearY(_ angle: Float)` -- Applies a shear along the y axis to the current transform.
+  - Note: Affects **2D only**. The unification with P3D semantics is limited to `translate(_:_:)` / `rotate(_:)` / `scale(_:_:)`, and shear is out of scope (ADR-0005 Amendment 2026-08-02).
+- `func shininess(_ value: Float)` -- Sets the specular shininess exponent.
+  - Note: Affects **3D only** (ADR-0005).
+- `func specular(_ color: Color)` -- Sets the color of specular highlights.
+  - Note: Affects **3D only** (2D drawing is not affected by materials. ADR-0005).
+- `func specular(_ gray: Float)` -- Sets the color of specular highlights from a grayscale value.
+  - Note: Affects **3D only** (ADR-0005).
+- `func specular(_ v1: Float, _ v2: Float, _ v3: Float)` -- Sets the color of specular highlights from channel values.
+  - Note: Affects **3D only** (2D drawing is not affected by materials. ADR-0005).
+- `func sphere(_ radius: Float, detail: Int = 24)` -- Draws a sphere.
+  - Note: Affects **3D only** (it is drawn on the 3D canvas. ADR-0005).
+- `func spotLight(_ x: Float, _ y: Float, _ z: Float, _ dirX: Float, _ dirY: Float, _ dirZ: Float, angle: Float = Float.pi / 6, falloff: Float = 0.01, color: Color = .white, intensity: Float = 1.0)` -- Adds a spot light at the given position and direction.
+  - Note: Affects **3D only** (ADR-0005).
+- `func square(_ x: Float, _ y: Float, _ size: Float)` -- Draws a square.
+  - Note: Affects **2D only** (the 3D cube is `box(_:)`. ADR-0005).
+- `func stroke(_ color: Color)` -- Sets the stroke color.
+  - Note: Affects **both 2D and 3D**. However, `strokeWeight(_:)`, which decides the thickness, is **2D only**, so the thickness of 3D lines cannot be changed (ADR-0005).
+- `func stroke(_ gray: Float)` -- Sets the stroke color from a grayscale value.
+  - Note: Affects **both 2D and 3D** (`strokeWeight(_:)`, which decides the thickness, is 2D only; ADR-0005).
+- `func stroke(_ gray: Float, _ alpha: Float)` -- Sets the stroke color from a grayscale value with alpha.
+  - Note: Affects **both 2D and 3D** (`strokeWeight(_:)`, which decides the thickness, is 2D only; ADR-0005).
+- `func stroke(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil)` -- Sets the stroke color from channel values.
+  - Note: Affects **both 2D and 3D** (`strokeWeight(_:)`, which decides the thickness, is 2D only; ADR-0005).
+- `func strokeCap(_ cap: StrokeCap)` -- Sets the stroke cap style.
+  - Note: Affects **2D only** (like `strokeWeight(_:)`, it has no effect on 3D lines; ADR-0005).
+- `func strokeJoin(_ join: StrokeJoin)` -- Sets the stroke join style.
+  - Note: Affects **2D only** (like `strokeWeight(_:)`, it has no effect on 3D lines; ADR-0005).
+- `func strokeWeight(_ weight: Float)` -- Sets the stroke weight (line width).
+  - Note: Affects **2D only** (it has no effect on 3D wireframes; ADR-0005).
+- `func text(_ string: String, _ x: Float, _ y: Float)` -- Draws a text string at the given position.
+- `func text(_ string: String, _ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- Draws a text string inside a bounding box.
+- `func textAlign(_ horizontal: TextAlignH, _ vertical: TextAlignV = .baseline)` -- Sets the text alignment.
+- `func textAscent() -> Float` -- Returns the ascent of the current font.
+- `func textDescent() -> Float` -- Returns the descent of the current font.
+- `func textFont(_ family: String)` -- Sets the font family for subsequent text drawing.
+- `func textFont(_ font: MFont)` -- Sets the font used for subsequent text drawing from the result of `loadFont(_:cache:)`.
+- `func textLeading(_ leading: Float)` -- Sets the leading (line height) for multi-line text.
+- `func textSize(_ size: Float)` -- Sets the text size for subsequent text drawing.
+- `func textToContours(_ string: String, _ x: Float, _ y: Float, sampleFactor: Float = 0.25) -> [[Vec2]]` -- Returns the glyph outlines of a text as closed polylines, one per contour.
+- `func textToPoints(_ string: String, _ x: Float, _ y: Float, sampleFactor: Float = 0.25) -> [Vec2]` -- Returns the points along the glyph outlines of a text as a single flat array (the equivalent
+- `func textToShape(_ string: String, _ x: Float, _ y: Float, sampleFactor: Float = 0.25) -> MShape` -- Converts the outlines of a text into a retained shape that can be drawn with its holes.
+- `func texture(_ img: MImage)` -- Sets the texture for subsequent 3D shapes.
+  - Note: Affects **3D only** (to draw an image in 2D, use `image()`. ADR-0005).
+- `func textWidth(_ string: String) -> Float` -- Computes the width of a text string with the current font settings.
+- `func tint(_ color: Color)` -- Sets the tint color for images.
+  - Note: Affects **2D only**. It applies to images drawn with `image()` and has no effect on 3D `texture(_:)` — a 3D texture is tinted by multiplying in the `fill(_:)-(Color)` color, so there is no dedicated tint slot to begin with (ADR-0005). Use `fill(_:)-(Color)` when you want to multiply a color into textured 3D.
+- `func tint(_ gray: Float)` -- Sets the image tint from a grayscale value.
+  - Note: Affects **2D only** (a 3D texture is tinted with the `fill(_:)-(Color)` color; ADR-0005).
+- `func tint(_ gray: Float, _ alpha: Float)` -- Sets the image tint from a grayscale value with alpha.
+  - Note: Affects **2D only** (a 3D texture is tinted with the `fill(_:)-(Color)` color; ADR-0005).
+- `func tint(_ v1: Float, _ v2: Float, _ v3: Float, _ a: Float? = nil)` -- Sets the image tint color from channel values.
+  - Note: Affects **2D only** (a 3D texture is tinted with the `fill(_:)-(Color)` color; ADR-0005).
+- `func toneMapping(_ mode: ToneMapMode)` -- Sets the tone mapping applied to the 3D lighting result.
+  - Note: This applies to **the 3D lighting result only**. The colors of 2D drawing do not change (the asymmetry is deliberate: 3D shading is a physical quantity, while a 2D color is a final color). It does not apply to drawing with no lights at all (the unlit pass) either.
+  - Note: It is **not restored** by `pushStyle()` / `popStyle()`. It is treated as a property of the whole screen.
+- `func torus(ringRadius: Float, tubeRadius: Float, detail: Int = 24)` -- Draws a torus (a doughnut shape).
+  - Note: Affects **3D only** (it is drawn on the 3D canvas. ADR-0005).
+- `func translate(_ x: Float, _ y: Float)` -- Applies a translation to the current transform.
+  - Note: Affects **both 2D and 3D** (in 3D it is a translation with z = 0, compatible with Processing P3D; ADR-0005 Amendment 2026-08-02).
+- `func translate(_ x: Float, _ y: Float, _ z: Float)` -- Applies a 3D translation to the current transform.
+  - Note: Affects **3D only**. The two-argument `translate(_:_:)` affects both 2D and 3D (ADR-0005 Amendment 2026-08-02).
+- `func triangle(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float, _ x3: Float, _ y3: Float)` -- Draws a triangle defined by three vertices.
+  - Note: Affects **2D only** (a 3D triangle is built with `beginShape3D(_:)`. ADR-0005).
 - `func tween<T>(from: T, to: T, duration: Float, easing: EasingFunction = easeInOutCubic) -> Tween<T> where T : Interpolatable` -- トゥイーンアニメーションを作成し登録します（トゥイーンマネージャに自動追加されます）。
 - `func updateParticles(_ system: ParticleSystem)` -- パーティクルシステムを更新します（`compute()` 内で呼び出してください）。
-- `func updatePixels()` -- 変更されたピクセルデータをアップロードしキャンバスに描画します。
-  - Note: `loadPixels()` を一度も呼んでいない場合は何もしません。
-- `func vertex(_ x: Float, _ y: Float)` -- 現在のシェイプに 2D 頂点を追加します。
-  - Note: 作用先は**記録中のシェイプ**が決めます。`beginShape(_:)` で始めていれば 2D へ、`beginShape3D(_:)` で始めていれば z = 0 の 3D 頂点として流れます（Processing 互換。ADR-0005）。
-- `func vertex(_ x: Float, _ y: Float, _ z: Float)` -- 現在のシェイプに 3D 頂点を追加します。
-  - Note: 作用先は**記録中のシェイプ**が決めます。`beginShape3D(_:)` で始めていれば 3D へ、2D の `beginShape(_:)` で始めていれば z を落として 2D へ流れます（Processing 互換。立体を組んだつもりが平面になるため初回だけ警告します。ADR-0005）。
-- `func vertex(_ x: Float, _ y: Float, _ color: Color)` -- 現在のシェイプに頂点カラー付き 2D 頂点を追加します。
-  - Note: 作用先は**記録中のシェイプ**が決めます。`beginShape(_:)` で始めていれば 2D へ、`beginShape3D(_:)` で始めていれば z = 0 の 3D 頂点として流れます（ADR-0005）。
-- `func vertex(_ x: Float, _ y: Float, _ z: Float, _ color: Color)` -- 現在のシェイプに頂点カラー付き 3D 頂点を追加します。
-  - Note: 作用先は**記録中のシェイプ**が決めます。`beginShape3D(_:)` で始めていれば 3D へ、2D の `beginShape(_:)` で始めていれば z を落として 2D へ流れます（ADR-0005）。
-- `func vertex(_ x: Float, _ y: Float, _ u: Float, _ v: Float)` -- 現在のシェイプにテクスチャ座標付き 2D 頂点を追加します。
-  - Note: 作用先は**記録中のシェイプ**が決めます。`beginShape(_:)` で始めていれば 2D へ流れます。`beginShape3D(_:)` の記録中は UV を落として z = 0 の 3D 頂点になり、初回だけ警告します（ADR-0005）。
-- `func vertex(_ x: Float, _ y: Float, _ z: Float, _ u: Float, _ v: Float)` -- 現在のシェイプにテクスチャ座標付き 3D 頂点を追加します。
-  - Note: 作用先は**記録中のシェイプ**が決めます。`beginShape3D(_:)` で始めていれば 3D へ、2D の `beginShape(_:)` で始めていれば z を落として 2D へ流れます（ADR-0005）。
+- `func updatePixels()` -- Uploads the modified pixel data and draws it to the canvas.
+  - Note: Does nothing if `loadPixels()` has never been called.
+- `func vertex(_ x: Float, _ y: Float)` -- Adds a 2D vertex to the current shape.
+  - Note: What it affects is decided by **the shape being recorded**. If recording started with `beginShape(_:)` it goes to 2D, and if it started with `beginShape3D(_:)` it flows through as a 3D vertex with z = 0 (compatible with Processing. ADR-0005).
+- `func vertex(_ x: Float, _ y: Float, _ z: Float)` -- Adds a 3D vertex to the current shape.
+  - Note: The destination is decided by **the shape being recorded**. If it was started with `beginShape3D(_:)` the vertex goes to 3D; if it was started with the 2D `beginShape(_:)` the z is dropped and it flows to 2D (Processing compatible. Because a solid you meant to build comes out flat, a warning is emitted the first time only. ADR-0005).
+- `func vertex(_ x: Float, _ y: Float, _ color: Color)` -- Adds a 2D vertex with a vertex color to the current shape.
+  - Note: What it affects is decided by **the shape being recorded**. If recording started with `beginShape(_:)` it goes to 2D, and if it started with `beginShape3D(_:)` it flows through as a 3D vertex with z = 0 (ADR-0005).
+- `func vertex(_ x: Float, _ y: Float, _ z: Float, _ color: Color)` -- Adds a 3D vertex with a vertex color to the current shape.
+  - Note: The destination is decided by **the shape being recorded**. If it was started with `beginShape3D(_:)` the vertex goes to 3D; if it was started with the 2D `beginShape(_:)` the z is dropped and it flows to 2D (ADR-0005).
+- `func vertex(_ x: Float, _ y: Float, _ u: Float, _ v: Float)` -- Adds a 2D vertex with texture coordinates to the current shape.
+  - Note: What it affects is decided by **the shape being recorded**. If recording started with `beginShape(_:)` it goes to 2D. While `beginShape3D(_:)` is recording, the UVs are dropped and it becomes a 3D vertex with z = 0, warning once (ADR-0005).
+- `func vertex(_ x: Float, _ y: Float, _ z: Float, _ u: Float, _ v: Float)` -- Adds a 3D vertex with texture coordinates to the current shape.
+  - Note: The destination is decided by **the shape being recorded**. If it was started with `beginShape3D(_:)` the vertex goes to 3D; if it was started with the 2D `beginShape(_:)` the z is dropped and it flows to 2D (ADR-0005).
 
 ## Core Types
 
@@ -664,36 +664,36 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `init(x: Float, y: Float, diameter: Float, color: Color = .white)` -- Creates a circle instance from scalar coordinates, diameter, and `Color`.
 - `init(x: Float, y: Float, diameter: Float, color: SIMD4<Float>)` -- Creates a circle instance from scalar coordinates, diameter, and SIMD color.
 
-### `struct Color` -- 浮動小数点成分を持つ RGBA カラー。
+### `struct Color` -- An RGBA color with floating-point components.
 
-- `var a: Float` -- アルファ（不透明度）成分。0.0 から 1.0 のスケール（範囲外の値も保持されます）。
-- `var b: Float` -- 青成分。0.0 から 1.0 のスケール（範囲外の値も保持されます）。
-- `static let black: Color` -- 純粋な黒。
-- `static let blue: Color` -- 純粋な青。
-- `static let clear: Color` -- 完全に透明な黒。
-- `var clearColor: MTLClearColor { get }` -- Metal レンダーパスで使用するための `MTLClearColor` としてカラーを返します。
-- `static let cyan: Color` -- 純粋なシアン。
-- `var g: Float` -- 緑成分。0.0 から 1.0 のスケール（範囲外の値も保持されます）。
-- `static let green: Color` -- 純粋な緑。
-- `static let magenta: Color` -- 純粋なマゼンタ。
-- `static let orange: Color` -- オレンジ。
+- `var a: Float` -- The alpha (opacity) component, on a 0.0 to 1.0 scale (out-of-range values are preserved).
+- `var b: Float` -- The blue component, on a 0.0 to 1.0 scale (out-of-range values are preserved).
+- `static let black: Color` -- Pure black.
+- `static let blue: Color` -- Pure blue.
+- `static let clear: Color` -- Fully transparent black.
+- `var clearColor: MTLClearColor { get }` -- The color as an `MTLClearColor` for use in a Metal render pass.
+- `static let cyan: Color` -- Pure cyan.
+- `var g: Float` -- The green component, on a 0.0 to 1.0 scale (out-of-range values are preserved).
+- `static let green: Color` -- Pure green.
+- `static let magenta: Color` -- Pure magenta.
+- `static let orange: Color` -- Orange.
 - `static var paramTypeTag: String { get }`
 - `var paramValue: ParamValue { get }`
-- `var r: Float` -- 赤成分。0.0 から 1.0 のスケール（範囲外の値も保持されます）。
-- `static let red: Color` -- 純粋な赤。
-- `var simd: SIMD4<Float> { get }` -- カラーを (r, g, b, a) 順の `SIMD4<Float>` として返します。
-- `static let white: Color` -- 純粋な白。
-- `static let yellow: Color` -- 純粋な黄。
-- `init(_ simd: SIMD4<Float>)` -- (r, g, b, a) として解釈される `SIMD4<Float>` ベクトルからカラーを作成します。
-- `init(gray: Float, alpha: Float = 1.0)` -- グレースケールカラーを作成します。0.0 が黒、1.0 が白。
-- `init(hex: UInt32)` -- 0xRRGGBB または 0xAARRGGBB 形式の整数16進数値からカラーを作成します。
-- `init?(hex: String)` -- "#RGB" / "#RRGGBB" / "#AARRGGBB" 形式の16進数文字列からカラーを作成します。
-- `init(hue: Float, saturation: Float, brightness: Float, alpha: Float = 1.0)` -- 色相、彩度、明度の成分からカラーを作成します。
+- `var r: Float` -- The red component, on a 0.0 to 1.0 scale (out-of-range values are preserved).
+- `static let red: Color` -- Pure red.
+- `var simd: SIMD4<Float> { get }` -- The color as a `SIMD4<Float>` in (r, g, b, a) order.
+- `static let white: Color` -- Pure white.
+- `static let yellow: Color` -- Pure yellow.
+- `init(_ simd: SIMD4<Float>)` -- Creates a color from a `SIMD4<Float>` vector interpreted as (r, g, b, a).
+- `init(gray: Float, alpha: Float = 1.0)` -- Creates a grayscale color, where 0.0 is black and 1.0 is white.
+- `init(hex: UInt32)` -- Creates a color from an integer hexadecimal value in 0xRRGGBB or 0xAARRGGBB form.
+- `init?(hex: String)` -- Creates a color from a hexadecimal string in "#RGB", "#RRGGBB", or "#AARRGGBB" form.
+- `init(hue: Float, saturation: Float, brightness: Float, alpha: Float = 1.0)` -- Creates a color from hue, saturation, and brightness components.
 - `init?(paramValue: ParamValue)`
-- `init(r: Float, g: Float, b: Float, alpha: Float = 1.0)` -- 0.0 から 1.0 のスケールの RGB 成分からカラーを作成します。
+- `init(r: Float, g: Float, b: Float, alpha: Float = 1.0)` -- Creates a color from RGB components on a 0.0 to 1.0 scale.
 - `static func interpolate(from: Color, to: Color, t: Float) -> Color`
-- `func lerp(to other: Color, t: Float) -> Color` -- このカラーと別のカラーの間を線形補間します。
-- `func withAlpha(_ alpha: Float) -> Color` -- 指定されたアルファ値を持つ新しいカラーを返します。
+- `func lerp(to other: Color, t: Float) -> Color` -- Linearly interpolates between this color and another color.
+- `func withAlpha(_ alpha: Float) -> Color` -- Returns a new color with the given alpha value.
 
 ### `struct DrawingStyle` -- Canvas2D と Canvas3D で共有される描画スタイルプロパティを保持します。
 
@@ -913,10 +913,10 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `case close` -- 最後の頂点と最初の頂点を接続してシェイプを閉じる。
 - `case open` -- 最後の頂点と最初の頂点を接続せずシェイプを開いたままにする。
 
-### `enum ColorSpace` -- カラー解釈に使用されるカラースペースを定義します。
+### `enum ColorSpace` -- Defines the color space used to interpret colors.
 
-- `case hsb` -- 色相、彩度、明度のカラースペース。
-- `case rgb` -- 赤、緑、青のカラースペース。
+- `case hsb` -- The hue, saturation, and brightness color space.
+- `case rgb` -- The red, green, and blue color space.
 
 ### `enum DataIO` -- データ IO（JSON / Table / Strings）のコア実装。
 
@@ -1542,24 +1542,24 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func toArray() -> [T]` -- バッファの内容を Swift 配列にコピーします。
 - `subscript(index: Int) -> T { get set }` -- 指定されたインデックスの要素にアクセスします。
 
-### `final class Graphics` -- オフスクリーン2D描画バッファを提供します（Processing の `createGraphics()` に相当）。
+### `final class Graphics` -- Provides an offscreen 2D drawing buffer (the equivalent of Processing's
 
 - （ほか 83 件の描画・変換メンバーは Sketch API と同名・同挙動）
-- `var height: Float { get }` -- 高さをピクセル単位で返します。
-- `var width: Float { get }` -- 幅をピクセル単位で返します。
-- `func beginDraw()` -- コマンドバッファとレンダーコマンドエンコーダーを作成して描画を開始します。
-- `func endDraw(wait: Bool = false)` -- 描画を終了します。
-- `func screenPosition(_ x: Float, _ y: Float) -> SIMD2<Float>` -- モデル座標を現在の変換で**このバッファの**ピクセル座標へ変換します。
-- `func toImage() -> MImage` -- オフスクリーンテクスチャを MImage として返します。
+- `var height: Float { get }` -- The height in pixels.
+- `var width: Float { get }` -- The width in pixels.
+- `func beginDraw()` -- Begins drawing by creating a command buffer and a render command encoder.
+- `func endDraw(wait: Bool = false)` -- Ends drawing.
+- `func screenPosition(_ x: Float, _ y: Float) -> SIMD2<Float>` -- Converts model coordinates to pixel coordinates **within this buffer** using the
+- `func toImage() -> MImage` -- Returns the offscreen texture as an MImage.
 
-### `final class Graphics3D` -- 3Dオフスクリーン描画バッファを提供します（`createGraphics3D()` で使用）。
+### `final class Graphics3D` -- Provides a 3D offscreen drawing buffer (used through `createGraphics3D()`).
 
 - （ほか 63 件の描画・変換メンバーは Sketch API と同名・同挙動）
-- `var height: Float { get }` -- 高さをピクセル単位で返します。
-- `var width: Float { get }` -- 幅をピクセル単位で返します。
-- `func beginDraw(time: Float = 0)` -- オプションの時間値でアニメーション用の描画を開始します。
-- `func endDraw(wait: Bool = false)` -- 描画を終了します。
-- `func toImage() -> MImage` -- オフスクリーンテクスチャを MImage として返します。
+- `var height: Float { get }` -- The height in pixels.
+- `var width: Float { get }` -- The width in pixels.
+- `func beginDraw(time: Float = 0)` -- Begins drawing for animation with an optional time value.
+- `func endDraw(wait: Bool = false)` -- Ends drawing.
+- `func toImage() -> MImage` -- Returns the offscreen texture as an MImage.
 
 ### `final class GrayscaleEffect` -- グレースケールに変換します。
 
@@ -2065,11 +2065,11 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `init(intensity: Float = 0.5, smoothness: Float = 0.5)`
 - `func apply(input: any MTLTexture, output: any MTLTexture, commandBuffer: any MTLCommandBuffer, context: PostEffectContext)`
 
-### `typealias EasingFunction = (Float) -> Float` -- t を 0..1 から 0..1 にマッピングするイージング関数の型エイリアス。
+### `typealias EasingFunction = (Float) -> Float` -- A type alias for an easing function that maps t from 0..1 to 0..1.
 
-### `typealias Vec2 = SIMD2<Float>` -- `SIMD2<Float>` のエイリアスである2次元ベクトル。
+### `typealias Vec2 = SIMD2<Float>` -- A two-dimensional vector, an alias for `SIMD2<Float>`.
 
-### `typealias Vec3 = SIMD3<Float>` -- `SIMD3<Float>` のエイリアスである3次元ベクトル。
+### `typealias Vec3 = SIMD3<Float>` -- A three-dimensional vector, an alias for `SIMD3<Float>`.
 
 ### `extension Bool`
 
@@ -2106,49 +2106,49 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `extension SIMD2 where Scalar == Float`
 
-- `var magnitude: Float { get }` -- ベクトルの長さ（大きさ）を返します。
-- `var magnitudeSquared: Float { get }` -- 平方根のコストを回避した、ベクトルの長さの二乗を返します。
+- `var magnitude: Float { get }` -- The length (magnitude) of the vector.
+- `var magnitudeSquared: Float { get }` -- The squared length of the vector, which avoids the cost of a square root.
 - `static var paramTypeTag: String { get }`
 - `var paramValue: ParamValue { get }`
 - `init?(paramValue: ParamValue)`
-- `func angleBetween(_ other: SIMD2<Float>) -> Float` -- このベクトルと別のベクトルの間の符号付き角度をラジアンで計算します。
-- `func cross(_ other: SIMD2<Float>) -> Float` -- 3D外積のz成分に相当する2D外積を計算します。
-- `func dist(to other: SIMD2<Float>) -> Float` -- 別のベクトルまでのユークリッド距離を計算します。
-- `func dot(_ other: SIMD2<Float>) -> Float` -- 別のベクトルとの内積を計算します。
-- `static func fromAngle(_ angle: Float) -> SIMD2<Float>` -- 指定された角度から単位ベクトルを作成します。
-- `func heading() -> Float` -- 正のx軸から測定したベクトルの角度をラジアンで計算します。
+- `func angleBetween(_ other: SIMD2<Float>) -> Float` -- Calculates the signed angle in radians between this vector and another vector.
+- `func cross(_ other: SIMD2<Float>) -> Float` -- Calculates the 2D cross product, which corresponds to the z component of the 3D cross product.
+- `func dist(to other: SIMD2<Float>) -> Float` -- Calculates the Euclidean distance to another vector.
+- `func dot(_ other: SIMD2<Float>) -> Float` -- Calculates the dot product with another vector.
+- `static func fromAngle(_ angle: Float) -> SIMD2<Float>` -- Creates a unit vector from the given angle.
+- `func heading() -> Float` -- Calculates the angle of the vector in radians, measured from the positive x-axis.
 - `static func interpolate(from: SIMD2<Float>, to: SIMD2<Float>, t: Float) -> SIMD2<Float>`
-- `func lerp(to other: SIMD2<Float>, t: Float) -> SIMD2<Float>` -- 別のベクトルに向かって線形補間を行います。
-- `mutating func limit(_ max: Float)` -- このベクトルの大きさをその場で最大値にクランプします（`limited(_:)` の mutating 版）。
-- `func limited(_ max: Float) -> SIMD2<Float>` -- 指定された最大値に大きさをクランプした新しいベクトルを返します。
-- `mutating func normalize()` -- このベクトルをその場で単位ベクトルにします（`normalized()` の mutating 版）。
-- `func normalized() -> SIMD2<Float>` -- 同じ方向を向いた単位ベクトルを返します。
-- `static func random2D() -> SIMD2<Float>` -- 均一に分布した方向を持つランダムな単位ベクトルを作成します。
-- `mutating func rotate(_ angle: Float)` -- このベクトルをその場で回転します（`rotated(_:)` の mutating 版）。
-- `func rotated(_ angle: Float) -> SIMD2<Float>` -- 指定された角度で回転した新しいベクトルを返します。
-- `mutating func setMag(_ len: Float)` -- 方向を維持したまま、このベクトルの大きさをその場で設定します
-- `func withMagnitude(_ len: Float) -> SIMD2<Float>` -- 方向を維持したまま、指定された大きさを持つ新しいベクトルを返します。
+- `func lerp(to other: SIMD2<Float>, t: Float) -> SIMD2<Float>` -- Linearly interpolates toward another vector.
+- `mutating func limit(_ max: Float)` -- Clamps this vector's magnitude to a maximum in place (the mutating form of `limited(_:)`).
+- `func limited(_ max: Float) -> SIMD2<Float>` -- Returns a new vector whose magnitude is clamped to the given maximum.
+- `mutating func normalize()` -- Makes this vector a unit vector in place (the mutating form of `normalized()`).
+- `func normalized() -> SIMD2<Float>` -- Returns a unit vector pointing in the same direction.
+- `static func random2D() -> SIMD2<Float>` -- Creates a random unit vector with a uniformly distributed direction.
+- `mutating func rotate(_ angle: Float)` -- Rotates this vector in place (the mutating form of `rotated(_:)`).
+- `func rotated(_ angle: Float) -> SIMD2<Float>` -- Returns a new vector rotated by the given angle.
+- `mutating func setMag(_ len: Float)` -- Sets this vector's magnitude in place, preserving the direction
+- `func withMagnitude(_ len: Float) -> SIMD2<Float>` -- Returns a new vector with the given magnitude, preserving the direction.
 
 ### `extension SIMD3 where Scalar == Float`
 
-- `var magnitude: Float { get }` -- ベクトルの長さ（大きさ）を返します。
-- `var magnitudeSquared: Float { get }` -- 平方根のコストを回避した、ベクトルの長さの二乗を返します。
+- `var magnitude: Float { get }` -- The length (magnitude) of the vector.
+- `var magnitudeSquared: Float { get }` -- The squared length of the vector, which avoids the cost of a square root.
 - `static var paramTypeTag: String { get }`
 - `var paramValue: ParamValue { get }`
 - `init?(paramValue: ParamValue)`
-- `func angleBetween(_ other: SIMD3<Float>) -> Float` -- このベクトルと別のベクトルの間の符号なし角度をラジアンで計算します。
-- `func cross(_ other: SIMD3<Float>) -> SIMD3<Float>` -- 別のベクトルとの外積を計算します。
-- `func dist(to other: SIMD3<Float>) -> Float` -- 別のベクトルまでのユークリッド距離を計算します。
-- `func dot(_ other: SIMD3<Float>) -> Float` -- 別のベクトルとの内積を計算します。
+- `func angleBetween(_ other: SIMD3<Float>) -> Float` -- Calculates the unsigned angle in radians between this vector and another vector.
+- `func cross(_ other: SIMD3<Float>) -> SIMD3<Float>` -- Calculates the cross product with another vector.
+- `func dist(to other: SIMD3<Float>) -> Float` -- Calculates the Euclidean distance to another vector.
+- `func dot(_ other: SIMD3<Float>) -> Float` -- Calculates the dot product with another vector.
 - `static func interpolate(from: SIMD3<Float>, to: SIMD3<Float>, t: Float) -> SIMD3<Float>`
-- `func lerp(to other: SIMD3<Float>, t: Float) -> SIMD3<Float>` -- 別のベクトルに向かって線形補間を行います。
-- `mutating func limit(_ max: Float)` -- このベクトルの大きさをその場で最大値にクランプします（`limited(_:)` の mutating 版）。
-- `func limited(_ max: Float) -> SIMD3<Float>` -- 指定された最大値に大きさをクランプした新しいベクトルを返します。
-- `mutating func normalize()` -- このベクトルをその場で単位ベクトルにします（`normalized()` の mutating 版）。
-- `func normalized() -> SIMD3<Float>` -- 同じ方向を向いた単位ベクトルを返します。
-- `static func random3D() -> SIMD3<Float>` -- 単位球の表面上に均一に分布するランダムな単位ベクトルを作成します。
-- `mutating func setMag(_ len: Float)` -- 方向を維持したまま、このベクトルの大きさをその場で設定します
-- `func withMagnitude(_ len: Float) -> SIMD3<Float>` -- 方向を維持したまま、指定された大きさを持つ新しいベクトルを返します。
+- `func lerp(to other: SIMD3<Float>, t: Float) -> SIMD3<Float>` -- Linearly interpolates toward another vector.
+- `mutating func limit(_ max: Float)` -- Clamps this vector's magnitude to a maximum in place (the mutating form of `limited(_:)`).
+- `func limited(_ max: Float) -> SIMD3<Float>` -- Returns a new vector whose magnitude is clamped to the given maximum.
+- `mutating func normalize()` -- Makes this vector a unit vector in place (the mutating form of `normalized()`).
+- `func normalized() -> SIMD3<Float>` -- Returns a unit vector pointing in the same direction.
+- `static func random3D() -> SIMD3<Float>` -- Creates a random unit vector distributed uniformly over the surface of the unit sphere.
+- `mutating func setMag(_ len: Float)` -- Sets this vector's magnitude in place, preserving the direction
+- `func withMagnitude(_ len: Float) -> SIMD3<Float>` -- Returns a new vector with the given magnitude, preserving the direction.
 
 ### `extension SIMD4 where Scalar == Float`
 
@@ -2156,16 +2156,16 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `extension simd_float4x4`
 
-- `static let identity: float4x4` -- 単位行列を作成します。
-- `init(lookAt eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float>)` -- look-at 方式のビュー行列を作成します。
-- `init(orthographic left: Float, right: Float, bottom: Float, top: Float, near: Float, far: Float)` -- 正射影行列を作成します。
-- `init(perspectiveFov fov: Float, aspect: Float, near: Float, far: Float)` -- 透視投影行列を作成します。
-- `init(rotationX angle: Float)` -- X軸まわりの回転行列を作成します。
-- `init(rotationY angle: Float)` -- Y軸まわりの回転行列を作成します。
-- `init(rotationZ angle: Float)` -- Z軸まわりの回転行列を作成します。
-- `init(scale: SIMD3<Float>)` -- 非均一スケール行列を作成します。
-- `init(scale: Float)` -- 均一スケール行列を作成します。
-- `init(translation: SIMD3<Float>)` -- 3Dベクトルから平行移動行列を作成します。
+- `static let identity: float4x4` -- The identity matrix.
+- `init(lookAt eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float>)` -- Creates a look-at view matrix.
+- `init(orthographic left: Float, right: Float, bottom: Float, top: Float, near: Float, far: Float)` -- Creates an orthographic projection matrix.
+- `init(perspectiveFov fov: Float, aspect: Float, near: Float, far: Float)` -- Creates a perspective projection matrix.
+- `init(rotationX angle: Float)` -- Creates a rotation matrix around the x-axis.
+- `init(rotationY angle: Float)` -- Creates a rotation matrix around the y-axis.
+- `init(rotationZ angle: Float)` -- Creates a rotation matrix around the z-axis.
+- `init(scale: SIMD3<Float>)` -- Creates a non-uniform scale matrix.
+- `init(scale: Float)` -- Creates a uniform scale matrix.
+- `init(translation: SIMD3<Float>)` -- Creates a translation matrix from a 3D vector.
 
 ### `extension String`
 
@@ -2177,125 +2177,125 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### Math
 
-- `func bezierPoint(_ a: Float, _ b: Float, _ c: Float, _ d: Float, _ t: Float) -> Float` -- 指定されたパラメータにおける3次ベジェ曲線上の点を評価します。
-- `func bezierTangent(_ a: Float, _ b: Float, _ c: Float, _ d: Float, _ t: Float) -> Float` -- 指定されたパラメータにおける3次ベジェ曲線の接線を評価します。
-- `func constrain(_ value: Float, _ low: Float, _ high: Float) -> Float` -- 値を指定された範囲に制約します。
-- `func curvePoint(_ a: Float, _ b: Float, _ c: Float, _ d: Float, _ t: Float) -> Float` -- 指定されたパラメータにおける Catmull-Rom スプライン上の点を評価します。
-- `func curveTangent(_ a: Float, _ b: Float, _ c: Float, _ d: Float, _ t: Float) -> Float` -- 指定されたパラメータにおける Catmull-Rom スプラインの接線を評価します。
-- `func degrees(_ radians: Float) -> Float` -- ラジアンを度数法に変換します。
-- `func dist(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float) -> Float` -- 2つの2D点間のユークリッド距離を計算します。
-- `func dist(_ x1: Float, _ y1: Float, _ z1: Float, _ x2: Float, _ y2: Float, _ z2: Float) -> Float` -- 2つの3D点間のユークリッド距離を計算します。
-- `func lerp<T>(_ a: T, _ b: T, _ t: T) -> T where T : FloatingPoint` -- 2つの値の間を線形補間します。
-- `func lerp(_ a: SIMD2<Float>, _ b: SIMD2<Float>, _ t: Float) -> SIMD2<Float>` -- 2つの2Dベクトルの間を線形補間します。
-- `func lerp(_ a: SIMD3<Float>, _ b: SIMD3<Float>, _ t: Float) -> SIMD3<Float>` -- 2つの3Dベクトルの間を線形補間します。
-- `func lerp(_ a: SIMD4<Float>, _ b: SIMD4<Float>, _ t: Float) -> SIMD4<Float>` -- 2つの4Dベクトルの間を線形補間します。
-- `func mag(_ x: Float, _ y: Float) -> Float` -- 2Dベクトルの大きさを計算します。
-- `func mag(_ x: Float, _ y: Float, _ z: Float) -> Float` -- 3Dベクトルの大きさを計算します。
-- `func map(_ value: Float, _ start1: Float, _ stop1: Float, _ start2: Float, _ stop2: Float) -> Float` -- 値をある範囲から別の範囲にリマップします。
+- `func bezierPoint(_ a: Float, _ b: Float, _ c: Float, _ d: Float, _ t: Float) -> Float` -- Evaluates a point on a cubic Bezier curve at the given parameter.
+- `func bezierTangent(_ a: Float, _ b: Float, _ c: Float, _ d: Float, _ t: Float) -> Float` -- Evaluates the tangent of a cubic Bezier curve at the given parameter.
+- `func constrain(_ value: Float, _ low: Float, _ high: Float) -> Float` -- Constrains a value to the given range.
+- `func curvePoint(_ a: Float, _ b: Float, _ c: Float, _ d: Float, _ t: Float) -> Float` -- Evaluates a point on a Catmull-Rom spline at the given parameter.
+- `func curveTangent(_ a: Float, _ b: Float, _ c: Float, _ d: Float, _ t: Float) -> Float` -- Evaluates the tangent of a Catmull-Rom spline at the given parameter.
+- `func degrees(_ radians: Float) -> Float` -- Converts an angle in radians to degrees.
+- `func dist(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float) -> Float` -- Calculates the Euclidean distance between two 2D points.
+- `func dist(_ x1: Float, _ y1: Float, _ z1: Float, _ x2: Float, _ y2: Float, _ z2: Float) -> Float` -- Calculates the Euclidean distance between two 3D points.
+- `func lerp<T>(_ a: T, _ b: T, _ t: T) -> T where T : FloatingPoint` -- Linearly interpolates between two values.
+- `func lerp(_ a: SIMD2<Float>, _ b: SIMD2<Float>, _ t: Float) -> SIMD2<Float>` -- Linearly interpolates between two 2D vectors.
+- `func lerp(_ a: SIMD3<Float>, _ b: SIMD3<Float>, _ t: Float) -> SIMD3<Float>` -- Linearly interpolates between two 3D vectors.
+- `func lerp(_ a: SIMD4<Float>, _ b: SIMD4<Float>, _ t: Float) -> SIMD4<Float>` -- Linearly interpolates between two 4D vectors.
+- `func mag(_ x: Float, _ y: Float) -> Float` -- Calculates the magnitude of a 2D vector.
+- `func mag(_ x: Float, _ y: Float, _ z: Float) -> Float` -- Calculates the magnitude of a 3D vector.
+- `func map(_ value: Float, _ start1: Float, _ stop1: Float, _ start2: Float, _ stop2: Float) -> Float` -- Re-maps a value from one range to another.
 - `func metaphorAlert(_ message: () -> String)` -- **Release ビルドでも必ず** stderr に出す警告。
 - `func metaphorDiagnostic(_ message: () -> String)` -- ランタイムゲート付きの診断ログ（stderr）。
 - `func metaphorWarning(_ message: () -> String)` -- 開発者向けの警告（stdout、**DEBUG ビルドのみ**）。
-- `func norm(_ value: Float, _ start: Float, _ stop: Float) -> Float` -- 値を指定された範囲から [0, 1] の範囲に正規化します。
-- `func radians(_ degrees: Float) -> Float` -- 度数法をラジアンに変換します。
-- `func random(_ high: Float) -> Float` -- 0 から指定された上限（上限を含まない）までのランダムな Float 値を返します。
-- `func random(_ low: Float, _ high: Float) -> Float` -- 指定された範囲内のランダムな Float 値を返します。
-- `func randomGaussian(_ mean: Float = 0, _ sd: Float = 1) -> Float` -- Box-Muller 変換を使用してガウス（正規）分布に従うランダムな値を返します。
-- `func randomSeed(_ seed: UInt64)` -- 乱数生成器のシードを設定します。
-- `func saturate(_ x: Float) -> Float` -- 値を [0, 1] の範囲にクランプします。
-- `func smoothstep(_ edge0: Float, _ edge1: Float, _ x: Float) -> Float` -- 2つのエッジ間でエルミート補間を行います。
-- `func sq(_ value: Float) -> Float` -- 値の二乗を計算します。
+- `func norm(_ value: Float, _ start: Float, _ stop: Float) -> Float` -- Normalizes a value from the given range into the range [0, 1].
+- `func radians(_ degrees: Float) -> Float` -- Converts an angle in degrees to radians.
+- `func random(_ high: Float) -> Float` -- Returns a random Float value from 0 up to the given upper bound, which is excluded.
+- `func random(_ low: Float, _ high: Float) -> Float` -- Returns a random Float value within the given range.
+- `func randomGaussian(_ mean: Float = 0, _ sd: Float = 1) -> Float` -- Returns a random value from a Gaussian (normal) distribution using the Box-Muller transform.
+- `func randomSeed(_ seed: UInt64)` -- Sets the seed of the pseudo-random number generator.
+- `func saturate(_ x: Float) -> Float` -- Clamps a value to the range [0, 1].
+- `func smoothstep(_ edge0: Float, _ edge1: Float, _ x: Float) -> Float` -- Performs Hermite interpolation between two edges.
+- `func sq(_ value: Float) -> Float` -- Calculates the square of a value.
 
 ### Easing
 
-- `func ease(_ t: Float, from a: Float, to b: Float, using f: (Float) -> Float) -> Float` -- イージング関数を使用して2つの値の間を補間します。
-- `func easeInBack(_ t: Float) -> Float` -- 加速前に引き戻すバックイーズインカーブを適用します。
-- `func easeInBounce(_ t: Float) -> Float` -- ボールが落下してバウンドするようなバウンスイーズインカーブを適用します。
-- `func easeInCirc(_ t: Float) -> Float` -- 四分円弧に沿って加速する円形イーズインカーブを適用します。
-- `func easeInCubic(_ t: Float) -> Float` -- ゆっくり始まり急激に加速する3次イーズインカーブを適用します。
-- `func easeInElastic(_ t: Float) -> Float` -- 加速前にバネのように振動するエラスティックイーズインカーブを適用します。
-- `func easeInExpo(_ t: Float) -> Float` -- ほぼゼロから指数的に加速する指数イーズインカーブを適用します。
-- `func easeInOutBack(_ t: Float) -> Float` -- 引き戻し、加速、オーバーシュート、収束を行うバックイーズインアウトカーブを適用します。
-- `func easeInOutBounce(_ t: Float) -> Float` -- 遷移の両側でバウンスするバウンスイーズインアウトカーブを適用します。
-- `func easeInOutCirc(_ t: Float) -> Float` -- 半円弧に沿った円形イーズインアウトカーブを適用します。
-- `func easeInOutCubic(_ t: Float) -> Float` -- 滑らかに加速してから減速する3次イーズインアウトカーブを適用します。
-- `func easeInOutElastic(_ t: Float) -> Float` -- 両端でバネ振動を持つエラスティックイーズインアウトカーブを適用します。
-- `func easeInOutExpo(_ t: Float) -> Float` -- 指数的な加速と減速を持つ指数イーズインアウトカーブを適用します。
-- `func easeInOutQuad(_ t: Float) -> Float` -- 加速してから減速する2次イーズインアウトカーブを適用します。
-- `func easeInOutQuart(_ t: Float) -> Float` -- 急勾配で加速してから減速する4次イーズインアウトカーブを適用します。
-- `func easeInOutQuint(_ t: Float) -> Float` -- 強烈に加速してから減速する5次イーズインアウトカーブを適用します。
-- `func easeInOutSine(_ t: Float) -> Float` -- 滑らかに加速・減速する正弦波イーズインアウトカーブを適用します。
-- `func easeInQuad(_ t: Float) -> Float` -- ゆっくり始まり加速する2次イーズインカーブを適用します。
-- `func easeInQuart(_ t: Float) -> Float` -- 非常にゆっくり始まり急勾配で加速する4次イーズインカーブを適用します。
-- `func easeInQuint(_ t: Float) -> Float` -- 極めてゆっくり始まり強烈に加速する5次イーズインカーブを適用します。
-- `func easeInSine(_ t: Float) -> Float` -- コサイン関数を使用してゆっくり始まる正弦波イーズインカーブを適用します。
-- `func easeOutBack(_ t: Float) -> Float` -- 1 を超えてから元に戻るバックイーズアウトカーブを適用します。
-- `func easeOutBounce(_ t: Float) -> Float` -- ボールが弾んで止まるようなバウンスイーズアウトカーブを適用します。
-- `func easeOutCirc(_ t: Float) -> Float` -- 四分円弧に沿って減速する円形イーズアウトカーブを適用します。
-- `func easeOutCubic(_ t: Float) -> Float` -- 速く始まり急激に減速する3次イーズアウトカーブを適用します。
-- `func easeOutElastic(_ t: Float) -> Float` -- オーバーシュートして振動してから収束するエラスティックイーズアウトカーブを適用します。
-- `func easeOutExpo(_ t: Float) -> Float` -- 1に向かって指数的に減速する指数イーズアウトカーブを適用します。
-- `func easeOutQuad(_ t: Float) -> Float` -- 速く始まり減速する2次イーズアウトカーブを適用します。
-- `func easeOutQuart(_ t: Float) -> Float` -- 速く始まり急勾配で減速する4次イーズアウトカーブを適用します。
-- `func easeOutQuint(_ t: Float) -> Float` -- 速く始まり強烈に減速する5次イーズアウトカーブを適用します。
-- `func easeOutSine(_ t: Float) -> Float` -- サイン関数を使用して減速する正弦波イーズアウトカーブを適用します。
+- `func ease(_ t: Float, from a: Float, to b: Float, using f: (Float) -> Float) -> Float` -- Interpolates between two values using an easing function.
+- `func easeInBack(_ t: Float) -> Float` -- Applies a back ease-in curve that pulls back before accelerating.
+- `func easeInBounce(_ t: Float) -> Float` -- Applies a bounce ease-in curve, like a ball falling and bouncing.
+- `func easeInCirc(_ t: Float) -> Float` -- Applies a circular ease-in curve that accelerates along a quarter-circle arc.
+- `func easeInCubic(_ t: Float) -> Float` -- Applies a cubic ease-in curve that starts slowly and accelerates sharply.
+- `func easeInElastic(_ t: Float) -> Float` -- Applies an elastic ease-in curve that oscillates like a spring before accelerating.
+- `func easeInExpo(_ t: Float) -> Float` -- Applies an exponential ease-in curve that accelerates exponentially from near zero.
+- `func easeInOutBack(_ t: Float) -> Float` -- Applies a back ease-in-out curve that pulls back, accelerates, overshoots, and settles.
+- `func easeInOutBounce(_ t: Float) -> Float` -- Applies a bounce ease-in-out curve that bounces on both sides of the transition.
+- `func easeInOutCirc(_ t: Float) -> Float` -- Applies a circular ease-in-out curve that follows a semicircular arc.
+- `func easeInOutCubic(_ t: Float) -> Float` -- Applies a cubic ease-in-out curve that accelerates and then decelerates smoothly.
+- `func easeInOutElastic(_ t: Float) -> Float` -- Applies an elastic ease-in-out curve with spring oscillation at both ends.
+- `func easeInOutExpo(_ t: Float) -> Float` -- Applies an exponential ease-in-out curve with exponential acceleration and deceleration.
+- `func easeInOutQuad(_ t: Float) -> Float` -- Applies a quadratic ease-in-out curve that accelerates and then decelerates.
+- `func easeInOutQuart(_ t: Float) -> Float` -- Applies a quartic ease-in-out curve that accelerates steeply and then decelerates.
+- `func easeInOutQuint(_ t: Float) -> Float` -- Applies a quintic ease-in-out curve that accelerates intensely and then decelerates.
+- `func easeInOutSine(_ t: Float) -> Float` -- Applies a sinusoidal ease-in-out curve that accelerates and decelerates smoothly.
+- `func easeInQuad(_ t: Float) -> Float` -- Applies a quadratic ease-in curve that starts slowly and accelerates.
+- `func easeInQuart(_ t: Float) -> Float` -- Applies a quartic ease-in curve that starts very slowly and accelerates steeply.
+- `func easeInQuint(_ t: Float) -> Float` -- Applies a quintic ease-in curve that starts extremely slowly and accelerates intensely.
+- `func easeInSine(_ t: Float) -> Float` -- Applies a sinusoidal ease-in curve that starts slowly, using the cosine function.
+- `func easeOutBack(_ t: Float) -> Float` -- Applies a back ease-out curve that overshoots past 1 and then settles back.
+- `func easeOutBounce(_ t: Float) -> Float` -- Applies a bounce ease-out curve, like a ball bouncing to a stop.
+- `func easeOutCirc(_ t: Float) -> Float` -- Applies a circular ease-out curve that decelerates along a quarter-circle arc.
+- `func easeOutCubic(_ t: Float) -> Float` -- Applies a cubic ease-out curve that starts fast and decelerates sharply.
+- `func easeOutElastic(_ t: Float) -> Float` -- Applies an elastic ease-out curve that overshoots, oscillates, and then settles.
+- `func easeOutExpo(_ t: Float) -> Float` -- Applies an exponential ease-out curve that decelerates exponentially toward 1.
+- `func easeOutQuad(_ t: Float) -> Float` -- Applies a quadratic ease-out curve that starts fast and decelerates.
+- `func easeOutQuart(_ t: Float) -> Float` -- Applies a quartic ease-out curve that starts fast and decelerates steeply.
+- `func easeOutQuint(_ t: Float) -> Float` -- Applies a quintic ease-out curve that starts fast and decelerates intensely.
+- `func easeOutSine(_ t: Float) -> Float` -- Applies a sinusoidal ease-out curve that decelerates, using the sine function.
 
 ### Noise & Waveforms
 
-- `func cosine01(_ time: Double, frequency: Double = 1.0) -> Float` -- 0 から 1 の範囲で振動するコサイン波を生成します。
-- `func noise(_ x: Float) -> Float` -- 指定された座標で1D Perlin ノイズをサンプリングします。
-- `func noise(_ x: Float, _ y: Float) -> Float` -- 指定された座標で2D Perlin ノイズをサンプリングします。
-- `func noise(_ x: Float, _ y: Float, _ z: Float) -> Float` -- 指定された座標で3D Perlin ノイズをサンプリングします。
-- `func noiseDetail(octaves: Int = 4, falloff: Float = 0.5)` -- オクターブとフォールオフを設定してノイズの詳細度を調整します。
-- `func noiseSeed(_ seed: UInt64)` -- 新しいシード値でノイズ生成器を再初期化します。
-- `func sawtooth(_ time: Double, frequency: Double = 1.0) -> Float` -- 0 から 1 の範囲で振動するノコギリ波を生成します。
-- `func sine01(_ time: Double, frequency: Double = 1.0) -> Float` -- 0 から 1 の範囲で振動するサイン波を生成します。
-- `func square(_ time: Double, frequency: Double = 1.0, duty: Double = 0.5) -> Float` -- 0 または 1 を出力する矩形波を生成します。
-- `func triangle(_ time: Double, frequency: Double = 1.0) -> Float` -- 0 から 1 の範囲で振動する三角波を生成します。
+- `func cosine01(_ time: Double, frequency: Double = 1.0) -> Float` -- Generates a cosine wave that oscillates between 0 and 1.
+- `func noise(_ x: Float) -> Float` -- Samples 1D Perlin noise at the given coordinate.
+- `func noise(_ x: Float, _ y: Float) -> Float` -- Samples 2D Perlin noise at the given coordinates.
+- `func noise(_ x: Float, _ y: Float, _ z: Float) -> Float` -- Samples 3D Perlin noise at the given coordinates.
+- `func noiseDetail(octaves: Int = 4, falloff: Float = 0.5)` -- Adjusts the level of detail of the noise by setting the octaves and the falloff.
+- `func noiseSeed(_ seed: UInt64)` -- Reinitializes the noise generator with a new seed value.
+- `func sawtooth(_ time: Double, frequency: Double = 1.0) -> Float` -- Generates a sawtooth wave that oscillates between 0 and 1.
+- `func sine01(_ time: Double, frequency: Double = 1.0) -> Float` -- Generates a sine wave that oscillates between 0 and 1.
+- `func square(_ time: Double, frequency: Double = 1.0, duty: Double = 0.5) -> Float` -- Generates a square wave that outputs either 0 or 1.
+- `func triangle(_ time: Double, frequency: Double = 1.0) -> Float` -- Generates a triangle wave that oscillates between 0 and 1.
 
 ### Color
 
 - `func color(_ gray: Float) -> UInt32` -- グレースケール値を BGRA UInt32 にパックします。
 - `func color(_ r: Float, _ g: Float, _ b: Float) -> UInt32` -- RGB 値を BGRA UInt32 にパックします。
 - `func color(_ r: Float, _ g: Float, _ b: Float, _ a: Float) -> UInt32` -- RGBA 値を BGRA UInt32 にパックします。
-- `func lerpColor(_ c1: Color, _ c2: Color, _ t: Float) -> Color` -- 2つのカラーの間を線形補間します。
+- `func lerpColor(_ c1: Color, _ c2: Color, _ t: Float) -> Color` -- Linearly interpolates between two colors.
 
 ### Time
 
-- `func day() -> Int` -- 現在の日（1〜31）を返します。
-- `func hour() -> Int` -- 現在の時（0〜23）を返します。
-- `func millis() -> Int` -- スケッチ開始からの経過時間をミリ秒で返します。
-- `func minute() -> Int` -- 現在の分（0〜59）を返します。
-- `func month() -> Int` -- 現在の月（1〜12）を返します。
-- `func second() -> Int` -- 現在の秒（0〜59）を返します。
-- `func year() -> Int` -- 現在の年を返します。
+- `func day() -> Int` -- Returns the current day of the month as a value from 1 to 31.
+- `func hour() -> Int` -- Returns the current hour as a value from 0 to 23.
+- `func millis() -> Int` -- Returns the number of milliseconds elapsed since the sketch started.
+- `func minute() -> Int` -- Returns the current minute as a value from 0 to 59.
+- `func month() -> Int` -- Returns the current month as a value from 1 to 12.
+- `func second() -> Int` -- Returns the current second as a value from 0 to 59.
+- `func year() -> Int` -- Returns the current year.
 
 ## Constants
 
-- `let ALT: UInt16` -- Alt キーの仮想キーコード（Option のエイリアス）。
-- `let BACKSPACE: UInt16` -- Backspace (Delete) キーの仮想キーコード。
-  - Important: `import Foundation` を併用すると Darwin の同名マクロと曖昧になります。`KeyCode/backspace` を使うか型注釈を付けてください。
-- `let COMMAND: UInt16` -- Command キーの仮想キーコード。
-- `let CONTROL: UInt16` -- Control キーの仮想キーコード。
-  - Important: `import Foundation` を併用すると Darwin の同名マクロと曖昧になります。`KeyCode/control` を使うか型注釈を付けてください。
-- `let DELETE: UInt16` -- Forward Delete キーの仮想キーコード。
-- `let DOWN: UInt16` -- 下矢印キーの仮想キーコード。
-- `let ENTER: UInt16` -- テンキー Enter キーの仮想キーコード。
-- `let ESCAPE: UInt16` -- Escape キーの仮想キーコード。
-- `let HALF_PI: Float` -- パイの半分（ラジアンでの四分円）。
-- `let LEFT: UInt16` -- 左矢印キーの仮想キーコード。
-- `let OPTION: UInt16` -- Option キーの仮想キーコード。
-- `let PI: Float` -- 円の円周と直径の比率。
-- `let QUARTER_PI: Float` -- パイの4分の1（ラジアンでの八分円）。
-- `let RETURN: UInt16` -- Return キーの仮想キーコード。
-  - Important: `import Foundation` を併用すると Darwin の同名マクロと曖昧になります（`metaphor.RETURN` と修飾しても絞れません）。`KeyCode/return` を使うか、`let r: UInt16 = RETURN` のように型注釈を付けてください。
-- `let RIGHT: UInt16` -- 右矢印キーの仮想キーコード。
-- `let SHIFT: UInt16` -- Shift キーの仮想キーコード。
-- `let SPACE: UInt16` -- Space キーの仮想キーコード。
-- `let TAB: UInt16` -- Tab キーの仮想キーコード。
-  - Important: `import Foundation` を併用すると Darwin の同名マクロと曖昧になります。`KeyCode/tab` を使うか型注釈を付けてください。
-- `let TAU: Float` -- タウ。2パイに等しい（ラジアンでの全円）。
-- `let TWO_PI: Float` -- 2パイ（ラジアンでの全円）。
-- `let UP: UInt16` -- 上矢印キーの仮想キーコード。
+- `let ALT: UInt16` -- The virtual key code for the Alt key (an alias for Option).
+- `let BACKSPACE: UInt16` -- The virtual key code for the Backspace (Delete) key.
+  - Important: When `import Foundation` is also in scope, this name becomes ambiguous with the Darwin macro of the same name. Use `KeyCode/backspace` or add a type annotation.
+- `let COMMAND: UInt16` -- The virtual key code for the Command key.
+- `let CONTROL: UInt16` -- The virtual key code for the Control key.
+  - Important: When `import Foundation` is also in scope, this name becomes ambiguous with the Darwin macro of the same name. Use `KeyCode/control` or add a type annotation.
+- `let DELETE: UInt16` -- The virtual key code for the Forward Delete key.
+- `let DOWN: UInt16` -- The virtual key code for the down arrow key.
+- `let ENTER: UInt16` -- The virtual key code for the numeric keypad Enter key.
+- `let ESCAPE: UInt16` -- The virtual key code for the Escape key.
+- `let HALF_PI: Float` -- Half of pi (a quarter circle in radians).
+- `let LEFT: UInt16` -- The virtual key code for the left arrow key.
+- `let OPTION: UInt16` -- The virtual key code for the Option key.
+- `let PI: Float` -- The ratio of a circle's circumference to its diameter.
+- `let QUARTER_PI: Float` -- A quarter of pi (an eighth of a circle in radians).
+- `let RETURN: UInt16` -- The virtual key code for the Return key.
+  - Important: When `import Foundation` is also in scope, this name becomes ambiguous with the Darwin macro of the same name (qualifying it as `metaphor.RETURN` does not narrow it either). Use `KeyCode/return`, or add a type annotation such as `let r: UInt16 = RETURN`.
+- `let RIGHT: UInt16` -- The virtual key code for the right arrow key.
+- `let SHIFT: UInt16` -- The virtual key code for the Shift key.
+- `let SPACE: UInt16` -- The virtual key code for the Space key.
+- `let TAB: UInt16` -- The virtual key code for the Tab key.
+  - Important: When `import Foundation` is also in scope, this name becomes ambiguous with the Darwin macro of the same name. Use `KeyCode/tab` or add a type annotation.
+- `let TAU: Float` -- Tau. Equal to two pi (a full circle in radians).
+- `let TWO_PI: Float` -- Two pi (a full circle in radians).
+- `let UP: UInt16` -- The virtual key code for the up arrow key.
 
 ## metaphor
 
@@ -2303,24 +2303,24 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 - `func onStart()`
 - `func onStop()`
-- `func update(deltaTime: Float)` -- 毎フレームの FFT/ビート解析更新。`deltaTime` は使わない（内部で前回時刻を持つ）。
+- `func update(deltaTime: Float)` -- Per-frame FFT and beat analysis update. `deltaTime` is unused — the previous time is held internally.
 
 ### `extension Node`
 
-- `func syncFromPhysics(_ body: PhysicsBody2D)` -- 2D物理ボディからこのノードの XY 位置を同期します。
-- `func syncToPhysics(_ body: PhysicsBody2D)` -- このノードの XY 位置を2D物理ボディに書き戻します。
+- `func syncFromPhysics(_ body: PhysicsBody2D)` -- Syncs this node's XY position from a 2D physics body.
+- `func syncToPhysics(_ body: PhysicsBody2D)` -- Writes this node's XY position back to a 2D physics body.
 
 ### `extension Physics2D`
 
 - `func onStart()`
 - `func onStop()`
-- `func update(deltaTime: Float)` -- 物理を `deltaTime` ぶん進める。実フレーム時間は常に揺れるので、そのまま
+- `func update(deltaTime: Float)` -- Advances the physics by `deltaTime`. Real frame time always jitters, so it
 
 ### `extension VideoPlayer`
 
 - `func onStart()`
 - `func onStop()`
-- `func update(deltaTime: Float)` -- 毎フレームの再生位置/テクスチャ更新。
+- `func update(deltaTime: Float)` -- Per-frame playback position and texture update.
 
 ## MetaphorAudio
 

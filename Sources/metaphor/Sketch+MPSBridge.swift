@@ -4,27 +4,27 @@ import MetaphorMPS
 // MARK: - MPS ブリッジ
 
 extension Sketch {
-    /// MPS（Metal Performance Shaders）画像フィルタを作成します。
+    /// Creates an MPS (Metal Performance Shaders) image filter.
     ///
-    /// - Returns: 新しい ``MetaphorMPS/MPSImageFilterWrapper`` インスタンス。
+    /// - Returns: A new ``MetaphorMPS/MPSImageFilterWrapper`` instance.
     public func createMPSFilter() -> MPSImageFilterWrapper {
         MPSImageFilterWrapper(
             device: context.renderer.device, commandQueue: context.renderer.commandQueue)
     }
 
-    /// GPU アクセラレーションによるレイ交差クエリ用のレイトレーサーを作成します。
+    /// Creates a ray tracer for GPU-accelerated ray intersection queries.
     ///
-    /// Metal ネイティブ Ray Tracing API を使用してインライン交差判定を行います。
+    /// Uses the native Metal Ray Tracing API for inline intersection tests.
     /// - Parameters:
-    ///   - width: 出力画像の幅（ピクセル単位）。
-    ///   - height: 出力画像の高さ（ピクセル単位）。
-    /// - Returns: 新しい ``MetaphorMPS/MPSRayTracer`` インスタンス。
-    /// - Throws: ``MetaphorCore/MetaphorError``。同梱シェーダーソースまたはカーネル関数が
-    ///   見つからない場合は ``MetaphorCore/MetaphorError/mps(_:)`` の
+    ///   - width: The output image width, in pixels.
+    ///   - height: The output image height, in pixels.
+    /// - Returns: A new ``MetaphorMPS/MPSRayTracer`` instance.
+    /// - Throws: ``MetaphorCore/MetaphorError``. A missing bundled shader source or
+    ///   kernel function gives ``MetaphorCore/MetaphorError/mps(_:)`` with
     ///   ``MetaphorCore/MetaphorError/MPSFailure/accelerationStructureBuildFailed(_:)``、
-    ///   MSL のコンパイルに失敗した場合は
+    ///   a failed MSL compilation gives
     ///   ``MetaphorCore/MetaphorError/shaderCompilationFailed(name:underlying:)``、
-    ///   コンピュートパイプラインを作成できない場合は
+    ///   and a compute pipeline that cannot be created gives
     ///   ``MetaphorCore/MetaphorError/pipelineCreationFailed(name:underlying:)``。
     public func createRayTracer(width: Int, height: Int) throws -> MPSRayTracer {
         try MPSRayTracer(

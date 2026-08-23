@@ -2,21 +2,21 @@
 
 extension Sketch {
 
-    /// キャンバスのピクセルデータへの直接アクセス（パック済み UInt32 値）。
+    /// Direct access to the canvas pixel data, as packed `UInt32` values.
     ///
-    /// 各要素は BGRA パックカラー: `(A << 24) | (R << 16) | (G << 8) | B`。
-    /// パック値の作成には `color()` を使用します。`pixels[y * Int(width) + x]` でインデックスアクセスします。
+    /// Each element is a BGRA packed color: `(A << 24) | (R << 16) | (G << 8) | B`.
+    /// Use `color()` to build a packed value. Index into it as `pixels[y * Int(width) + x]`.
     ///
-    /// アクセス前に ``loadPixels()``、書き込み後に ``updatePixels()`` を呼び出してください。
+    /// Call ``loadPixels()`` before reading and ``updatePixels()`` after writing.
     ///
-    /// 色は **straight alpha**（`fill()` や `color()` と同じ、α を掛ける前の値）です。
-    /// 半透明の画素を読んでも色が沈まず、読んだ値をそのまま書き戻せば絵は変わりません
-    /// （ADR-0012 / #848）。
+    /// Colors are **straight alpha** (the same values `fill()` and `color()` use, before the alpha
+    /// multiplication). Reading a semi-transparent pixel does not darken its color, and writing
+    /// back what you read leaves the image unchanged (ADR-0012 / #848).
     ///
-    /// - Note: 読み取り系なので**決してクラッシュしません**（ADR-0005 / #356）。
-    ///   ``loadPixels()`` 前でも、SketchRunner が context を用意する前（`init` や
-    ///   プロパティ初期化子）でも、teardown 後でも空バッファを返します。描画 API と
-    ///   違い ``Sketch/context`` を経由しないのはこのためです。
+    /// - Note: Because this is a read accessor it **never crashes** (ADR-0005 / #356).
+    ///   It returns an empty buffer before ``loadPixels()``, before SketchRunner has prepared the
+    ///   context (in `init` or a property initializer), and after teardown. That is why, unlike the
+    ///   drawing APIs, it does not go through ``Sketch/context``.
     public var pixels: UnsafeMutableBufferPointer<UInt32> {
         guard let pb = _context?.pixelBuffer else {
             return UnsafeMutableBufferPointer(start: nil, count: 0)
@@ -24,99 +24,106 @@ extension Sketch {
         return pb.pixels
     }
 
-    /// **呼び出し時点の**キャンバス内容を ``pixels`` 配列へ読み戻します（Processing 互換）。
+    /// Reads the canvas contents **as of the moment of the call** back into the ``pixels`` array
+    /// (Processing compatible).
     ///
-    /// 呼び出し後、``pixels`` を読み書きし、``updatePixels()`` で反映してください。
-    /// `draw()` の途中で呼べば、それまでに発行した描画（`background()` や図形、
-    /// `image()`）が反映された状態が読めます。
+    /// After the call, read and write ``pixels`` and then apply the result with ``updatePixels()``.
+    /// Calling it partway through `draw()` reads the state with everything issued so far applied
+    /// (`background()`, shapes, `image()`).
     ///
     /// ```swift
     /// func draw() {
     ///     background(0)
     ///     fill(255, 0, 0)
     ///     circle(width / 2, height / 2, 100)
-    ///     loadPixels()                 // ここまでの描画（円まで）が読める
-    ///     for i in 0..<pixels.count { pixels[i] ^= 0x00FF_FFFF }  // 色を反転
+    ///     loadPixels()                 // everything drawn so far (up to the circle) is readable
+    ///     for i in 0..<pixels.count { pixels[i] ^= 0x00FF_FFFF }  // invert the colors
     ///     updatePixels()
     /// }
     /// ```
     ///
-    /// - Important: 同一フレームの読み戻しは**影オフの通常経路**で有効です。影を有効に
-    ///   している場合（`enableShadows()`）は `draw()` が記録パスとして先に実行される
-    ///   ため分割できず、**直近にコミット済みのフレーム内容**が読めます（初回のみ警告）。
-    ///   `draw()` の外（`setup()` やフレーム間）で呼んだ場合も同じです。
+    /// - Important: Reading back the same frame works on the **normal path with shadows off**. With
+    ///   shadows enabled (`enableShadows()`), `draw()` runs first as a recording pass and cannot be
+    ///   split, so what you read is **the contents of the most recently committed frame** (warned
+    ///   once). The same applies when it is called outside `draw()` (in `setup()` or between
+    ///   frames).
     ///
-    /// - Note: GPU の完了を待つためメインスレッドをブロックします（Processing と同等）。
-    ///   `loadPixels()` を呼ばないスケッチには一切コストがかかりません。
+    /// - Note: It blocks the main thread to wait for the GPU to finish (the same as Processing).
+    ///   Sketches that never call `loadPixels()` pay no cost at all.
     ///
-    /// - Note: 読み戻しのために内部でレンダーパスを分割するため、`loadPixels()` を
-    ///   またいだ 3D 同士は深度比較されません（継続パスでデプスがクリアされます）。
+    /// - Note: Because the read back splits the render pass internally, 3D geometry drawn on
+    ///   opposite sides of a `loadPixels()` is not depth compared (depth is cleared in the
+    ///   continuation pass).
     ///
-    /// - Note: `loadPixels()` は 2D バッチの確定点でもあります。影オフの即時経路では
-    ///   重ね順が呼び出し順ではなく**エンコード順**で決まるため、`loadPixels()` より
-    ///   **前**に描いた 2D は、**後**に描いた 3D の背後へ回ります。3D の手前に置きたい
-    ///   2D は `loadPixels()` の後に描いてください（#832。契機の一覧は
-    ///   [ADR-0003](https://github.com/shinyaoguri/metaphor/blob/main/docs/adr/0003-unified-command-stream.md)
-    ///   の 2026-08-16 追記）。`loadPixels()` の前後それぞれの中では、フレーム末尾と
-    ///   同じく 2D が 3D の手前に出ます。
+    /// - Note: `loadPixels()` is also a flush point for the 2D batch. On the immediate path with
+    ///   shadows off, stacking order is decided by **encode order** rather than call order, so 2D
+    ///   drawn **before** `loadPixels()` ends up behind 3D drawn **after** it. Draw the 2D you want
+    ///   in front of the 3D after `loadPixels()` (#832; the full list of triggers is in the
+    ///   2026-08-16 addendum to
+    ///   [ADR-0003](https://github.com/shinyaoguri/metaphor/blob/main/docs/adr/0003-unified-command-stream.md)).
+    ///   Within each side of a `loadPixels()`, 2D still appears in front of 3D just as it does at
+    ///   the end of a frame.
     public func loadPixels() {
         context.loadPixels()
     }
 
-    /// 変更されたピクセルデータをアップロードしキャンバスに描画します。
+    /// Uploads the modified pixel data and draws it to the canvas.
     ///
-    /// ピクセルバッファを GPU テクスチャに転送し、フルスクリーンクワッドとして
-    /// レンダリングします。``pixels`` への書き込み後にこれを呼び出してください。
+    /// Transfers the pixel buffer to a GPU texture and renders it as a fullscreen quad. Call this
+    /// after writing to ``pixels``.
     ///
-    /// - Note: ``loadPixels()`` を一度も呼んでいない場合は何もしません。
+    /// - Note: Does nothing if ``loadPixels()`` has never been called.
     public func updatePixels() {
         context.updatePixels()
     }
 
-    /// 1 画素の色を読みます（Processing の `get(x, y)` 互換）。
+    /// Reads the color of a single pixel (compatible with Processing's `get(x, y)`).
     ///
-    /// ``pixels`` のパック値をほどく手間を省くための入口で、実体は同じバッファを読みます。
+    /// It is an entry point that saves you from unpacking the ``pixels`` values by hand; it reads
+    /// the very same buffer.
     ///
     /// ```swift
     /// func draw() {
     ///     background(0)
     ///     fill(255, 0, 0)
     ///     circle(width / 2, height / 2, 100)
-    ///     loadPixels()                                  // ← 先に読み戻す
-    ///     let c = get(Int(width) / 2, Int(height) / 2)  // 円の中心の赤
+    ///     loadPixels()                                  // ← read back first
+    ///     let c = get(Int(width) / 2, Int(height) / 2)  // the red at the center of the circle
     ///     print(c)
     /// }
     /// ```
     ///
-    /// - Important: **暗黙の読み戻しはしません。** ``loadPixels()`` を先に呼んでください
-    ///   （呼んでいなければ黒を返し、初回だけ警告します）。Processing の `get()` は
-    ///   単に遅いだけですが、metaphor の読み戻しは GPU 待ちに加えて**レンダーパスの分割**
-    ///   を伴い、深度クリアと 2D/3D の重ね順を通じて**絵そのものを変えます**
-    ///   （``loadPixels()`` の Note 群）。1 画素を読むたびにそれが起きないよう、
-    ///   読み戻しは明示的な ``loadPixels()`` だけに限っています。
+    /// - Important: **It does not read back implicitly.** Call ``loadPixels()`` first (without it,
+    ///   the call returns black and warns once). Processing's `get()` is merely slow, but a read
+    ///   back in metaphor also **splits the render pass** on top of waiting for the GPU, and
+    ///   through the depth clear and the 2D/3D stacking order that **changes the image itself**
+    ///   (see the Notes on ``loadPixels()``). To keep that from happening on every single pixel
+    ///   read, the read back is confined to an explicit ``loadPixels()``.
     ///
-    /// - Important: 影を有効にしている場合（`enableShadows()`）は ``loadPixels()`` が
-    ///   同一フレームを読み戻せず、**直近にコミット済みのフレーム内容**が読めます。
-    ///   `get()` はその結果を読むので、同じ制約がそのまま乗ります。
+    /// - Important: With shadows enabled (`enableShadows()`), ``loadPixels()`` cannot read back the
+    ///   same frame and instead reads **the contents of the most recently committed frame**.
+    ///   `get()` reads that result, so it carries the same restriction.
     ///
     /// - Parameters:
-    ///   - x: 水平方向のピクセル座標。
-    ///   - y: 垂直方向のピクセル座標。
-    /// - Returns: straight alpha の ``Color``（`fill()` に渡したのと同じ値。ADR-0012）。
-    ///   範囲外・未 ``loadPixels()`` の場合は黒。
+    ///   - x: The horizontal pixel coordinate.
+    ///   - y: The vertical pixel coordinate.
+    /// - Returns: A straight alpha ``Color`` (the same value you pass to `fill()`; ADR-0012).
+    ///   Returns black when out of range or when ``loadPixels()`` has not been called.
     ///
-    /// - Note: 読み取り系なので**決してクラッシュしません**（ADR-0005 / #356）。
-    ///   context が用意される前（`init` やプロパティ初期化子）でも黒を返します。
+    /// - Note: Because this is a read accessor it **never crashes** (ADR-0005 / #356).
+    ///   It returns black even before the context is prepared (in `init` or a property
+    ///   initializer).
     public func get(_ x: Int, _ y: Int) -> Color {
         guard let ctx = _context else { return .black }
         return ctx.get(x, y)
     }
 
-    /// キャンバスの矩形領域を ``MImage`` として切り出します（Processing の
-    /// `get(x, y, w, h)` 互換）。
+    /// Extracts a rectangular region of the canvas as an ``MImage`` (compatible with Processing's
+    /// `get(x, y, w, h)`).
     ///
-    /// 返る画像は**要求した `w` × `h`** です。キャンバスからはみ出した部分は透明
-    /// （α = 0）で埋まります（Processing と同じ）。`image()` でそのまま貼れます。
+    /// The returned image is **exactly the requested `w` × `h`**. Any part that falls outside the
+    /// canvas is filled with transparency (alpha = 0), just as in Processing. It can be drawn
+    /// directly with `image()`.
     ///
     /// ```swift
     /// loadPixels()
@@ -125,37 +132,37 @@ extension Sketch {
     /// }
     /// ```
     ///
-    /// - Important: ``get(_:_:)`` と同じく**暗黙の読み戻しはしません**。影オン時の制約も
-    ///   同じです（``loadPixels()`` の `- Important:` を参照）。
+    /// - Important: Just like ``get(_:_:)``, **it does not read back implicitly**. The restriction
+    ///   with shadows on is the same as well (see the `- Important:` on ``loadPixels()``).
     ///
     /// - Parameters:
-    ///   - x: 切り出す矩形の左上 X 座標。
-    ///   - y: 切り出す矩形の左上 Y 座標。
-    ///   - w: 切り出す幅（1 以上）。
-    ///   - h: 切り出す高さ（1 以上）。
-    /// - Returns: 切り出した ``MImage``。未 ``loadPixels()``・サイズが 0 以下・テクスチャ
-    ///   確保に失敗した場合は nil。
+    ///   - x: The x coordinate of the top-left corner of the region to extract.
+    ///   - y: The y coordinate of the top-left corner of the region to extract.
+    ///   - w: The width to extract (1 or greater).
+    ///   - h: The height to extract (1 or greater).
+    /// - Returns: The extracted ``MImage``. Returns nil when ``loadPixels()`` has not been called,
+    ///   when the size is 0 or less, or when the texture allocation fails.
     public func get(_ x: Int, _ y: Int, _ w: Int, _ h: Int) -> MImage? {
         guard let ctx = _context else { return nil }
         return ctx.get(x, y, w, h)
     }
 
-    /// 1 画素の色を書き込みます（Processing の `set(x, y, c)` 互換）。
+    /// Writes the color of a single pixel (compatible with Processing's `set(x, y, c)`).
     ///
     /// ```swift
     /// loadPixels()
     /// set(10, 20, Color(r: 1, g: 0, b: 0))
-    /// updatePixels()               // ← これでキャンバスへ出る
+    /// updatePixels()               // ← this is what puts it on the canvas
     /// ```
     ///
-    /// - Important: 書き込み先は CPU 側の ``pixels`` バッファです。キャンバスへ出すには
-    ///   ``updatePixels()`` が必要で、Processing の `set()` が即座に反映されるのとは
-    ///   異なります。``loadPixels()`` を呼んでいなければ何もしません（初回だけ警告）。
+    /// - Important: The write goes to the CPU-side ``pixels`` buffer. Putting it on the canvas
+    ///   requires ``updatePixels()``, unlike Processing's `set()`, which takes effect immediately.
+    ///   It does nothing if ``loadPixels()`` has not been called (warned once).
     ///
     /// - Parameters:
-    ///   - x: 水平方向のピクセル座標。範囲外は無視されます。
-    ///   - y: 垂直方向のピクセル座標。範囲外は無視されます。
-    ///   - color: 書き込む色。straight alpha として詰められます（ADR-0012）。
+    ///   - x: The horizontal pixel coordinate. Out-of-range values are ignored.
+    ///   - y: The vertical pixel coordinate. Out-of-range values are ignored.
+    ///   - color: The color to write. It is packed as straight alpha (ADR-0012).
     public func set(_ x: Int, _ y: Int, _ color: Color) {
         context.set(x, y, color)
     }

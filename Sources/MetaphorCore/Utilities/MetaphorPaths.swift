@@ -1,43 +1,46 @@
 import Foundation
 
-/// `.metaphor/` 配下のファイル契約（Probe / Parameter Store / State）の
-/// **基準ディレクトリ**を解決します（Issue #688・CONTRACT.md 契約点 2）。
+/// Resolves the **base directory** for the file contracts under `.metaphor/`
+/// (Probe / Parameter Store / State) (Issue #688, CONTRACT.md contract point 2).
 ///
-/// これらは従来プロセスの cwd 相対で解決されていました。`swift run` ならプロジェクト
-/// 直下が cwd になるので問題になりませんが、**`.app` を LaunchServices から起動すると
-/// cwd が `/`** になり、Probe も Parameter Store も書けない場所を向きます。常設運用に
-/// 近い形（`open` で起動 / ログイン項目 / Dock から起動）では、リクエストを置いても
-/// 永遠に応答が来ない・パラメータの永続化が効かない、という壊れ方をします。
+/// These used to be resolved relative to the process's current working directory. With
+/// `swift run` the cwd is the project root, so nothing goes wrong, but **launching a
+/// `.app` from LaunchServices makes the cwd `/`**, which points both Probe and the
+/// Parameter Store at a location they cannot write to. In setups closer to permanent
+/// operation (launched with `open`, as a login item, or from the Dock), this breaks as a
+/// request that never receives a response and parameters that never persist.
 ///
-/// `METAPHOR_STATE_DIR` に基準ディレクトリを与えると、相対パスはそこから解決されます。
-/// **未設定なら従来どおり cwd 相対**なので、既存の契約は変わりません（additive）。
+/// Setting a base directory in `METAPHOR_STATE_DIR` resolves relative paths from there.
+/// **When it is unset the behavior stays relative to the cwd**, so the existing contract
+/// is unchanged (additive).
 ///
 /// ```bash
 /// open -n .build/strata.app --env METAPHOR_PROBE=1 --env "METAPHOR_STATE_DIR=$PWD"
 /// ```
 enum MetaphorPaths {
-    /// 基準ディレクトリを与える環境変数の名前（契約点 2）。
+    /// The name of the environment variable that supplies the base directory (contract point 2).
     static let stateDirectoryEnvironmentKey = "METAPHOR_STATE_DIR"
 
-    /// `.metaphor/` を解決する基準ディレクトリ。
+    /// The base directory against which `.metaphor/` is resolved.
     ///
-    /// `METAPHOR_STATE_DIR` があればそれ（相対なら cwd 基準で絶対化、`~` は展開）、
-    /// 無ければ cwd。プロセス起動時に 1 度だけ評価します（起動後に cwd を変える
-    /// スケッチがあっても、契約ファイルの置き場が途中で動かないように）。
+    /// `METAPHOR_STATE_DIR` when it is set (a relative value is made absolute against the
+    /// cwd, and `~` is expanded), otherwise the cwd. Evaluated once when the process
+    /// starts, so that the location of the contract files never moves mid-run even if a
+    /// sketch changes the cwd after launch.
     static let baseDirectory: String = resolveBaseDirectory(
         environment: ProcessInfo.processInfo.environment,
         currentDirectory: FileManager.default.currentDirectoryPath
     )
 
-    /// 契約ファイルのパスを解決します。絶対パスはそのまま、相対パスは
-    /// ``baseDirectory`` からの相対として絶対化します。
+    /// Resolves the path of a contract file. An absolute path is returned as is; a
+    /// relative path is made absolute against ``baseDirectory``.
     static func resolve(_ path: String) -> String {
         resolve(path, base: baseDirectory)
     }
 
     // MARK: - 純粋な実装（テスト用に環境から切り離してある）
 
-    /// 環境変数と cwd から基準ディレクトリを決めます。
+    /// Determines the base directory from the environment and the cwd.
     static func resolveBaseDirectory(
         environment: [String: String], currentDirectory: String
     ) -> String {
@@ -55,7 +58,7 @@ enum MetaphorPaths {
         return URL(fileURLWithPath: expanded).standardized.path
     }
 
-    /// 与えた基準でパスを解決します。
+    /// Resolves a path against the given base.
     static func resolve(_ path: String, base: String) -> String {
         let expanded = NSString(string: path).expandingTildeInPath
         guard !expanded.hasPrefix("/") else { return expanded }

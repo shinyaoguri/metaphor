@@ -40,20 +40,23 @@ struct SketchScopeNoteTests {
 
     /// ADR-0005 の作用先区分に対応する doc 上の目印。
     ///
-    /// 強調記号ごと突き合わせるのは、「3D のみ」が散文の中でたまたま出てくるのを
+    /// 強調記号ごと突き合わせるのは、「3D only」が散文の中でたまたま出てくるのを
     /// 注記と誤認しないため。
+    ///
+    /// 目印は #334 の英語化で日本語（`**3D のみ**` ほか）から英語へ移った。doc コメントは
+    /// 英語で書く規約（docs/doc-comment-style.md）なので、日本語の目印は受け付けない。
     private static let scopeMarkers = [
-        "**3D のみ**",  // 3D にだけ作用する（3D の大多数）
-        "**2D のみ**",  // 2D にだけ作用する（strokeWeight / blendMode / tint 系など）
-        "**2D と 3D の両方**",  // fill / stroke / colorMode / background / pushMatrix など
-        "**記録中のシェイプ**",  // 3 引数以上の vertex / endShape3D（Amendment 2026-08-18 §2）
+        "**3D only**",  // 3D にだけ作用する（3D の大多数）
+        "**2D only**",  // 2D にだけ作用する（strokeWeight / blendMode / tint 系など）
+        "**both 2D and 3D**",  // fill / stroke / colorMode / background / pushMatrix など
+        "**the shape being recorded**",  // 3 引数以上の vertex / endShape3D（Amendment 2026-08-18 §2）
     ]
 
     /// 上の目印を使わないが同義の注記を持つ例外。増やすなら理由を必ず書くこと。
     ///
-    /// - `toneMapping(_:)`: 「掛かるのは **3D のライティング結果だけ**です。2D の描画の色は
-    ///   変わりません」と、3D の中でもさらに狭い作用先まで書いている。一般区分の文言へ
-    ///   丸めると情報が減るので、そのまま残す。
+    /// - `toneMapping(_:)`: "This applies to **the 3D lighting result only**. The colors of
+    ///   2D drawing do not change" と、3D の中でもさらに狭い作用先まで書いている。一般区分の
+    ///   文言へ丸めると情報が減るので、そのまま残す。
     private static let documentedExceptions = ["func toneMapping("]
 
     @Test("Sketch 層の public メンバは全て 2D/3D の作用先注記を持つ", arguments: auditedFiles)

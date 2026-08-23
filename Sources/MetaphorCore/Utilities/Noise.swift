@@ -1,32 +1,32 @@
 import Foundation
 
-/// 1D、2D、3D の Perlin ノイズを生成します。
+/// Generates 1D, 2D, and 3D Perlin noise.
 ///
-/// 0.0 から 1.0 の範囲のノイズ値を生成します。
-/// オクターブとフォールオフでフラクタルノイズの詳細度を制御できます。
+/// Produces noise values in the range 0.0 to 1.0.
+/// Octaves and falloff control the level of detail of the fractal noise.
 public struct NoiseGenerator: Sendable {
-    /// オクターブ数（合成するレイヤー数）。1 未満は 1 にクランプされます
-    /// （0 以下は 0/0 = NaN が全ノイズ値へ伝播するため）。
+    /// The number of octaves (the number of layers combined). Values below 1 are clamped to 1
+    /// (at 0 or below, 0/0 = NaN propagates into every noise value).
     public var octaves: Int = 4 {
         didSet { octaves = max(1, octaves) }
     }
 
-    /// オクターブごとの振幅減衰率。非有限値・負値は 0 にクランプされます
-    /// （負値は振幅の合計が 0 になり得て NaN が伝播するため）。
+    /// The amplitude falloff per octave. Non-finite and negative values are clamped to 0
+    /// (a negative value can make the total amplitude 0, which propagates NaN).
     public var falloff: Float = 0.5 {
         didSet {
             if !falloff.isFinite || falloff < 0 { falloff = 0 }
         }
     }
 
-    /// キャッシュ効率のため Int32 で格納された順列テーブル（2KB vs 4KB）。
+    /// The permutation table, stored as Int32 for cache efficiency (2KB versus 4KB).
     @usableFromInline
     let perm: ContiguousArray<Int32>
 
     // MARK: - Initialization
 
-    /// 指定されたシード値でノイズ生成器を作成します。
-    /// - Parameter seed: 順列テーブルのシード。0 でデフォルトテーブルを使用します。
+    /// Creates a noise generator with the given seed value.
+    /// - Parameter seed: The seed for the permutation table. 0 uses the default table.
     public init(seed: UInt64 = 0) {
         var base = Self.defaultPermutation
         if seed != 0 {
@@ -42,9 +42,9 @@ public struct NoiseGenerator: Sendable {
 
     // MARK: - Public Interface
 
-    /// 指定された座標で1Dノイズをサンプリングします。
-    /// - Parameter x: 入力座標。
-    /// - Returns: 0.0 から 1.0 の範囲のノイズ値。
+    /// Samples 1D noise at the given coordinate.
+    /// - Parameter x: The input coordinate.
+    /// - Returns: A noise value in the range 0.0 to 1.0.
     @inlinable
     public func noise(_ x: Float) -> Float {
         perm.withUnsafeBufferPointer { p in
@@ -62,11 +62,11 @@ public struct NoiseGenerator: Sendable {
         }
     }
 
-    /// 指定された座標で2Dノイズをサンプリングします。
+    /// Samples 2D noise at the given coordinates.
     /// - Parameters:
-    ///   - x: x座標。
-    ///   - y: y座標。
-    /// - Returns: 0.0 から 1.0 の範囲のノイズ値。
+    ///   - x: The x coordinate.
+    ///   - y: The y coordinate.
+    /// - Returns: A noise value in the range 0.0 to 1.0.
     @inlinable
     public func noise(_ x: Float, _ y: Float) -> Float {
         perm.withUnsafeBufferPointer { p in
@@ -84,12 +84,12 @@ public struct NoiseGenerator: Sendable {
         }
     }
 
-    /// 指定された座標で3Dノイズをサンプリングします。
+    /// Samples 3D noise at the given coordinates.
     /// - Parameters:
-    ///   - x: x座標。
-    ///   - y: y座標。
-    ///   - z: z座標。
-    /// - Returns: 0.0 から 1.0 の範囲のノイズ値。
+    ///   - x: The x coordinate.
+    ///   - y: The y coordinate.
+    ///   - z: The z coordinate.
+    /// - Returns: A noise value in the range 0.0 to 1.0.
     @inlinable
     public func noise(_ x: Float, _ y: Float, _ z: Float) -> Float {
         perm.withUnsafeBufferPointer { p in
@@ -109,8 +109,8 @@ public struct NoiseGenerator: Sendable {
 
     // MARK: - Internal
 
-    /// 1D Perlin ノイズの単一オクターブを計算（範囲: -1 から 1）。
-    /// 特化パス: y/z 次元を完全にスキップします。
+    /// Computes a single octave of 1D Perlin noise (range: -1 to 1).
+    /// Specialized path: skips the y and z dimensions entirely.
     @inlinable
     func rawNoise1D(
         _ x: Float,
@@ -127,8 +127,8 @@ public struct NoiseGenerator: Sendable {
         return mix(grad1D(aa, xf), grad1D(ba, xf - 1), u)
     }
 
-    /// 2D Perlin ノイズの単一オクターブを計算（範囲: -1 から 1）。
-    /// 特化パス: z 次元をスキップ（3D より約40%高速）。
+    /// Computes a single octave of 2D Perlin noise (range: -1 to 1).
+    /// Specialized path: skips the z dimension (about 40% faster than 3D).
     @inlinable
     func rawNoise2D(
         _ x: Float, _ y: Float,
@@ -160,7 +160,7 @@ public struct NoiseGenerator: Sendable {
         return mix(x1, x2, v)
     }
 
-    /// 3D Perlin ノイズの単一オクターブを計算（範囲: -1 から 1）。
+    /// Computes a single octave of 3D Perlin noise (range: -1 to 1).
     @inlinable
     func rawNoise3D(
         _ x: Float, _ y: Float, _ z: Float,
@@ -264,28 +264,29 @@ public struct NoiseGenerator: Sendable {
 
 // MARK: - Global Noise Functions
 
-/// MainActor にスコープされたグローバルノイズ生成器。
+/// The global noise generator, scoped to MainActor.
 @MainActor
 private var _noiseGenerator = NoiseGenerator()
 
-/// 指定された座標で1D Perlin ノイズをサンプリングします。
-/// - Parameter x: 入力座標。
-/// - Returns: 0.0 から 1.0 の範囲のノイズ値。
+/// Samples 1D Perlin noise at the given coordinate.
+/// - Parameter x: The input coordinate.
+/// - Returns: A noise value in the range 0.0 to 1.0.
 @MainActor
 public func noise(_ x: Float) -> Float {
     _noiseGenerator.noise(x)
 }
 
-/// 指定された座標で2D Perlin ノイズをサンプリングします。
+/// Samples 2D Perlin noise at the given coordinates.
 /// - Parameters:
-///   - x: x座標。
-///   - y: y座標。
-/// - Returns: 0.0 から 1.0 の範囲のノイズ値。
+///   - x: The x coordinate.
+///   - y: The y coordinate.
+/// - Returns: A noise value in the range 0.0 to 1.0.
 ///
-/// ### 実行結果
+/// ### Result
 ///
-/// 2 次元の入力に対して、隣り合う点が近い値になる滑らかな濃淡が返ります
-/// （乱数と違って、拡大しても粒にならず雲のようにつながります）。
+/// For two-dimensional input it returns a smooth gradation in which neighboring points take
+/// similar values (unlike random values, it does not break into specks when magnified but
+/// stays connected like clouds).
 ///
 /// <!-- reference-shot -->
 ///
@@ -308,26 +309,26 @@ public func noise(_ x: Float, _ y: Float) -> Float {
     _noiseGenerator.noise(x, y)
 }
 
-/// 指定された座標で3D Perlin ノイズをサンプリングします。
+/// Samples 3D Perlin noise at the given coordinates.
 /// - Parameters:
-///   - x: x座標。
-///   - y: y座標。
-///   - z: z座標。
-/// - Returns: 0.0 から 1.0 の範囲のノイズ値。
+///   - x: The x coordinate.
+///   - y: The y coordinate.
+///   - z: The z coordinate.
+/// - Returns: A noise value in the range 0.0 to 1.0.
 @MainActor
 public func noise(_ x: Float, _ y: Float, _ z: Float) -> Float {
     _noiseGenerator.noise(x, y, z)
 }
 
-/// オクターブとフォールオフを設定してノイズの詳細度を調整します。
+/// Adjusts the level of detail of the noise by setting the octaves and the falloff.
 /// - Parameters:
-///   - octaves: 合成するノイズレイヤーの数。1 未満は 1 にクランプされます。
-///   - falloff: オクターブごとの振幅減衰率。負値・非有限値は 0 にクランプされます。
+///   - octaves: The number of noise layers to combine. Values below 1 are clamped to 1.
+///   - falloff: The amplitude falloff per octave. Negative and non-finite values are clamped to 0.
 ///
-/// ### 実行結果
+/// ### Result
 ///
-/// 同じ ``noise(_:)`` を 1D の折れ線で描いたもの。上から `octaves` が 1 / 3 / 5 で、
-/// 重ねるレイヤーが増えるほど細かい起伏が乗ります。
+/// The same ``noise(_:)`` drawn as a 1D polyline. From top to bottom `octaves` is 1 / 3 / 5,
+/// and the more layers are stacked, the finer the undulations that ride on the curve.
 ///
 /// <!-- reference-shot -->
 ///
@@ -358,8 +359,8 @@ public func noiseDetail(octaves: Int = 4, falloff: Float = 0.5) {
     _noiseGenerator.falloff = falloff
 }
 
-/// 新しいシード値でノイズ生成器を再初期化します。
-/// - Parameter seed: 順列テーブルのシード。
+/// Reinitializes the noise generator with a new seed value.
+/// - Parameter seed: The seed for the permutation table.
 @MainActor
 public func noiseSeed(_ seed: UInt64) {
     _noiseGenerator = NoiseGenerator(seed: seed)

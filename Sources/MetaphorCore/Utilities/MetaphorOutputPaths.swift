@@ -1,35 +1,37 @@
 import Foundation
 
-/// スケッチが書き出すファイル（スクリーンショット・連番・動画・GIF）の
-/// **保存先**を解決します（Issue #757）。
+/// Resolves the **destination** for the files a sketch writes out (screenshots, frame
+/// sequences, video, and GIF) (Issue #757).
 ///
-/// 従来は渡された名前に無条件で `~/Desktop/` を前置していました。保存先を選べないうえ、
-/// 絶対パスを渡すと `~/Desktop/tmp/shots/a.png` のような別の場所へ落ち、
-/// 親ディレクトリが作られてしまうので**失敗にも気付けません**でした。
+/// Previously the given name was unconditionally prefixed with `~/Desktop/`. Besides
+/// leaving no way to choose the destination, passing an absolute path dropped the file
+/// somewhere else entirely, such as `~/Desktop/tmp/shots/a.png`, and because the parent
+/// directory was created along the way **the failure went unnoticed**.
 ///
-/// 規則は次の 3 つです。
+/// There are three rules.
 ///
-/// - **既定**（引数を省略したとき）はプロジェクトの中の `output/`
-/// - **相対パス**はプロジェクト直下からの相対（Processing のスケッチフォルダ相当）
-/// - **絶対パス**と `~` 始まりはそのまま
+/// - **The default** (when the argument is omitted) is `output/` inside the project
+/// - **A relative path** is relative to the project root (the equivalent of Processing's sketch folder)
+/// - **An absolute path**, or one starting with `~`, is used as is
 ///
-/// ここでいうプロジェクト（基準ディレクトリ）は ``MetaphorPaths/baseDirectory`` で、
-/// `METAPHOR_STATE_DIR` があればそこ、無ければプロセスの cwd です（`swift build && swift run`
-/// ならパッケージ直下、`metaphor run` / `watch` の子プロセスなら渡されたプロジェクト）。
+/// The project here (the base directory) is ``MetaphorPaths/baseDirectory``:
+/// `METAPHOR_STATE_DIR` when it is set, otherwise the process's cwd (the package root for
+/// `swift build && swift run`, or the project handed to the child process of
+/// `metaphor run` / `watch`).
 enum MetaphorOutputPaths {
-    /// 既定の出力ディレクトリ名。
+    /// The default output directory name.
     static let directoryName = "output"
 
-    /// 既定の出力ディレクトリ（`<base>/output`）。
+    /// The default output directory (`<base>/output`).
     static func defaultDirectory(base: String = MetaphorPaths.baseDirectory) -> String {
         MetaphorPaths.resolve(directoryName, base: base)
     }
 
-    /// ``SketchContext/saveFrame(_:)`` の保存先。
+    /// The destination for ``SketchContext/saveFrame(_:)``.
     ///
     /// - Parameters:
-    ///   - filename: 呼び出し側が指定したパス（`nil` なら `output/screen-<frameCount>.png`）。
-    ///   - frameCount: 既定名に使うフレーム番号（4 桁ゼロ詰め）。
+    ///   - filename: The path the caller specified (`output/screen-<frameCount>.png` when `nil`).
+    ///   - frameCount: The frame number used in the default name (zero-padded to four digits).
     static func screenshot(
         filename: String?, frameCount: Int, base: String = MetaphorPaths.baseDirectory
     ) -> String {
@@ -40,14 +42,14 @@ enum MetaphorOutputPaths {
         return MetaphorPaths.resolve(filename, base: base)
     }
 
-    /// ``SketchContext/save()`` の保存先（`output/metaphor_<timestamp>.png`）。
+    /// The destination for ``SketchContext/save()`` (`output/metaphor_<timestamp>.png`).
     static func timestampedScreenshot(
         timestamp: String, base: String = MetaphorPaths.baseDirectory
     ) -> String {
         MetaphorPaths.resolve("metaphor_\(timestamp).png", base: defaultDirectory(base: base))
     }
 
-    /// ``SketchContext/beginFrameRecord(directory:pattern:)`` の出力ディレクトリ。
+    /// The output directory for ``SketchContext/beginFrameRecord(directory:pattern:)``.
     static func frameSequenceDirectory(
         _ directory: String?, timestamp: String, base: String = MetaphorPaths.baseDirectory
     ) -> String {
@@ -58,7 +60,7 @@ enum MetaphorOutputPaths {
         return MetaphorPaths.resolve(directory, base: base)
     }
 
-    /// 動画 / GIF の書き出し先（`output/metaphor_<timestamp>.<fileExtension>`）。
+    /// The destination for video / GIF export (`output/metaphor_<timestamp>.<fileExtension>`).
     static func recording(
         _ path: String?, fileExtension: String, timestamp: String,
         base: String = MetaphorPaths.baseDirectory
@@ -70,7 +72,7 @@ enum MetaphorOutputPaths {
         return MetaphorPaths.resolve(path, base: base)
     }
 
-    /// 既定のファイル名に使うタイムスタンプ（`yyyyMMdd_HHmmss`）。
+    /// The timestamp used in default file names (`yyyyMMdd_HHmmss`).
     static func timestamp(_ date: Date = Date()) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyyMMdd_HHmmss"

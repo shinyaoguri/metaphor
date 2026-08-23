@@ -4,12 +4,12 @@ import simd
 // MARK: - float4x4 Extensions
 
 extension float4x4 {
-    /// 単位行列を作成します。
+    /// The identity matrix.
     public static let identity = float4x4(diagonal: SIMD4<Float>(1, 1, 1, 1))
 
-    /// X軸まわりの回転行列を作成します。
+    /// Creates a rotation matrix around the x-axis.
     ///
-    /// - Parameter angle: ラジアン単位の回転角度。
+    /// - Parameter angle: The rotation angle in radians.
     public init(rotationX angle: Float) {
         let c = cos(angle)
         let s = sin(angle)
@@ -22,9 +22,9 @@ extension float4x4 {
             ))
     }
 
-    /// Y軸まわりの回転行列を作成します。
+    /// Creates a rotation matrix around the y-axis.
     ///
-    /// - Parameter angle: ラジアン単位の回転角度。
+    /// - Parameter angle: The rotation angle in radians.
     public init(rotationY angle: Float) {
         let c = cos(angle)
         let s = sin(angle)
@@ -37,9 +37,9 @@ extension float4x4 {
             ))
     }
 
-    /// Z軸まわりの回転行列を作成します。
+    /// Creates a rotation matrix around the z-axis.
     ///
-    /// - Parameter angle: ラジアン単位の回転角度。
+    /// - Parameter angle: The rotation angle in radians.
     public init(rotationZ angle: Float) {
         let c = cos(angle)
         let s = sin(angle)
@@ -52,9 +52,9 @@ extension float4x4 {
             ))
     }
 
-    /// 3Dベクトルから平行移動行列を作成します。
+    /// Creates a translation matrix from a 3D vector.
     ///
-    /// - Parameter translation: 各軸方向の平行移動オフセット。
+    /// - Parameter translation: The translation offset along each axis.
     public init(translation: SIMD3<Float>) {
         self.init(
             columns: (
@@ -65,26 +65,26 @@ extension float4x4 {
             ))
     }
 
-    /// 非均一スケール行列を作成します。
+    /// Creates a non-uniform scale matrix.
     ///
-    /// - Parameter scale: 各軸のスケール係数。
+    /// - Parameter scale: The scale factor for each axis.
     public init(scale: SIMD3<Float>) {
         self.init(diagonal: SIMD4<Float>(scale.x, scale.y, scale.z, 1))
     }
 
-    /// 均一スケール行列を作成します。
+    /// Creates a uniform scale matrix.
     ///
-    /// - Parameter scale: すべての軸に適用される均一スケール係数。
+    /// - Parameter scale: The uniform scale factor applied to every axis.
     public init(scale: Float) {
         self.init(diagonal: SIMD4<Float>(scale, scale, scale, 1))
     }
 
-    /// look-at 方式のビュー行列を作成します。
+    /// Creates a look-at view matrix.
     ///
     /// - Parameters:
-    ///   - eye: カメラの位置。
-    ///   - center: カメラが注視する点。
-    ///   - up: 上方向ベクトル。
+    ///   - eye: The position of the camera.
+    ///   - center: The point the camera looks at.
+    ///   - up: The up direction vector.
     public init(lookAt eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float>) {
         // eye == center では視線方向が定義できないため +Z を採用（NaN 行列を防止）
         let forward = eye - center
@@ -108,13 +108,13 @@ extension float4x4 {
             ))
     }
 
-    /// 透視投影行列を作成します。
+    /// Creates a perspective projection matrix.
     ///
     /// - Parameters:
-    ///   - fov: ラジアン単位の垂直視野角。
-    ///   - aspect: アスペクト比（幅 / 高さ）。
-    ///   - near: ニアクリッピング面の距離。
-    ///   - far: ファークリッピング面の距離。
+    ///   - fov: The vertical field of view in radians.
+    ///   - aspect: The aspect ratio (width / height).
+    ///   - near: The distance to the near clipping plane.
+    ///   - far: The distance to the far clipping plane.
     public init(perspectiveFov fov: Float, aspect: Float, near: Float, far: Float) {
         let y = 1 / tan(fov * 0.5)
         let x = y / aspect
@@ -129,15 +129,15 @@ extension float4x4 {
             ))
     }
 
-    /// 正射影行列を作成します。
+    /// Creates an orthographic projection matrix.
     ///
     /// - Parameters:
-    ///   - left: ビューボリュームの左端。
-    ///   - right: ビューボリュームの右端。
-    ///   - bottom: ビューボリュームの下端。
-    ///   - top: ビューボリュームの上端。
-    ///   - near: ニアクリッピング面の距離。
-    ///   - far: ファークリッピング面の距離。
+    ///   - left: The left edge of the view volume.
+    ///   - right: The right edge of the view volume.
+    ///   - bottom: The bottom edge of the view volume.
+    ///   - top: The top edge of the view volume.
+    ///   - near: The distance to the near clipping plane.
+    ///   - far: The distance to the far clipping plane.
     public init(
         orthographic left: Float, right: Float, bottom: Float, top: Float, near: Float, far: Float
     ) {
@@ -160,86 +160,86 @@ extension float4x4 {
 
 // MARK: - Angle Conversions
 
-/// 度数法をラジアンに変換します。
+/// Converts an angle in degrees to radians.
 ///
-/// - Parameter degrees: 度数法の角度。
-/// - Returns: ラジアン単位の角度。
+/// - Parameter degrees: The angle in degrees.
+/// - Returns: The angle in radians.
 public func radians(_ degrees: Float) -> Float {
     degrees * .pi / 180
 }
 
-/// ラジアンを度数法に変換します。
+/// Converts an angle in radians to degrees.
 ///
-/// - Parameter radians: ラジアン単位の角度。
-/// - Returns: 度数法の角度。
+/// - Parameter radians: The angle in radians.
+/// - Returns: The angle in degrees.
 public func degrees(_ radians: Float) -> Float {
     radians * 180 / .pi
 }
 
 // MARK: - Interpolation
 
-/// 2つの値の間を線形補間します。
+/// Linearly interpolates between two values.
 ///
 /// - Parameters:
-///   - a: 開始値。
-///   - b: 終了値。
-///   - t: 補間係数。通常 [0, 1] の範囲。
-/// - Returns: 補間された値。
+///   - a: The starting value.
+///   - b: The ending value.
+///   - t: The interpolation factor, normally in the range [0, 1].
+/// - Returns: The interpolated value.
 public func lerp<T: FloatingPoint>(_ a: T, _ b: T, _ t: T) -> T {
     a + (b - a) * t
 }
 
-/// 2つの2Dベクトルの間を線形補間します。
+/// Linearly interpolates between two 2D vectors.
 ///
 /// - Parameters:
-///   - a: 開始ベクトル。
-///   - b: 終了ベクトル。
-///   - t: 補間係数。通常 [0, 1] の範囲。
-/// - Returns: 補間されたベクトル。
+///   - a: The starting vector.
+///   - b: The ending vector.
+///   - t: The interpolation factor, normally in the range [0, 1].
+/// - Returns: The interpolated vector.
 public func lerp(_ a: SIMD2<Float>, _ b: SIMD2<Float>, _ t: Float) -> SIMD2<Float> {
     a + (b - a) * t
 }
 
-/// 2つの3Dベクトルの間を線形補間します。
+/// Linearly interpolates between two 3D vectors.
 ///
 /// - Parameters:
-///   - a: 開始ベクトル。
-///   - b: 終了ベクトル。
-///   - t: 補間係数。通常 [0, 1] の範囲。
-/// - Returns: 補間されたベクトル。
+///   - a: The starting vector.
+///   - b: The ending vector.
+///   - t: The interpolation factor, normally in the range [0, 1].
+/// - Returns: The interpolated vector.
 public func lerp(_ a: SIMD3<Float>, _ b: SIMD3<Float>, _ t: Float) -> SIMD3<Float> {
     a + (b - a) * t
 }
 
-/// 2つの4Dベクトルの間を線形補間します。
+/// Linearly interpolates between two 4D vectors.
 ///
 /// - Parameters:
-///   - a: 開始ベクトル。
-///   - b: 終了ベクトル。
-///   - t: 補間係数。通常 [0, 1] の範囲。
-/// - Returns: 補間されたベクトル。
+///   - a: The starting vector.
+///   - b: The ending vector.
+///   - t: The interpolation factor, normally in the range [0, 1].
+/// - Returns: The interpolated vector.
 public func lerp(_ a: SIMD4<Float>, _ b: SIMD4<Float>, _ t: Float) -> SIMD4<Float> {
     a + (b - a) * t
 }
 
-/// 値を [0, 1] の範囲にクランプします。
+/// Clamps a value to the range [0, 1].
 ///
-/// - Parameter x: クランプする値。
-/// - Returns: クランプされた値。
+/// - Parameter x: The value to clamp.
+/// - Returns: The clamped value.
 public func saturate(_ x: Float) -> Float {
     min(max(x, 0), 1)
 }
 
-/// 2つのエッジ間でエルミート補間を行います。
+/// Performs Hermite interpolation between two edges.
 ///
-/// `x` が `edge0` より小さい場合は 0、`edge1` より大きい場合は 1 を返し、
-/// それ以外の場合は 0 から 1 の間の滑らかなエルミート補間値を返します。
+/// Returns 0 when `x` is less than `edge0` and 1 when it is greater than `edge1`;
+/// otherwise it returns a smooth Hermite interpolation between 0 and 1.
 ///
 /// - Parameters:
-///   - edge0: 遷移の下端エッジ。
-///   - edge1: 遷移の上端エッジ。
-///   - x: 入力値。
-/// - Returns: [0, 1] の範囲で滑らかに補間された値。
+///   - edge0: The lower edge of the transition.
+///   - edge1: The upper edge of the transition.
+///   - x: The input value.
+/// - Returns: A value smoothly interpolated within the range [0, 1].
 public func smoothstep(_ edge0: Float, _ edge1: Float, _ x: Float) -> Float {
     let t = saturate((x - edge0) / (edge1 - edge0))
     return t * t * (3 - 2 * t)
@@ -247,16 +247,16 @@ public func smoothstep(_ edge0: Float, _ edge1: Float, _ x: Float) -> Float {
 
 // MARK: - Mapping & Clamping
 
-/// 値をある範囲から別の範囲にリマップします。
+/// Re-maps a value from one range to another.
 ///
 /// - Parameters:
-///   - value: リマップする入力値。
-///   - start1: 元の範囲の下限。
-///   - stop1: 元の範囲の上限。
-///   - start2: 変換先の範囲の下限。
-///   - stop2: 変換先の範囲の上限。
-/// - Returns: リマップされた値。元の範囲がゼロ幅（`start1 == stop1`）の場合は
-///   NaN/∞ の伝播を避けるため `start2` を返します。
+///   - value: The input value to re-map.
+///   - start1: The lower bound of the value's current range.
+///   - stop1: The upper bound of the value's current range.
+///   - start2: The lower bound of the value's target range.
+///   - stop2: The upper bound of the value's target range.
+/// - Returns: The re-mapped value. When the current range has zero width
+///   (`start1 == stop1`), returns `start2` to avoid propagating NaN or infinity.
 public func map(_ value: Float, _ start1: Float, _ stop1: Float, _ start2: Float, _ stop2: Float)
     -> Float
 {
@@ -265,25 +265,25 @@ public func map(_ value: Float, _ start1: Float, _ stop1: Float, _ start2: Float
     return start2 + (stop2 - start2) * ((value - start1) / range)
 }
 
-/// 値を指定された範囲に制約します。
+/// Constrains a value to the given range.
 ///
 /// - Parameters:
-///   - value: 制約する値。
-///   - low: 許容される最小値。
-///   - high: 許容される最大値。
-/// - Returns: 制約された値。
+///   - value: The value to constrain.
+///   - low: The minimum allowed value.
+///   - high: The maximum allowed value.
+/// - Returns: The constrained value.
 public func constrain(_ value: Float, _ low: Float, _ high: Float) -> Float {
     min(max(value, low), high)
 }
 
-/// 値を指定された範囲から [0, 1] の範囲に正規化します。
+/// Normalizes a value from the given range into the range [0, 1].
 ///
 /// - Parameters:
-///   - value: 正規化する値。
-///   - start: 元の範囲の下限。
-///   - stop: 元の範囲の上限。
-/// - Returns: 正規化された値。範囲がゼロ幅（`start == stop`）の場合は
-///   NaN/∞ の伝播を避けるため 0 を返します。
+///   - value: The value to normalize.
+///   - start: The lower bound of the value's current range.
+///   - stop: The upper bound of the value's current range.
+/// - Returns: The normalized value. When the range has zero width (`start == stop`),
+///   returns 0 to avoid propagating NaN or infinity.
 public func norm(_ value: Float, _ start: Float, _ stop: Float) -> Float {
     let range = stop - start
     guard range != 0 else { return 0 }
@@ -292,30 +292,30 @@ public func norm(_ value: Float, _ start: Float, _ stop: Float) -> Float {
 
 // MARK: - Distance & Magnitude
 
-/// 2つの2D点間のユークリッド距離を計算します。
+/// Calculates the Euclidean distance between two 2D points.
 ///
 /// - Parameters:
-///   - x1: 1番目の点のx座標。
-///   - y1: 1番目の点のy座標。
-///   - x2: 2番目の点のx座標。
-///   - y2: 2番目の点のy座標。
-/// - Returns: 2点間の距離。
+///   - x1: The x coordinate of the first point.
+///   - y1: The y coordinate of the first point.
+///   - x2: The x coordinate of the second point.
+///   - y2: The y coordinate of the second point.
+/// - Returns: The distance between the two points.
 public func dist(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float) -> Float {
     let dx = x2 - x1
     let dy = y2 - y1
     return sqrt(dx * dx + dy * dy)
 }
 
-/// 2つの3D点間のユークリッド距離を計算します。
+/// Calculates the Euclidean distance between two 3D points.
 ///
 /// - Parameters:
-///   - x1: 1番目の点のx座標。
-///   - y1: 1番目の点のy座標。
-///   - z1: 1番目の点のz座標。
-///   - x2: 2番目の点のx座標。
-///   - y2: 2番目の点のy座標。
-///   - z2: 2番目の点のz座標。
-/// - Returns: 2点間の距離。
+///   - x1: The x coordinate of the first point.
+///   - y1: The y coordinate of the first point.
+///   - z1: The z coordinate of the first point.
+///   - x2: The x coordinate of the second point.
+///   - y2: The y coordinate of the second point.
+///   - z2: The z coordinate of the second point.
+/// - Returns: The distance between the two points.
 public func dist(_ x1: Float, _ y1: Float, _ z1: Float, _ x2: Float, _ y2: Float, _ z2: Float)
     -> Float
 {
@@ -325,38 +325,38 @@ public func dist(_ x1: Float, _ y1: Float, _ z1: Float, _ x2: Float, _ y2: Float
     return sqrt(dx * dx + dy * dy + dz * dz)
 }
 
-/// 値の二乗を計算します。
+/// Calculates the square of a value.
 ///
-/// - Parameter value: 二乗する値。
-/// - Returns: 二乗された値。
+/// - Parameter value: The value to square.
+/// - Returns: The squared value.
 public func sq(_ value: Float) -> Float {
     value * value
 }
 
-/// 2Dベクトルの大きさを計算します。
+/// Calculates the magnitude of a 2D vector.
 ///
 /// - Parameters:
-///   - x: ベクトルのx成分。
-///   - y: ベクトルのy成分。
-/// - Returns: ベクトルの大きさ（長さ）。
+///   - x: The x component of the vector.
+///   - y: The y component of the vector.
+/// - Returns: The magnitude (length) of the vector.
 public func mag(_ x: Float, _ y: Float) -> Float {
     sqrt(x * x + y * y)
 }
 
-/// 3Dベクトルの大きさを計算します。
+/// Calculates the magnitude of a 3D vector.
 ///
 /// - Parameters:
-///   - x: ベクトルのx成分。
-///   - y: ベクトルのy成分。
-///   - z: ベクトルのz成分。
-/// - Returns: ベクトルの大きさ（長さ）。
+///   - x: The x component of the vector.
+///   - y: The y component of the vector.
+///   - z: The z component of the vector.
+/// - Returns: The magnitude (length) of the vector.
 public func mag(_ x: Float, _ y: Float, _ z: Float) -> Float {
     sqrt(x * x + y * y + z * z)
 }
 
 // MARK: - Random
 
-/// 線形合同法に基づくシード指定可能な乱数生成器。
+/// A seedable pseudo-random number generator based on a linear congruential generator.
 struct SeededRandomNumberGenerator: RandomNumberGenerator {
     private var state: UInt64
 
@@ -373,21 +373,21 @@ struct SeededRandomNumberGenerator: RandomNumberGenerator {
 @MainActor
 private var _seededRNG: SeededRandomNumberGenerator?
 
-/// 0 から指定された上限（上限を含まない）までのランダムな Float 値を返します。
+/// Returns a random Float value from 0 up to the given upper bound, which is excluded.
 ///
-/// - Parameter high: 上限（この値を含まない）。
-/// - Returns: [0, `high`) の範囲のランダムな Float 値。
+/// - Parameter high: The upper bound, which is excluded.
+/// - Returns: A random Float value in the range [0, `high`).
 @MainActor
 public func random(_ high: Float) -> Float {
     random(0, high)
 }
 
-/// 指定された範囲内のランダムな Float 値を返します。
+/// Returns a random Float value within the given range.
 ///
 /// - Parameters:
-///   - low: 下限（この値を含む）。
-///   - high: 上限（この値を含まない）。
-/// - Returns: [`low`, `high`) の範囲のランダムな Float 値。
+///   - low: The lower bound, which is included.
+///   - high: The upper bound, which is excluded.
+/// - Returns: A random Float value in the range [`low`, `high`).
 @MainActor
 public func random(_ low: Float, _ high: Float) -> Float {
     let lo = min(low, high)
@@ -401,23 +401,23 @@ public func random(_ low: Float, _ high: Float) -> Float {
     return Float.random(in: lo..<hi)
 }
 
-/// 乱数生成器のシードを設定します。
+/// Sets the seed of the pseudo-random number generator.
 ///
-/// 以降の ``random(_:)`` および ``random(_:_:)`` の呼び出しは、このシードを使用して
-/// 決定論的な乱数列を生成します。
+/// Subsequent calls to ``random(_:)`` and ``random(_:_:)`` use this seed to produce a
+/// deterministic sequence of pseudo-random values.
 ///
-/// - Parameter seed: シード値。
+/// - Parameter seed: The seed value.
 @MainActor
 public func randomSeed(_ seed: UInt64) {
     _seededRNG = SeededRandomNumberGenerator(seed: seed)
 }
 
-/// Box-Muller 変換を使用してガウス（正規）分布に従うランダムな値を返します。
+/// Returns a random value from a Gaussian (normal) distribution using the Box-Muller transform.
 ///
 /// - Parameters:
-///   - mean: 分布の平均値（デフォルトは 0）。
-///   - sd: 分布の標準偏差（デフォルトは 1）。
-/// - Returns: 指定されたガウス分布から抽出されたランダムな Float 値。
+///   - mean: The mean of the distribution (0 by default).
+///   - sd: The standard deviation of the distribution (1 by default).
+/// - Returns: A random Float value drawn from the given Gaussian distribution.
 @MainActor
 public func randomGaussian(_ mean: Float = 0, _ sd: Float = 1) -> Float {
     let u1 = random(Float.leastNormalMagnitude, 1.0)
@@ -428,29 +428,29 @@ public func randomGaussian(_ mean: Float = 0, _ sd: Float = 1) -> Float {
 
 // MARK: - Bezier Math
 
-/// 指定されたパラメータにおける3次ベジェ曲線上の点を評価します。
+/// Evaluates a point on a cubic Bezier curve at the given parameter.
 ///
 /// - Parameters:
-///   - a: 1番目の制御点（始点）。
-///   - b: 2番目の制御点。
-///   - c: 3番目の制御点。
-///   - d: 4番目の制御点（終点）。
-///   - t: 曲線上のパラメータ。通常 [0, 1] の範囲。
-/// - Returns: パラメータ `t` におけるベジェ曲線上の値。
+///   - a: The first control point (the start point).
+///   - b: The second control point.
+///   - c: The third control point.
+///   - d: The fourth control point (the end point).
+///   - t: The parameter along the curve, normally in the range [0, 1].
+/// - Returns: The value on the Bezier curve at the parameter `t`.
 public func bezierPoint(_ a: Float, _ b: Float, _ c: Float, _ d: Float, _ t: Float) -> Float {
     let u = 1 - t
     return u * u * u * a + 3 * u * u * t * b + 3 * u * t * t * c + t * t * t * d
 }
 
-/// 指定されたパラメータにおける3次ベジェ曲線の接線を評価します。
+/// Evaluates the tangent of a cubic Bezier curve at the given parameter.
 ///
 /// - Parameters:
-///   - a: 1番目の制御点（始点）。
-///   - b: 2番目の制御点。
-///   - c: 3番目の制御点。
-///   - d: 4番目の制御点（終点）。
-///   - t: 曲線上のパラメータ。通常 [0, 1] の範囲。
-/// - Returns: パラメータ `t` におけるベジェ曲線の接線値。
+///   - a: The first control point (the start point).
+///   - b: The second control point.
+///   - c: The third control point.
+///   - d: The fourth control point (the end point).
+///   - t: The parameter along the curve, normally in the range [0, 1].
+/// - Returns: The tangent value of the Bezier curve at the parameter `t`.
 public func bezierTangent(_ a: Float, _ b: Float, _ c: Float, _ d: Float, _ t: Float) -> Float {
     let u = 1 - t
     return 3 * u * u * (b - a) + 6 * u * t * (c - b) + 3 * t * t * (d - c)
@@ -458,15 +458,15 @@ public func bezierTangent(_ a: Float, _ b: Float, _ c: Float, _ d: Float, _ t: F
 
 // MARK: - Catmull-Rom Curve Math
 
-/// 指定されたパラメータにおける Catmull-Rom スプライン上の点を評価します。
+/// Evaluates a point on a Catmull-Rom spline at the given parameter.
 ///
 /// - Parameters:
-///   - a: 1番目の制御点。
-///   - b: 2番目の制御点（`t = 0` でこの点を通過）。
-///   - c: 3番目の制御点（`t = 1` でこの点を通過）。
-///   - d: 4番目の制御点。
-///   - t: スプライン上のパラメータ。通常 [0, 1] の範囲。
-/// - Returns: パラメータ `t` における Catmull-Rom スプライン上の値。
+///   - a: The first control point.
+///   - b: The second control point (the spline passes through it at `t = 0`).
+///   - c: The third control point (the spline passes through it at `t = 1`).
+///   - d: The fourth control point.
+///   - t: The parameter along the spline, normally in the range [0, 1].
+/// - Returns: The value on the Catmull-Rom spline at the parameter `t`.
 public func curvePoint(_ a: Float, _ b: Float, _ c: Float, _ d: Float, _ t: Float) -> Float {
     let t2 = t * t
     let t3 = t2 * t
@@ -474,21 +474,21 @@ public func curvePoint(_ a: Float, _ b: Float, _ c: Float, _ d: Float, _ t: Floa
         * ((2 * b) + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3)
 }
 
-/// `curveTightness` を反映した Catmull-Rom スプライン上の点を評価します。
+/// Evaluates a point on a Catmull-Rom spline that reflects `curveTightness`.
 ///
-/// Processing の `curveInit()` と同じ基底行列を使います。`tightness` は基底そのものを
-/// 変える係数で、直線との線形ブレンドではありません。`tightness == 0` のときは
-/// ``curvePoint(_:_:_:_:_:)`` と一致し、`tightness` の値によらず `t = 0` で `b`、
-/// `t = 1` で `c` を通ります。
+/// Uses the same basis matrix as Processing's `curveInit()`. `tightness` is a coefficient
+/// that changes the basis itself, not a linear blend toward a straight line. When
+/// `tightness == 0` the result matches ``curvePoint(_:_:_:_:_:)``, and whatever the value
+/// of `tightness`, the spline passes through `b` at `t = 0` and through `c` at `t = 1`.
 ///
 /// - Parameters:
-///   - a: 1番目の制御点。
-///   - b: 2番目の制御点（`t = 0` でこの点を通過）。
-///   - c: 3番目の制御点（`t = 1` でこの点を通過）。
-///   - d: 4番目の制御点。
-///   - s: タイトネス（0 が標準 Catmull-Rom）。
-///   - t: スプライン上のパラメータ。通常 [0, 1] の範囲。
-/// - Returns: パラメータ `t` におけるスプライン上の値。
+///   - a: The first control point.
+///   - b: The second control point (the spline passes through it at `t = 0`).
+///   - c: The third control point (the spline passes through it at `t = 1`).
+///   - d: The fourth control point.
+///   - s: The tightness (0 is the standard Catmull-Rom).
+///   - t: The parameter along the spline, normally in the range [0, 1].
+/// - Returns: The value on the spline at the parameter `t`.
 func curvePoint(_ a: Float, _ b: Float, _ c: Float, _ d: Float, tightness s: Float, _ t: Float)
     -> Float
 {
@@ -500,15 +500,15 @@ func curvePoint(_ a: Float, _ b: Float, _ c: Float, _ d: Float, tightness s: Flo
     return k3 * t3 + k2 * t2 + k1 * t + b
 }
 
-/// 指定されたパラメータにおける Catmull-Rom スプラインの接線を評価します。
+/// Evaluates the tangent of a Catmull-Rom spline at the given parameter.
 ///
 /// - Parameters:
-///   - a: 1番目の制御点。
-///   - b: 2番目の制御点。
-///   - c: 3番目の制御点。
-///   - d: 4番目の制御点。
-///   - t: スプライン上のパラメータ。通常 [0, 1] の範囲。
-/// - Returns: パラメータ `t` における Catmull-Rom スプラインの接線値。
+///   - a: The first control point.
+///   - b: The second control point.
+///   - c: The third control point.
+///   - d: The fourth control point.
+///   - t: The parameter along the spline, normally in the range [0, 1].
+/// - Returns: The tangent value of the Catmull-Rom spline at the parameter `t`.
 public func curveTangent(_ a: Float, _ b: Float, _ c: Float, _ d: Float, _ t: Float) -> Float {
     let t2 = t * t
     return 0.5

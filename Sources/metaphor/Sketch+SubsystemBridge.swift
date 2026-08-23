@@ -12,19 +12,20 @@ import MetaphorPhysics
 // に登録して毎フレームの更新を自動化できる（従来の手動 update()/step() もそのまま使える）。
 
 extension AudioAnalyzer: SketchSubsystem {
-    /// 毎フレームの FFT/ビート解析更新。`deltaTime` は使わない（内部で前回時刻を持つ）。
+    /// Per-frame FFT and beat analysis update. `deltaTime` is unused — the previous time is held internally.
     public func update(deltaTime: Float) { update() }
 }
 
 extension VideoPlayer: SketchSubsystem {
-    /// 毎フレームの再生位置/テクスチャ更新。
+    /// Per-frame playback position and texture update.
     public func update(deltaTime: Float) { update() }
 }
 
 extension Physics2D: SketchSubsystem {
-    /// 物理を `deltaTime` ぶん進める。実フレーム時間は常に揺れるので、そのまま
-    /// `step(deltaTime)` へ渡さず固定刻みのアキュムレータ（`advance`）を通す。
-    /// Verlet の速度は「1 ステップあたりの変位」なので、dt が揺れるとエネルギーが
-    /// 出入りし、同じスケッチが実行のたび・機械ごとに違う動きになる（#756）。
+    /// Advances the physics by `deltaTime`. Real frame time always jitters, so it
+    /// goes through the fixed-step accumulator (`advance`) rather than straight into
+    /// `step(deltaTime)`. Verlet carries velocity as displacement per step, so a
+    /// jittering dt pumps energy in and out and the same sketch moves differently
+    /// from run to run and from machine to machine (#756).
     public func update(deltaTime: Float) { advance(deltaTime) }
 }

@@ -4,26 +4,26 @@ import MetaphorNoise
 // MARK: - GameplayKit ノイズブリッジ
 
 extension Sketch {
-    /// GameplayKit ノイズジェネレーターを作成します。
+    /// Creates a GameplayKit noise generator.
     ///
     /// - Parameters:
-    ///   - type: ノイズアルゴリズムのタイプ。
-    ///   - config: ノイズ生成の設定。
-    /// - Returns: 新しい ``MetaphorNoise/GKNoiseWrapper`` インスタンス。
+    ///   - type: The noise algorithm to use.
+    ///   - config: The noise generation settings.
+    /// - Returns: A new ``MetaphorNoise/GKNoiseWrapper`` instance.
     public func createNoise(_ type: NoiseType, config: NoiseConfig = NoiseConfig())
         -> GKNoiseWrapper
     {
         GKNoiseWrapper(type: type, config: config, device: context.renderer.device)
     }
 
-    /// ノイズテクスチャを画像として生成します（便利メソッド）。
+    /// Generates a noise texture as an image (a convenience method).
     ///
     /// - Parameters:
-    ///   - type: ノイズアルゴリズムのタイプ。
-    ///   - width: テクスチャの幅（ピクセル単位）。
-    ///   - height: テクスチャの高さ（ピクセル単位）。
-    ///   - config: ノイズ生成の設定。
-    /// - Returns: 生成されたノイズ画像。生成に失敗した場合は `nil`。
+    ///   - type: The noise algorithm to use.
+    ///   - width: The texture width, in pixels.
+    ///   - height: The texture height, in pixels.
+    ///   - config: The noise generation settings.
+    /// - Returns: The generated noise image, or `nil` if generation fails.
     public func noiseTexture(
         _ type: NoiseType, width: Int, height: Int, config: NoiseConfig = NoiseConfig()
     ) -> MImage? {
