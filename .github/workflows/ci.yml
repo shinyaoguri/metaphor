@@ -243,14 +243,15 @@ jobs:
           # assuming Sources changed rather than failing the whole job.
           # merge-base 起点で取る（Issue #642）。ここは PR 以外も通るが、base が
           # head の祖先なら 3 点表記は 2 点間と同じ結果になるので挙動は変わらない。
-          if ! changed_files=$(scripts/pr-changed-files.sh "$base" "$head" \
-              -- 'Sources/**/*.swift' 'scripts/generate-llms-txt.py' 2>/dev/null); then
+          if ! changed_files=$(scripts/changed-llms-inputs.sh "$base" "$head" 2>/dev/null); then
             echo "changed=true" >> "$GITHUB_OUTPUT"
             echo "docc=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          # Trigger the llms.txt staleness check when either the inputs
-          # (Sources/) or the generator script change.
+          # llms.txt の入力（Sources/ / 生成器 / `symbol-graphs` レシピを持つ
+          # Makefile）が変わったら鮮度検査を回す。リストは
+          # scripts/changed-llms-inputs.sh が正本で、pre-push フックも同じものを
+          # 呼ぶ（別々に持っていた頃は片方だけ直すとドリフトした — Issue #995）。
           if echo "$changed_files" | grep -q .; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
@@ -262,6 +263,8 @@ jobs:
           # 触った無関係な PR**が、自分が入れていない警告で落ちる（責めるべき PR が
           # ずれる）ので、判定はここで分けて持つ。逆に llms.txt / リファレンス
           # スニペットの検査はカタログとは無関係なので、上の `changed` には混ぜない。
+          # カタログは symbol graph の入力ではないため changed-llms-inputs.sh にも
+          # 載せず、この 1 箇所だけが足す形にしている。
           if echo "$changed_files" | grep -q . || \
              scripts/pr-changed-files.sh "$base" "$head" \
                -- 'Sources/**/*.docc/**' 2>/dev/null | grep -q .; then

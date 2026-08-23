@@ -2,9 +2,13 @@
 #
 # pre-push: ensure generated AI-facing files track their inputs
 #
-# llms.txt is regenerated and verified when the push touches:
+# llms.txt is regenerated and verified when the push touches its inputs.
+# そのリストは scripts/changed-llms-inputs.sh が正本で、per-PR CI も同じものを
+# 呼ぶ（以前ここと ci.yml が別々にリストを持っていて、Makefile の symbol-graphs
+# レシピを壊す変更が両方を素通りした — Issue #995）:
 #   - Sources/**/*.swift
 #   - scripts/generate-llms-txt.py
+#   - Makefile（`llms-txt: symbol-graphs` のレシピ）
 #
 # docs/ai/examples-index.{md,json} is regenerated and verified when the
 # push touches:
@@ -67,15 +71,15 @@ while read -r _ local_sha _ remote_sha; do
             needs_status=1
             break
         fi
-        range="${base}..${local_sha}"
     else
-        range="${remote_sha}..${local_sha}"
+        base="$remote_sha"
     fi
+    range="${base}..${local_sha}"
 
-    # llms.txt depends on Sources/ AND on its generator script.
-    if git diff --name-only "$range" \
-        -- 'Sources/**/*.swift' 'scripts/generate-llms-txt.py' \
-        | grep -q .; then
+    # llms.txt の入力は scripts/changed-llms-inputs.sh が正本（Issue #995）。
+    # そちらは 3 点表記で取るが、push 時の remote_sha は local_sha の祖先なので
+    # "$range" と同じ結果になる（相手が先に進んでいるときは 3 点のほうが正しい）。
+    if scripts/changed-llms-inputs.sh "$base" "$local_sha" | grep -q .; then
         needs_llms=1
     fi
     # examples index depends on Examples/ AND on its generator script.
@@ -138,7 +142,7 @@ done
 
 # --- llms.txt staleness check -------------------------------------------------
 if [ "$needs_llms" -eq 1 ]; then
-    echo "[pre-push] Sources/ or generator changed — verifying llms.txt is up to date..."
+    echo "[pre-push] llms.txt inputs changed — verifying it is up to date..."
     llms_log="$(mktemp)"
     if ! make llms-txt >"$llms_log" 2>&1; then
         echo "[pre-push] ❌ make llms-txt failed. Fix the build and re-push." >&2
