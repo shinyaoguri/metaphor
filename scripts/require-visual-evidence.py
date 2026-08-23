@@ -2,11 +2,11 @@
 """Fail a PR that changes what gets drawn without showing what it now draws.
 
 CLAUDE.md asks for before/after images on PRs that change the rendered result
-(and a GIF when the *motion* changes). Until now that was regulation only: a
-PR could change `TextRenderer` and merge with nothing to look at, and nobody
-found out. `main` is squash-only, so the evidence is not recoverable later —
-the branch is gone and the PR body is the commit body. Whatever was not
-written down at merge time is gone for good.
+(and an animated WebP when the *motion* changes). Until now that was
+regulation only: a PR could change `TextRenderer` and merge with nothing to
+look at, and nobody found out. `main` is squash-only, so the evidence is not
+recoverable later — the branch is gone and the PR body is the commit body.
+Whatever was not written down at merge time is gone for good.
 
 This is an error, not a warning, and it lives inside an already-required job
 for the reason spelled out in ci.yml: auto-merge merges the moment the
@@ -158,9 +158,10 @@ def main(argv: list[str] | None = None, stdin=None) -> int:
         "squash マージなのでブランチは消え、PR 本文がそのまま履歴に残る唯一の"
         "記録になります。後から足せません。\n"
         "  1. before/after を撮って PR 本文に貼る"
-        "（**動きが変わるなら GIF も**。手順は DEVELOPMENT.md「PR に見た目の"
-        "証跡を載せる」。新しく撮った画像はリポジトリにコミットせず Gyazo へ。"
-        "ゴールデン PNG や example の実行結果のように既にコミット済みのものは"
+        "（**動きが変わるならアニメーション WebP も**。手順は DEVELOPMENT.md"
+        "「PR に見た目の証跡を載せる」。新しく撮った画像はリポジトリにコミット"
+        "せず Gyazo へ。ゴールデン PNG や example の実行結果のように既に"
+        "コミット済みのものは"
         "そのまま raw URL で貼れます）\n"
         f"  2. 本当に絵が変わらないなら PR に `{SKIP_LABEL}` ラベルを貼る\n"
         "どちらの場合も、直したあと `gh run rerun --failed <run-id>` だけで通ります"

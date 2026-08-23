@@ -156,7 +156,7 @@ jobs:
                 ${LABEL_ARGS[@]+"${LABEL_ARGS[@]}"}
       - name: Require visual evidence for drawing changes
         # CLAUDE.md の「描画結果が変わる PR には before/after 画像を、動きが
-        # 変わる PR には GIF も」を機械で守る（Issue #631）。squash マージなので
+        # 変わる PR にはアニメーション WebP も」を機械で守る（Issue #631）。squash マージなので
         # ブランチは消え、**PR 本文がそのまま履歴に残る唯一の記録**になる。
         # merge 時に書かれなかった証跡は後から復元できない。
         #
