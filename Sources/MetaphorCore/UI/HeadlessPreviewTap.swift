@@ -1,5 +1,6 @@
 import CoreGraphics
 import Metal
+import os
 import QuartzCore
 
 /// ヘッドレス実行の「いま描かれている絵」を、メニューを開いている間だけ CPU 側へ取り出すプラグイン。
@@ -34,7 +35,39 @@ final class HeadlessPreviewTap: MetaphorPlugin {
     }
 
     /// 直近に取り出せた絵。まだ 1 枚も撮れていなければ `nil`。
-    private(set) var latestFrame: CGImage?
+    ///
+    /// 読み戻したピクセルは GPU の完了ハンドラ（別スレッド）から ``pending`` へ置かれ、
+    /// 絵にするのはここを読んだとき（＝メニューを描くとき）です。**完了ハンドラから
+    /// メインアクターへ非同期に渡さない**のは、メインアクターが混んでいると受け渡しが
+    /// いつまでも走らないため（CI の並列実行で実際に取りこぼした）。
+    var latestFrame: CGImage? {
+        if let readback = pending.withLock({ $0 }), readback.generation != cachedGeneration {
+            cachedImage = Self.makeImage(
+                bgra: readback.bytes, width: readback.width, height: readback.height
+            )
+            cachedGeneration = readback.generation
+        }
+        return cachedImage
+    }
+
+    /// 読み戻したピクセル 1 枚ぶん（完了ハンドラ ⇄ メインアクターの受け渡し用）。
+    private struct Readback: Sendable {
+        let bytes: [UInt8]
+        let width: Int
+        let height: Int
+        /// 何枚目か。絵への変換を「新しいものが来たときだけ」に絞るための印。
+        let generation: UInt64
+    }
+
+    /// 完了ハンドラが最後に置いていったピクセル。
+    private let pending = OSAllocatedUnfairLock<Readback?>(initialState: nil)
+
+    /// 読み戻しが進行中か（完了ハンドラから下ろすのでロック越しに持つ）。
+    private let inFlight = OSAllocatedUnfairLock<Bool>(initialState: false)
+
+    private var cachedImage: CGImage?
+    private var cachedGeneration: UInt64 = 0
+    private var generation: UInt64 = 0
 
     /// 縮小と読み戻しを実際に走らせた回数（「閉じている間は何もしない」をテストで押さえるため）。
     private(set) var captureCount = 0
@@ -50,7 +83,6 @@ final class HeadlessPreviewTap: MetaphorPlugin {
     private var staging: MTLTexture?
     private var lastCaptureTime: Double = 0
     private var capturedInitialFrame = false
-    private var readbackInFlight = false
     private var warnedUnsupportedFormat = false
 
     /// - Parameters:
@@ -70,12 +102,13 @@ final class HeadlessPreviewTap: MetaphorPlugin {
     func onDetach() {
         staging = nil
         pipeline = nil
-        latestFrame = nil
+        pending.withLock { $0 = nil }
+        cachedImage = nil
     }
 
     func post(texture: MTLTexture, commandBuffer: MTLCommandBuffer) {
         // 閉じている間のコストはこの 1 行だけ（最初の 1 枚を除く）。
-        guard isCapturing || !capturedInitialFrame, !readbackInFlight else { return }
+        guard isCapturing || !capturedInitialFrame, !inFlight.withLock({ $0 }) else { return }
 
         let now = CACurrentMediaTime()
         guard now - lastCaptureTime >= minimumInterval else { return }
@@ -110,9 +143,10 @@ final class HeadlessPreviewTap: MetaphorPlugin {
         encoder.endEncoding()
 
         lastCaptureTime = now
-        readbackInFlight = true
         capturedInitialFrame = true
         captureCount += 1
+        generation += 1
+        inFlight.withLock { $0 = true }
 
         // `staging` を完了ハンドラへ持ち込むための箱（Issue #328 の使い方に従う）。
         // 安全の根拠: この 1 枚は `readbackInFlight` が下りるまで作り直さず、書くのは
@@ -120,34 +154,31 @@ final class HeadlessPreviewTap: MetaphorPlugin {
         let handoff = UncheckedSendableBox(staging)
         let width = size.width
         let height = size.height
-        commandBuffer.addCompletedHandler { [weak self] _ in
+        let generation = self.generation
+        let pending = self.pending
+        let inFlight = self.inFlight
+        commandBuffer.addCompletedHandler { _ in
             // 読み戻すのはサムネイル 1 枚ぶん（480×360 で 675KB 以下）。
-            var pixels = [UInt8](repeating: 0, count: width * height * 4)
-            pixels.withUnsafeMutableBytes { raw in
-                guard let base = raw.baseAddress else { return }
+            let pixels = [UInt8](unsafeUninitializedCapacity: width * height * 4) { buffer, count in
+                guard let base = buffer.baseAddress else { count = 0; return }
                 handoff.value.getBytes(
                     base,
                     bytesPerRow: width * 4,
                     from: MTLRegionMake2D(0, 0, width, height),
                     mipmapLevel: 0
                 )
+                count = width * height * 4
             }
-            let captured = pixels
-            Task { @MainActor [weak self] in
-                self?.receive(bgra: captured, width: width, height: height)
+            // 撮り終える前にメニューが閉じても捨てない（読み戻しは済んでいるうえ、
+            // 次に開いたときの「1 枚目が来るまでの空白」を埋められる）。
+            pending.withLock {
+                $0 = Readback(bytes: pixels, width: width, height: height, generation: generation)
             }
+            inFlight.withLock { $0 = false }
         }
     }
 
     // MARK: - Helpers
-
-    /// 読み戻したピクセルを絵にして受け取ります（メインアクター）。
-    private func receive(bgra: [UInt8], width: Int, height: Int) {
-        readbackInFlight = false
-        // 撮り終える前にメニューが閉じても捨てない。読み戻しは済んでいるうえ、
-        // 次に開いたときの「1 枚目が来るまでの空白」を埋められる。
-        latestFrame = Self.makeImage(bgra: bgra, width: width, height: height)
-    }
 
     /// BGRA8 ピクセルから `CGImage` を作ります。
     ///

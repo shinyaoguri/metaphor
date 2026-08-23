@@ -1,5 +1,6 @@
 import AppKit
 import Metal
+import MetaphorTestSupport
 import Testing
 
 @testable import MetaphorCore
@@ -52,7 +53,7 @@ struct HeadlessPreviewTapTests {
         "a frame is captured only while the menu is open",
         .enabled(if: MTLCreateSystemDefaultDevice() != nil)
     )
-    func capturesOnlyWhileOpen() async throws {
+    func capturesOnlyWhileOpen() throws {
         let renderer = try MetaphorRenderer(width: 320, height: 180)
         let canvas = try Canvas2D(renderer: renderer)
         let canvas3D = try Canvas3D(renderer: renderer)
@@ -66,43 +67,59 @@ struct HeadlessPreviewTapTests {
         }
         renderer.useExternalRenderLoop = true
 
-        let tap = HeadlessPreviewTap(box: (160, 160), fps: 60)
+        // 間引き（`minimumInterval`）が先に効いて「閉じているから撮らない」を隠さないよう、
+        // 更新レートは十分速くしておく。
+        let tap = HeadlessPreviewTap(box: (160, 160), fps: 1000)
         renderer.addPlugin(tap)
 
         // 1 枚目だけはメニューが閉じていても取る（`noLoop()` の作品はこの 1 枚しか
         // 描かないので、ここで取らないとメニューに永久に絵が出ない）。
         // 320×180 は 160×160 の箱に入れると 160×90。
         renderer.renderFrame()
-        try await wait { tap.latestFrame != nil }
+        try drainGPU(renderer, until: { tap.latestFrame != nil })
         #expect(tap.captureCount == 1)
         let frame = try #require(tap.latestFrame)
         #expect(frame.width == 160)
         #expect(frame.height == 90)
 
         // 2 枚目以降は閉じている間は取らない（＝コストはゼロ）。
+        Thread.sleep(forTimeInterval: 0.01)  // 間引きの窓を跨がせる
         renderer.renderFrame()
         renderer.renderFrame()
-        try await Task.sleep(nanoseconds: 200_000_000)
+        try drainGPU(renderer)
         #expect(tap.captureCount == 1)
 
         // 開いている間は取り直す。
         tap.isCapturing = true
+        Thread.sleep(forTimeInterval: 0.01)
         renderer.renderFrame()
-        try await wait { tap.captureCount > 1 }
+        try drainGPU(renderer)
         #expect(tap.captureCount == 2)
+        #expect(tap.latestFrame != nil)
 
         // 閉じたらまた止まる。
         tap.isCapturing = false
+        Thread.sleep(forTimeInterval: 0.01)
         renderer.renderFrame()
-        try await Task.sleep(nanoseconds: 200_000_000)
+        try drainGPU(renderer)
         #expect(tap.captureCount == 2)
     }
 
-    /// GPU の完了ハンドラ → メインアクターへの受け渡しが済むまで待ちます。
-    private func wait(timeout: Double = 3.0, until condition: () -> Bool) async throws {
-        let deadline = Date().addingTimeInterval(timeout)
+    /// 積んだコマンドバッファが完了しきるまで待ちます。
+    ///
+    /// 同じキューのバッファは積んだ順に完了するので、空のバッファを 1 本流して
+    /// `waitUntilCompleted()` すれば、その前のフレームは完了しています。完了ハンドラは
+    /// 別スレッドで走るため、その結果を見たいときだけ `until` で条件を渡し、**この
+    /// スレッドを直接止めて**待ちます（`await` で待つと、CI の並列実行でメインアクターが
+    /// 混んだときに待ち時間の見積もりが当てにならない — 実際にそれで落ちた）。
+    private func drainGPU(
+        _ renderer: MetaphorRenderer, until condition: () -> Bool = { true }
+    ) throws {
+        let commandBuffer = try #require(renderer.commandQueue.makeCommandBuffer())
+        try MetalTestHelper.commit(commandBuffer)
+        let deadline = Date().addingTimeInterval(5)
         while !condition(), Date() < deadline {
-            try await Task.sleep(nanoseconds: 10_000_000)
+            Thread.sleep(forTimeInterval: 0.002)
         }
     }
 }
