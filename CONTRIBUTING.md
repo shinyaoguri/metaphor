@@ -55,9 +55,9 @@ process live in [DEVELOPMENT.md](DEVELOPMENT.md) — start there before
 sending a PR. The short version:
 
 ```bash
-git clone --recursive https://github.com/shinyaoguri/metaphor.git
+git clone https://github.com/shinyaoguri/metaphor.git
 cd metaphor
-make setup    # submodules + Syphon.xcframework
+make setup    # verify required tools + install git hooks
 make build
 make test
 make ci-check # before pushing: formatting + build + test with CI's -warnings-as-errors
