@@ -1,4 +1,4 @@
-.PHONY: setup build clean clean-examples test test-verbose test-coverage test-lcov ci-check check-binary-targets preflight docs docs-check docs-ja docs-preview examples examples-check examples-list examples-index example-shots tutorial-snippets tutorial-shots tutorial-status reference-shots reference-i18n symbol-graphs llms-txt ai-docs-check hooks contract-schema lint-workflows lint-python
+.PHONY: setup build clean clean-examples test test-verbose test-coverage test-lcov ci-check check-binary-targets preflight docs docs-check docs-ja docs-preview examples examples-check examples-list examples-index example-shots tutorial-snippets tutorial-shots tutorial-status reference-shots reference-i18n symbol-graphs llms-txt ai-docs-check hooks contract-schema lint-workflows lint-python lint-swift format
 
 # Default target
 all: setup build
@@ -84,6 +84,8 @@ test-lcov:
 # （ライブラリ + テスト、Apple Silicon）に収まるため、専用の --scratch-path は
 # 設けず CI と同じ .build をそのまま使う。
 ci-check:
+	@echo "Checking Swift formatting (CI parity)..."
+	@./scripts/lint-swift.sh
 	@echo "Building with -warnings-as-errors (CI parity)..."
 	swift build -Xswiftc -warnings-as-errors
 	@echo "Testing with -warnings-as-errors (CI parity)..."
@@ -187,6 +189,17 @@ lint-workflows:
 # スクリプト側が持つ（ci.yml もこれと同じ実体を呼ぶ）。
 lint-python:
 	@./scripts/lint-python.sh
+
+# Lint Swift formatting with swift-format (same entry point as CI)
+#
+# 検証だけで書き換えない。整形するのは `make format`。設定は .swift-format が
+# 正本で、対象の選び方（Examples と生成物を外す理由）はスクリプト側にある。
+lint-swift:
+	@./scripts/lint-swift.sh
+
+# Format Swift sources in place with swift-format
+format:
+	@./scripts/lint-swift.sh --fix
 
 # Build DocC documentation
 # Uses manual symbol graph extraction to work around SPM binary target issue
@@ -321,6 +334,8 @@ help:
 	@echo "  make contract-schema - Validate wire-schema contract (needs check-jsonschema)"
 	@echo "  make lint-workflows - Lint .github/workflows with actionlint (same as CI)"
 	@echo "  make lint-python    - Lint scripts/*.py with ruff (same as CI)"
+	@echo "  make lint-swift     - Check Swift formatting with swift-format (same as CI)"
+	@echo "  make format         - Format Swift sources in place with swift-format"
 	@echo "  make docs           - Build DocC documentation"
 	@echo "  make docs-check     - Build DocC and fail on any warning (CI と同条件)"
 	@echo "  make docs-ja        - Build the Japanese reference from the ledger (ADR-0011)"
