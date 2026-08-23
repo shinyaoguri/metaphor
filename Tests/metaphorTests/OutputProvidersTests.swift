@@ -113,62 +113,6 @@ struct OutputProvidersTests {
                 .contains { $0.providerID == "fake-gone" }
         )
     }
-
-    // MARK: 旧 API の橋渡し
-
-    @Test("旧 MetaphorOutputRegistry のファクトリは従来の名前解決で 1 件として混ざる")
-    func legacyFactoryIsBridged() {
-        let rec = PostOrderRecorder()
-        MetaphorOutputRegistry.legacyFactory = { name in OrderingOutputPlugin(id: "legacy:\(name)", recorder: rec) }
-        defer { MetaphorOutputRegistry.legacyFactory = nil }
-
-        func legacy(_ context: MetaphorOutputContext) -> MetaphorOutputProviders.ResolvedOutput? {
-            MetaphorOutputProviders.makeOutputs(context: context)
-                .first { $0.providerID == "org.metaphor.legacy-output-factory" }
-        }
-
-        // 優先順位: env > 旧 syphonName > (旧 syphon ? title : nil)。Syphon 相当なので外部ループを要求する。
-        // 旧フィールドは deprecated なので、テストは実体（legacySyphon*）を直接セットする。
-        var config = SketchConfig(title: "MyTitle")
-        config.legacySyphonName = "FromConfig"
-        config.legacySyphonEnabled = true
-        var flagOnly = SketchConfig(title: "MyTitle")
-        flagOnly.legacySyphonEnabled = true
-        #expect(legacy(primaryContext(config, env: ["METAPHOR_SYPHON_NAME": "FromEnv"]))?.plugin.pluginID == "legacy:FromEnv")
-        #expect(legacy(primaryContext(config))?.plugin.pluginID == "legacy:FromConfig")
-        #expect(legacy(primaryContext(flagOnly))?.plugin.pluginID == "legacy:MyTitle")
-        #expect(legacy(primaryContext(config))?.requirements == [.externalRenderLoop])
-
-        // 要求が無ければ無し。空文字の env は未設定。
-        #expect(legacy(primaryContext(SketchConfig(title: "MyTitle"))) == nil)
-        #expect(legacy(primaryContext(SketchConfig(), env: ["METAPHOR_SYPHON_NAME": ""])) == nil)
-
-        // ヘッドレスでも暗黙には立てない（ADR-0014。旧 API の橋渡しも同じ規則）。
-        #expect(legacy(primaryContext(SketchConfig(title: "MyTitle"), isHeadless: true)) == nil)
-
-        // セカンダリウィンドウは旧 syphonName のみ（env / syphon フラグは見ない）。
-        var windowConfig = SketchWindowConfig()
-        windowConfig.legacySyphonName = "Win"
-        let window = MetaphorOutputContext(
-            scope: .window(windowConfig),
-            environment: ["METAPHOR_SYPHON_NAME": "FromEnv"], isHeadless: false
-        )
-        #expect(legacy(window)?.plugin.pluginID == "legacy:Win")
-        let plainWindow = MetaphorOutputContext(
-            scope: .window(SketchWindowConfig()), environment: [:], isHeadless: false
-        )
-        #expect(legacy(plainWindow) == nil)
-    }
-
-    @Test("旧ファクトリが無ければ橋渡しは何も返さない")
-    func noLegacyFactoryNoBridge() {
-        let saved = MetaphorOutputRegistry.legacyFactory
-        MetaphorOutputRegistry.legacyFactory = nil
-        defer { MetaphorOutputRegistry.legacyFactory = saved }
-        var requested = SketchConfig()
-        requested.legacySyphonEnabled = true
-        #expect(MetaphorOutputRegistry.makeLegacyOutput(context: primaryContext(requested)) == nil)
-    }
 }
 
 // MARK: - Context
@@ -239,27 +183,21 @@ struct RenderLoopResolutionTests {
 
     @Test("出力が要求されたのに provider が無いときだけ診断を出す")
     func outputRequestedButMissing() {
-        let plain = SketchConfig()
-        #expect(!SketchRunner.outputRequestedButMissing(config: plain, env: [:], isHeadless: false, outputs: []))
-        var flagOnly = SketchConfig()
-        flagOnly.legacySyphonEnabled = true
-        var nameOnly = SketchConfig()
-        nameOnly.legacySyphonName = "n"
-        #expect(SketchRunner.outputRequestedButMissing(config: flagOnly, env: [:], isHeadless: false, outputs: []))
-        #expect(SketchRunner.outputRequestedButMissing(config: nameOnly, env: [:], isHeadless: false, outputs: []))
-        #expect(SketchRunner.outputRequestedButMissing(config: plain, env: ["METAPHOR_SYPHON_NAME": "n"], isHeadless: false, outputs: []))
-        #expect(!SketchRunner.outputRequestedButMissing(config: plain, env: ["METAPHOR_SYPHON_NAME": ""], isHeadless: false, outputs: []),
+        // 要求の入口は METAPHOR_SYPHON_NAME だけ（旧 SketchConfig.syphon / syphonName は v0.13.0 で削除）。
+        #expect(!SketchRunner.outputRequestedButMissing(env: [:], isHeadless: false, outputs: []))
+        #expect(SketchRunner.outputRequestedButMissing(env: ["METAPHOR_SYPHON_NAME": "n"], isHeadless: false, outputs: []))
+        #expect(!SketchRunner.outputRequestedButMissing(env: ["METAPHOR_SYPHON_NAME": ""], isHeadless: false, outputs: []),
                 "空文字の環境変数は未設定")
         // ヘッドレス: viewer socket も Probe も出力も無いときだけ error 級（何も見えないプロセスになる）。
-        #expect(SketchRunner.outputRequestedButMissing(config: plain, env: [:], isHeadless: true, outputs: []))
+        #expect(SketchRunner.outputRequestedButMissing(env: [:], isHeadless: true, outputs: []))
         #expect(!SketchRunner.outputRequestedButMissing(
-            config: plain, env: ["METAPHOR_VIEWER_SOCKET": "/tmp/v.sock"], isHeadless: true, outputs: []
+            env: ["METAPHOR_VIEWER_SOCKET": "/tmp/v.sock"], isHeadless: true, outputs: []
         ), "viewer socket があれば観測手段がある")
         #expect(!SketchRunner.outputRequestedButMissing(
-            config: plain, env: ["METAPHOR_PROBE": "1"], isHeadless: true, outputs: []
+            env: ["METAPHOR_PROBE": "1"], isHeadless: true, outputs: []
         ), "Probe があれば観測手段がある")
         #expect(SketchRunner.outputRequestedButMissing(
-            config: plain, env: ["METAPHOR_VIEWER_SOCKET": ""], isHeadless: true, outputs: []
+            env: ["METAPHOR_VIEWER_SOCKET": ""], isHeadless: true, outputs: []
         ), "空文字の socket パスは未設定")
     }
 

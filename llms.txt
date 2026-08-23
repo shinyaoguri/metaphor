@@ -1136,8 +1136,6 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `static func register(_ provider: any MetaphorOutputProvider)` -- provider を登録します。同じ `MetaphorOutputProvider/id` が既にあれば置き換えます
 - `static func unregister(id: String)` -- 指定した `id` の provider を登録から外します。無ければ何もしません。
 
-### `enum MetaphorOutputRegistry` -- 出力プラグイン（Syphon / NDI 等）の**旧**ファクトリ登録ポイント。
-
 ### `enum MouseButton` -- マウスのボタン種別。
   - Note: Processing の `LEFT` / `RIGHT` / `CENTER` は metaphor では **キーコード定数**（`LEFT: UInt16 = 123` は左矢印キー）であり、マウスボタンではありません。以前 `Sketch/mouseButton` は `Int` だったため `mouseButton == LEFT` が異種整数比較として合法になり、コンパイルも警告も通ったうえで常に `false` になっていました（Issue #382）。型を分けたことでこの書き間違いはコンパイルエラーになります。
 

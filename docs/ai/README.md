@@ -36,9 +36,10 @@ here.
   `MetaphorOutputContext` (config + env + headless) and attach whatever they
   return; providers and `PluginFactory` declare `PluginRequirements`
   (`.externalRenderLoop`) so the render-loop mode is decided before plugins are
-  instantiated. `MetaphorOutputRegistry.factory` and `SketchConfig.syphon` /
-  `syphonName` are deprecated shims (removed in the next minor). See ADR 0001
-  (runtime split) and ADR 0014 (provider registration / Syphon plugin split).
+  instantiated. The pre-0.12 shims (`MetaphorOutputRegistry.factory`,
+  `SketchConfig.syphon` / `syphonName`, `SketchWindowConfig.syphonName`) were
+  removed in 0.13.0. See ADR 0001 (runtime split) and ADR 0014 (provider
+  registration / Syphon plugin split).
 - Tier 1 modules (`MetaphorAudio`, `MetaphorNetwork`, `MetaphorPhysics`,
   `MetaphorML`, `MetaphorVideo`) must not depend on `MetaphorCore`.
 - Tier 2 modules (`MetaphorNoise`, `MetaphorMPS`, `MetaphorCoreImage`,

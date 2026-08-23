@@ -27,21 +27,6 @@ public struct SketchWindowConfig: Sendable {
     /// ウィンドウのスケール係数（ウィンドウサイズ = テクスチャサイズ × scale）。
     public var windowScale: Float
 
-    /// 旧 ``syphonName`` の実体（deprecation 窓の間だけ。ADR-0014 / #1040。
-    /// `SketchConfig.legacySyphonName` と同じ理由で internal・非 deprecated）。
-    var legacySyphonName: String?
-
-    /// Syphon サーバー名。Syphon 出力を無効にするには `nil`。
-    ///
-    /// **Deprecated**: Syphon は別パッケージ `metaphor-syphon` へ移りました（ADR-0014）。
-    /// ``plugins`` に `.syphon(name:)` を渡してください。移行期間中は metaphor-syphon の
-    /// provider がこの値も読みます。
-    @available(*, deprecated, message: "Syphon moved to the metaphor-syphon package: add it to Package.swift and pass plugins: [.syphon(name:)]")
-    public var syphonName: String? {
-        get { legacySyphonName }
-        set { legacySyphonName = newValue }
-    }
-
     /// レンダーループモード。
     ///
     /// デフォルトは ``RenderLoopMode/displayLink``。``PluginRequirements/externalRenderLoop`` を
@@ -81,27 +66,7 @@ public struct SketchWindowConfig: Sendable {
         self.title = title
         self.fps = fps
         self.windowScale = windowScale
-        self.legacySyphonName = nil
         self.renderLoopMode = renderLoopMode
         self.plugins = plugins
-    }
-
-    /// `syphonName:` を取る旧 init（deprecated）。`syphonName` に既定値が無いのは新しい init との曖昧さを断つため。
-    @available(*, deprecated, message: "Syphon moved to the metaphor-syphon package: add it to Package.swift and pass plugins: [.syphon(name:)]")
-    public init(
-        width: Int = 800,
-        height: Int = 600,
-        title: String = "metaphor",
-        fps: Int = 60,
-        windowScale: Float = 1.0,
-        syphonName: String?,
-        renderLoopMode: RenderLoopMode = .displayLink,
-        plugins: [PluginFactory] = []
-    ) {
-        self.init(
-            width: width, height: height, title: title, fps: fps, windowScale: windowScale,
-            renderLoopMode: renderLoopMode, plugins: plugins
-        )
-        self.legacySyphonName = syphonName
     }
 }
