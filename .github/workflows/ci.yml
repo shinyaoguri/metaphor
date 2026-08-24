@@ -235,8 +235,11 @@ jobs:
           fi
           # Initial push (no prior tip) — assume Sources may have changed.
           if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ]; then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-            echo "docc=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "changed=true"
+              echo "docc=true"
+              echo "reference_links=true"
+            } >> "$GITHUB_OUTPUT"
             exit 0
           fi
           # After a force push the old tip can be unreachable; fall back to
@@ -244,8 +247,11 @@ jobs:
           # merge-base 起点で取る（Issue #642）。ここは PR 以外も通るが、base が
           # head の祖先なら 3 点表記は 2 点間と同じ結果になるので挙動は変わらない。
           if ! changed_files=$(scripts/changed-llms-inputs.sh "$base" "$head" 2>/dev/null); then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-            echo "docc=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "changed=true"
+              echo "docc=true"
+              echo "reference_links=true"
+            } >> "$GITHUB_OUTPUT"
             exit 0
           fi
           # llms.txt の入力（Sources/ / 生成器 / `symbol-graphs` レシピを持つ
@@ -269,8 +275,25 @@ jobs:
              scripts/pr-changed-files.sh "$base" "$head" \
                -- 'Sources/**/*.docc/**' 2>/dev/null | grep -q .; then
             echo "docc=true" >> "$GITHUB_OUTPUT"
+            docc=true
           else
             echo "docc=false" >> "$GITHUB_OUTPUT"
+            docc=false
+          fi
+          # リファレンス URL の検査（下）の入力は 2 つある。「リンクを書く側」の
+          # Markdown と、「リンク先の集合を決める側」の公開 API。後者は上の docc
+          # 判定がそのまま使える（シグネチャが動けばページ名も動く）ので、足すのは
+          # 前者だけ。パターンは**スクリプトの走査対象より広く**取ってある — 広い分
+          # には数秒余計に走るだけだが、取りこぼすと**次に Sources を触った無関係な
+          # PR**が自分の入れていない 404 で落ちる（責めるべき PR がずれる）。
+          # 検査そのものを直した PR でも走らせたいので、スクリプト自身も入れる。
+          if [ "$docc" = true ] || \
+             scripts/pr-changed-files.sh "$base" "$head" \
+               -- 'docs/**' 'Examples/**' 'website/**' 'changelog.d/**' '*.md' \
+                  'scripts/check-reference-links.py' 2>/dev/null | grep -q .; then
+            echo "reference_links=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "reference_links=false" >> "$GITHUB_OUTPUT"
           fi
       - name: Check cross-repo contract
         run: ./scripts/check-contract.sh
@@ -431,6 +454,23 @@ jobs:
       - name: Verify DocC builds without warnings
         if: steps.source-changed.outputs.docc == 'true'
         run: make docs-check
+      # ドキュメントが外部リンクしている DocC リファレンス URL（218 本）が実在する
+      # ページを指しているか（Issue #987）。URL にはシグネチャが焼き込まれているので、
+      # 引数ラベルが 1 つ増えただけで 404 になる — #959 では 4 本が同時に死んでいて、
+      # 気付けたのは別件で全数照合したときだった。上の docs-check が Markdown を
+      # 見ないのと、check-docs-links.py が外部 URL を対象外にしているのとで、
+      # ここが空白だった。
+      #
+      # 公開サイトへ HTTP は投げない。ネットワーク依存の flaky を持ち込むうえ、
+      # 見に行く先が公開済みのリファレンスでは **main へ入る前の変更**（＝ まさに
+      # 止めたいタイミング）を検知できない。ローカルの DocC 出力に当てる。
+      #
+      # コストは軽い。手前の docs-check が .build/docs を出していれば docc convert
+      # を回し直すだけ（実測 4 秒）で、出していない PR でもここが素の swift build を
+      # 一度通るだけで済む。ローカルの `make reference-links-check` と同じ実体。
+      - name: Check reference links in docs
+        if: steps.source-changed.outputs.reference_links == 'true'
+        run: make reference-links-check
       - name: Auto-regenerate examples index (PR only)
         # Only run for PRs from the same repository — fork PRs can't push back
         # because the GITHUB_TOKEN is restricted to read-only on forks.

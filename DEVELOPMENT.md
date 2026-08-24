@@ -156,6 +156,7 @@ CI での検証範囲は 3 段構えです（全 278 本を毎 PR で建てる�
 - **`scripts/signed-commit.py`（GitHub API 経由の署名コミット）は pre-push を通りません**。`git push` ではなく GraphQL へ直接投げるためで、署名は外れませんが**鮮度検査だけが外れます**（[#978](https://github.com/shinyaoguri/metaphor/issues/978)）。いまは送信の前に同じ検査を自分で走らせ、陳腐化していたら 1 バイトも送らずに止まります。降りられるのは `--skip-freshness` を明示したときだけで、渡しているのは `release.yml` だけです（runner の変更セットに `MetaphorVersion.swift` が入るため `make llms-txt` = `swift build` が丸ごと乗るのと、リリースブランチの PR で CI が同じ検査を独立に回すため）。
 - AI 向けドキュメント（CLAUDE.md / docs/ai/）とコードの整合は `make ai-docs-check` で検証できます。ドキュメント・モジュール一覧・バージョンスニペットを変えたら実行してください。
 - `docs/**` の相対リンクと `docs/adr/README.md` の索引の整合は `make docs-links-check` で検証できます（CI でも毎 PR 走ります）。ドキュメントを移動・改名した、見出しを変えた、ADR を足したときに実行してください。
+- **本文が張るリファレンス URL（`https://shinyaoguri.github.io/metaphor/reference/documentation/…`）は `make reference-links-check` で検証できます**（[#987](https://github.com/shinyaoguri/metaphor/issues/987)。CI では対象の Markdown か公開 API が動いた PR で走ります）。この URL には**シグネチャが焼き込まれている**ので、引数ラベルを 1 つ足しただけで 404 になります（#959 では 4 本が同時に死にました）。照合先は `make docs` のローカル出力なので、公開前の変更でも判定できます。壊れているときは行き先の候補まで出ます。
 
 ## 公開サイトの構成を手元で確認する
 
