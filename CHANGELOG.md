@@ -41,6 +41,66 @@ Maintaining this file
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-08-24
+
+### Added
+
+- Headless (offscreen) runs now show up on screen instead of being invisible. A
+  sketch started with `METAPHOR_VIEWER=1` has no window and used to appear
+  nowhere — no Dock icon, no menu bar item — while still holding an App Nap
+  assertion and driving the GPU, so there was no way to tell whether one (or
+  five) were running, or how to stop them. Such a run now puts a status item in
+  the menu bar showing the sketch name, metaphor version and PID, resolution,
+  target and measured fps, frame count and elapsed time, and where the frames go
+  (`Output: none — nobody is watching these frames` when the live viewer has
+  disconnected and nothing else is observing), plus a Quit item that terminates
+  the process through the normal shutdown path.
+  - Pick a different surface with `SketchConfig(headlessIndicator:)` —
+    `.menuBar` (default), `.dock` (Dock icon and ⌘-Tab, with a minimal app menu
+    so ⌘Q works), `.both`, or `.hidden` for the previous behaviour.
+  - The environment variable `METAPHOR_HEADLESS_INDICATOR`
+    (`menubar` / `dock` / `both` / `none`) overrides the config without a
+    rebuild, the same way `METAPHOR_FPS` overrides `fps`.
+  - Windowed runs are unaffected.
+- The headless status item's menu now answers "which process is this?" and lets
+  you take the picture with you: the sketch name is a heading with **the
+  directory the process is running in** beneath it (the `.metaphor/` base, so
+  `METAPHOR_STATE_DIR` is honoured — the only way to tell two runs of the same
+  sketch apart), and a new **Save Frame** (⌘S) writes the current frame to
+  `output/metaphor_<timestamp>.png`, falling back to `~/Desktop` when that
+  directory is not writable (a `.app` launched from Finder runs with `/` as its
+  base). The save does **not** draw a new frame, so it works on a `noLoop()`
+  sketch, and the menu keeps showing where the file went
+  ([#1077](https://github.com/shinyaoguri/metaphor/issues/1077)).
+- The headless status item's menu now shows a live thumbnail of the frame being
+  rendered, so an offscreen run tells you *what* it is drawing and not just that
+  it is alive. The frame is downscaled on the GPU and read back only while the
+  menu is open (plus once at startup, so a `noLoop()` sketch still has a picture
+  to show) — a closed menu costs one boolean check per frame. The numbers next
+  to it (measured fps, frame count, elapsed) refresh while the menu stays open.
+
+### Changed
+
+- The headless status item is now a *last resort* rather than an always-on HUD:
+  it stays out of the menu bar while the live viewer (`metaphor watch`) is
+  attached — the parent window already shows the same picture and the same
+  numbers — and appears the moment nobody is watching any more, so **its very
+  presence means "this process is unobserved"**. Runs with no parent window
+  (`metaphor mcp`, Syphon output, a plain headless launch) keep showing it as
+  before, and `metaphor watch` no longer flickers an item in and out of the menu
+  bar on every rebuild
+  ([#1071](https://github.com/shinyaoguri/metaphor/issues/1071)).
+
+### Fixed
+
+- Headless runs (`METAPHOR_VIEWER=1` — the child process of `metaphor watch --viewer`, and
+  `metaphor mcp`) no longer replace an explicit `renderLoopMode: .timer(fps:)` with the
+  effective FPS. `SketchConfig(fps: 60, renderLoopMode: .timer(fps: 30))` used to run at 30 fps
+  in a window but at 60 fps headless; both paths now run at 30 fps, matching the documented rule
+  that an explicit `timer(fps:)` is kept as is. `METAPHOR_FPS` / `metaphor run --fps` still
+  resolve the effective target FPS, and — as in windowed mode — do not override an explicit
+  `timer(fps:)` ([#1063](https://github.com/shinyaoguri/metaphor/issues/1063))
+
 ## [0.13.0] - 2026-08-23
 
 ### Breaking Changes
@@ -2374,7 +2434,8 @@ Adds `PixelBuffer`, multi-window improvements, Core ML examples (face detection,
 
 First public release. [Release notes](https://github.com/shinyaoguri/metaphor/releases/tag/v0.1.0)
 
-[Unreleased]: https://github.com/shinyaoguri/metaphor/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/shinyaoguri/metaphor/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/shinyaoguri/metaphor/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/shinyaoguri/metaphor/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/shinyaoguri/metaphor/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/shinyaoguri/metaphor/compare/v0.10.0...v0.11.0
