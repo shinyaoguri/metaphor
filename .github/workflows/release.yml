@@ -328,6 +328,11 @@ jobs:
       - name: Bridge CI to legacy Status for ruleset gate
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # ci.yml の PR ゲートより長く粘る（既定は 3 回）。ここで落ちると
+          # `ci-gate` の legacy Status が立たずリリース PR がマージ不能になり、
+          # しかも release ブランチ push と PR 作成が済んでいるので、単純な
+          # 再実行は `gh pr create` が二重になって通らない（Issue #1006）。
+          GH_RETRY_ATTEMPTS: '6'
         run: |
           # Repository rulesets on personal repos evaluate the
           # required_status_checks rule against the legacy Statuses API,
@@ -338,7 +343,11 @@ jobs:
           # The required context is the aggregate gate `ci-gate` (Issue #411).
           # ci.yml's own bridge step posts this too, but belt-and-suspenders:
           # this workflow must not depend on the dispatched run's bridging.
-          PR_SHA=$(gh pr view "$PR_NUMBER" --json headRefOid --jq '.headRefOid')
+          #
+          # 取得は scripts/gh-retry.sh 経由（Issue #1006）。`gh pr view --json`
+          # は GraphQL なので、2026-08-17 の GraphQL 503 障害にそのまま刺さる。
+          # 一過性の失敗だけをリトライし、403/404 のような定義的な失敗は即落とす。
+          PR_SHA=$(scripts/gh-retry.sh pr view "$PR_NUMBER" --json headRefOid --jq '.headRefOid')
           gh api -X POST "repos/${GITHUB_REPOSITORY}/statuses/${PR_SHA}" \
             -f state=success \
             -f context=ci-gate \
@@ -353,12 +362,20 @@ jobs:
       - name: Tag the merged commit
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # このワークフローで最もやり直しが効かない一点。直前で squash merge が
+          # 済んでいるので、ここで落ちると「main にはマージ済み・タグは無い」状態
+          # が残り、再実行では戻せない（人手で `git tag` を打つしかない）。
+          # ci.yml の既定 3 回より長く粘る（Issue #1006）。
+          GH_RETRY_ATTEMPTS: '6'
         run: |
           set -euo pipefail
           # Tag the squash commit this PR actually produced. Tagging the tip of
           # main after a pull races with anything merged in the meantime — an
           # unrelated commit could end up tagged as the release.
-          MERGE_SHA=$(gh pr view "$PR_NUMBER" --json mergeCommit --jq '.mergeCommit.oid')
+          #
+          # 取得は scripts/gh-retry.sh 経由（Issue #1006）。使い切ったら空では
+          # なく非ゼロで落ちるので、下の null ガードごと「黙って進まない」が保たれる。
+          MERGE_SHA=$(scripts/gh-retry.sh pr view "$PR_NUMBER" --json mergeCommit --jq '.mergeCommit.oid')
           if [ -z "$MERGE_SHA" ] || [ "$MERGE_SHA" = "null" ]; then
             echo "::error::Could not resolve the merge commit for PR #${PR_NUMBER}."
             exit 1
