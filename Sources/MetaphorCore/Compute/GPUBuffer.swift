@@ -1,31 +1,66 @@
 import Metal
 
-/// CPU と GPU の両方からアクセス可能な型付き GPU バッファを提供します。
+/// A typed GPU buffer that both the CPU and the GPU can read and write.
 ///
-/// `storageModeShared` を使用し、Apple Silicon ユニファイドメモリにより
-/// CPU と GPU の両側からゼロコピーアクセスを実現します。
+/// It is allocated with `storageModeShared`, so on Apple silicon's unified memory the CPU and
+/// the GPU address the same bytes with no copy.
 ///
 /// ```swift
 /// var positions = createBuffer(count: 1000, type: SIMD2<Float>.self)
 /// positions![0] = SIMD2<Float>(100, 200)
 /// ```
+///
+/// ## Reading back what a kernel wrote
+///
+/// A read placed right after a dispatch returns the contents from *before* the kernel ran —
+/// no warning, no crash, just the old numbers:
+///
+/// ```swift
+/// func compute() {
+///     dispatch(kernel, threads: buffer.count) { enc in
+///         enc.setBuffer(buffer.buffer, offset: 0, index: 0)
+///     }
+///     print(buffer[0])   // still the old value: the kernel has not run yet
+/// }
+/// ```
+///
+/// - Important: **Reading this buffer never waits for the GPU.** ``subscript(_:)``,
+///   ``toArray()`` and ``contents`` hand back the shared memory exactly as it stands at that
+///   instant. ``Sketch/dispatch(_:threads:configure:)`` only *encodes* the kernel into the
+///   frame's command buffer, and the GPU does not begin until that buffer is committed, so a
+///   value read later in the same `compute()` is the value from before the dispatch.
+///
+/// - Important: "Read it on the next frame" is not a guarantee either, because a command
+///   buffer completes asynchronously. The one public API that does wait is
+///   ``Sketch/loadPixels()``: on the normal path (shadows off, called from `draw()`) it
+///   commits **the frame's command buffer, the same one that carried `compute()`**, and blocks
+///   until the GPU finishes, so this frame's kernel writes are readable once it returns. Being
+///   a pixel API it also brings its own render pass split (cleared depth, changed 2D/3D
+///   stacking order), and with `enableShadows()` on it cannot split the pass at all and so
+///   does **not** wait for this frame's compute.
+///
+/// - Note: Until a read back of its own exists (Issue #1136), the portable way to know that a
+///   result has landed is to have the kernel write a sentinel of its own — a frame counter, a
+///   "done" flag — and to read the payload only once the sentinel has changed. Comparing
+///   values that are "probably one frame behind" instead counts the lag itself as a
+///   disagreement.
 @MainActor
 public final class GPUBuffer<T> {
-    /// 基盤となる Metal バッファ
+    /// The underlying Metal buffer.
     public let buffer: MTLBuffer
 
-    /// バッファ内の要素数
+    /// The number of elements in the buffer.
     public let count: Int
 
-    /// バッファ内容への型付きポインタ
+    /// A typed pointer to the buffer contents.
     private let pointer: UnsafeMutablePointer<T>
 
     // MARK: - 初期化
 
-    /// 指定された要素数でゼロ初期化された空のバッファを作成します。
+    /// Creates an empty buffer of the given element count, zero filled.
     /// - Parameters:
-    ///   - device: バッファ確保に使用する Metal デバイス
-    ///   - count: 確保する要素数
+    ///   - device: The Metal device to allocate the buffer on.
+    ///   - count: The number of elements to allocate.
     public init?(device: MTLDevice, count: Int) {
         // 掛け算はガードの内側で行う。先に書くと、大きな count が `nil` ではなく
         // 算術オーバーフローの trap になり、Optional を返す契約が効かなくなる (#1091)。
@@ -41,10 +76,10 @@ public final class GPUBuffer<T> {
         memset(buffer.contents(), 0, byteLength)
     }
 
-    /// 要素の配列で初期化されたバッファを作成します。
+    /// Creates a buffer initialized with an array of elements.
     /// - Parameters:
-    ///   - device: バッファ確保に使用する Metal デバイス
-    ///   - data: バッファにコピーする初期データの配列
+    ///   - device: The Metal device to allocate the buffer on.
+    ///   - data: The array of initial data to copy into the buffer.
     public init?(device: MTLDevice, data: [T]) {
         let count = data.count
         // `data.count` 由来なので溢れようがないが、掛け算をガードの内側に置く形は
@@ -65,12 +100,15 @@ public final class GPUBuffer<T> {
 
     // MARK: - 要素アクセス
 
-    /// 指定されたインデックスの要素にアクセスします。
+    /// Accesses the element at the given index.
     ///
-    /// 範囲外のインデックスはプログラミングエラーとして `precondition` で
-    /// 即時停止します（`Swift.Array` と同じ意味論。ADR-0005 のエラー報告規約
-    /// 「プログラミングエラー = trap」の適用）。範囲を動的に扱う場合は
-    /// ``count`` で事前に検証してください。
+    /// An out of range index is a programming error and stops immediately through a
+    /// `precondition` (the same semantics as `Swift.Array`, applying the "programming error =
+    /// trap" rule of the ADR-0005 error reporting convention). Validate against ``count`` in
+    /// advance when the range is dynamic.
+    ///
+    /// - Important: The read does **not** wait for the GPU. See the discussion on ``GPUBuffer``
+    ///   for what is and is not guaranteed after a dispatch.
     public subscript(index: Int) -> T {
         get {
             precondition(
@@ -84,14 +122,18 @@ public final class GPUBuffer<T> {
         }
     }
 
-    /// バッファの内容を Swift 配列にコピーします。
-    /// - Returns: バッファの全要素を含む新しい配列
+    /// Copies the buffer contents into a Swift array.
+    /// - Returns: A new array holding every element of the buffer.
+    /// - Important: The copy does **not** wait for the GPU. It snapshots the shared memory as
+    ///   it stands, so a call made in the same `compute()` as the dispatch that fills the
+    ///   buffer returns the contents from before the kernel ran. See the discussion on
+    ///   ``GPUBuffer``.
     public func toArray() -> [T] {
         Array(UnsafeBufferPointer(start: pointer, count: count))
     }
 
-    /// Swift 配列の要素をバッファにコピーします。
-    /// - Parameter data: ソース配列。`min(data.count, count)` 要素のみがコピーされます
+    /// Copies the elements of a Swift array into the buffer.
+    /// - Parameter data: The source array. Only `min(data.count, count)` elements are copied.
     public func copyFrom(_ data: [T]) {
         let copyCount = min(data.count, count)
         guard copyCount > 0 else { return }
@@ -100,8 +142,11 @@ public final class GPUBuffer<T> {
         }
     }
 
-    /// バッファ内容への直接アクセスを unsafe mutable buffer pointer として提供します。
-    /// - Returns: 高パフォーマンスな一括操作用の全要素にわたる `UnsafeMutableBufferPointer`
+    /// Direct access to the buffer contents as an unsafe mutable buffer pointer.
+    /// - Returns: An `UnsafeMutableBufferPointer` over every element, for high performance bulk
+    ///   operations.
+    /// - Important: Access through the pointer does **not** wait for the GPU, and the GPU may
+    ///   be writing the same bytes concurrently. See the discussion on ``GPUBuffer``.
     public var contents: UnsafeMutableBufferPointer<T> {
         UnsafeMutableBufferPointer(start: pointer, count: count)
     }

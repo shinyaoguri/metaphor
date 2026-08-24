@@ -755,6 +755,10 @@ extension SketchContext {
     ///   - kernel: The compute kernel to dispatch.
     ///   - threads: The total thread count.
     ///   - configure: A closure that configures the compute encoder before the dispatch.
+    /// - Important: The call only **encodes** the kernel into the frame's command buffer. The
+    ///   GPU does not start it until the frame is committed, so an output ``GPUBuffer`` read
+    ///   later in the same `compute()` still holds the contents from before the dispatch. See
+    ///   ``GPUBuffer`` for when the writes become visible to the CPU.
     /// - Important: GPU work can only be encoded during the compute phase, so a call from
     ///   `setup()` or `draw()` does nothing. Debug builds warn once (Issue #1092).
     public func dispatch(
@@ -782,6 +786,10 @@ extension SketchContext {
     ///   - width: The grid width in threads.
     ///   - height: The grid height in threads.
     ///   - configure: A closure that configures the compute encoder before the dispatch.
+    /// - Important: The call only **encodes** the kernel into the frame's command buffer. The
+    ///   GPU does not start it until the frame is committed, so an output ``GPUBuffer`` read
+    ///   later in the same `compute()` still holds the contents from before the dispatch. See
+    ///   ``GPUBuffer`` for when the writes become visible to the CPU.
     /// - Important: GPU work can only be encoded during the compute phase, so a call from
     ///   `setup()` or `draw()` does nothing. Debug builds warn once (Issue #1092).
     public func dispatch(
@@ -808,7 +816,19 @@ extension SketchContext {
 
     /// Inserts a memory barrier between compute dispatches (only inside ``Sketch/compute()``).
     ///
-    /// Use it to resolve data dependencies between dispatches.
+    /// Use it to declare a data dependency between dispatches: put it between the dispatch that
+    /// writes a buffer and the dispatch that reads what was written.
+    /// - Note: **With the current encoder the call changes nothing.** `ensureComputeEncoder`
+    ///   builds the pass with `cb.makeComputeCommandEncoder()`, which is
+    ///   `MTLDispatchType.serial`, so the dispatches run in encode order and each one already
+    ///   sees what the earlier ones wrote, including writes made by other threads. Measured
+    ///   over a dependent chain of 4,194,304 elements (20 runs, Apple silicon): 0 disagreements
+    ///   with the barrier and 0 without it (Issue #1093).
+    /// - Important: **It stops being a no-op the moment the pass becomes concurrent.** The same
+    ///   chain re-encoded with `MTLDispatchType.concurrent` disagreed on up to 106 elements per
+    ///   run without the barrier and on 0 with it. This API is what would keep such a pass
+    ///   correct, which is why the calls are worth keeping wherever a real dependency exists
+    ///   rather than stripping them as dead weight.
     /// - Important: GPU work can only be encoded during the compute phase, so a call from
     ///   `setup()` or `draw()` does nothing. Debug builds warn once (Issue #1092).
     public func computeBarrier() {
