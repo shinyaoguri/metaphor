@@ -311,6 +311,10 @@
     "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::circle(_:_:_:)": {
       "symbol": "circle(_:_:_:)",
       "snippetHash": "0bb9ad1cab760d4929f6cf94fa5f7871d02b40e84878c50ce52c747186933b84",
+      "provenance": {
+        "commit": "39b375c7a947348d0737440d203d926e9a82e39c",
+        "dirty": false
+      },
       "width": 480,
       "height": 360,
       "url": "https://i.gyazo.com/5db1a81abf5604a4ee8a316406fc5049.png",
