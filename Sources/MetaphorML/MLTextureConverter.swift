@@ -355,7 +355,7 @@ public final class MLTextureConverter {
         return tex
     }
 
-    /// `MLMultiArray` の要素をどう並べて読むか（下の 2 本の引数を 1 つに畳む）。
+    // `MLMultiArray` の要素をどう並べて読むか（下の 2 本の引数を 1 つに畳む）。
     private struct ElementLayout {
         let width: Int
         let height: Int
@@ -363,21 +363,21 @@ public final class MLTextureConverter {
         let columnStride: Int
     }
 
-    /// `MLMultiArray` の要素を row-major な `[Float]` へ写す（浮動小数点の要素）。
+    // `MLMultiArray` の要素を row-major な `[Float]` へ写す（浮動小数点の要素）。
     ///
-    /// **クロージャを引数に取らず、外側の変数も掴まない。** ここは元々
-    /// `copyElements<T>(_ type: T.Type, _ convert: (T) -> Float)` というジェネリックな
-    /// ローカル関数 1 本で 5 つの型を捌いていたが、その形が **Xcode 26.4.1 の SIL
-    /// 最適化パスを落とした**（#1102）。`-O` と `-enable-default-cmo` が揃ったときだけ
-    /// `signal 11` で死に、全数スイープ 343 本のうち 24 本がこれで落ちていた。
+    // **クロージャを引数に取らず、外側の変数も掴まない。** ここは元々
+    // `copyElements<T>(_ type: T.Type, _ convert: (T) -> Float)` というジェネリックな
+    // ローカル関数 1 本で 5 つの型を捌いていたが、その形が **Xcode 26.4.1 の SIL
+    // 最適化パスを落とした**（#1102）。`-O` と `-enable-default-cmo` が揃ったときだけ
+    // `signal 11` で死に、全数スイープ 343 本のうち 24 本がこれで落ちていた。
     ///
-    /// 手元の Xcode 26.6 では再現せず、per-PR CI も debug ビルド（`-O` なし）なので
-    /// 捕まらない。**検証できるのは `examples-sweep.yml` の実行だけ**。だから
-    /// 「1 本にまとめ直すほうが短い」という理由でこの形を戻さないこと。
+    // 手元の Xcode 26.6 では再現せず、per-PR CI も debug ビルド（`-O` なし）なので
+    // 捕まらない。**検証できるのは `examples-sweep.yml` の実行だけ**。だから
+    // 「1 本にまとめ直すほうが短い」という理由でこの形を戻さないこと。
     ///
-    /// `withUnsafeBufferPointer(ofType:)` を使わないのは別の理由で、Float16 / Int8 の
-    /// scalar conformance が macOS 15/26 以降のため。macOS 14 でも使える raw バイト
-    /// API を採っている。
+    // `withUnsafeBufferPointer(ofType:)` を使わないのは別の理由で、Float16 / Int8 の
+    // scalar conformance が macOS 15/26 以降のため。macOS 14 でも使える raw バイト
+    // API を採っている。
     private static func floats<T: BinaryFloatingPoint>(
         _ type: T.Type, from multiArray: MLMultiArray, layout: ElementLayout
     ) -> [Float] {
@@ -394,9 +394,9 @@ public final class MLTextureConverter {
         return out
     }
 
-    /// 同上（整数の要素）。浮動小数点版と分けてあるのは、`Float` の初期化子が
-    /// `BinaryFloatingPoint` と `BinaryInteger` で別だから — ここを 1 本にするには
-    /// 変換をクロージャで渡すことになり、それが #1102 の形そのものになる。
+    // 同上（整数の要素）。浮動小数点版と分けてあるのは、`Float` の初期化子が
+    // `BinaryFloatingPoint` と `BinaryInteger` で別だから — ここを 1 本にするには
+    // 変換をクロージャで渡すことになり、それが #1102 の形そのものになる。
     private static func floats<T: BinaryInteger>(
         _ type: T.Type, from multiArray: MLMultiArray, layout: ElementLayout
     ) -> [Float] {
