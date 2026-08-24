@@ -206,6 +206,16 @@ jobs:
         # 落とす — macOS ランナーには入っておらず、「あれば使う」にすると
         # `run:` の中身の検証が CI でだけ黙って外れる）。
         run: ./scripts/lint-workflows.sh
+      - name: Check CI parity
+        # このジョブのステップが `make ci-check` に載っているかを台帳で固定する
+        # （Issue #1020）。CLAUDE.md / DEVELOPMENT.md は「push 前に make ci-check」を
+        # 案内しているのに、ステップを足すたびに対応づけを直す工程が誰の担当でもなく、
+        # 起票時点で 14 本が取りこぼされていた（DocC はそのうちの 1 本）。文章では
+        # 止まらない形の失敗なので、決定論的に落とす。ここへステップを足す人は
+        # 「ci-check に入れる / CI 専用と宣言する」のどちらかを必ず一度は決めることに
+        # なる。台帳は scripts/check-ci-parity.py が正本（scripts/tests/ に
+        # ユニットテストがある）。ビルド不要なので手前に置く。
+        run: python3 scripts/check-ci-parity.py
       - name: Test generator scripts
         # scripts/ 配下の Python 生成器のユニットテスト。llms.txt の中身は
         # 「生成物が最新か」のチェック（下）では守れない — 生成器が API 面を
