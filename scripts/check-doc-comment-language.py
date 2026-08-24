@@ -55,7 +55,7 @@ SOURCES = ROOT / "Sources"
 # #334 の英語化が進むたびに数字を下げ、0 になったら行ごと消す。
 # 数字は `python3 scripts/check-doc-comment-language.py` が出す実測値をそのまま置く。
 ALLOWLIST: dict[str, tuple[int, str]] = {
-    "MetaphorCore": (7327, "#334 で英語化中（レーン単位で進行）。0 になったら行ごと削除する"),
+    "MetaphorCore": (7306, "#334 で英語化中（レーン単位で進行）。0 になったら行ごと削除する"),
     "MetaphorTestSupport": (111, "product 非公開。GoldenImage.swift が大半"),
     "MetaphorLog": (22, "product 非公開（MetaphorCore が再輸出する診断ログ）"),
 }

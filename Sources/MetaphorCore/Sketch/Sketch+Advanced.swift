@@ -70,12 +70,26 @@ extension Sketch {
         context.createBuffer(data)
     }
 
-    /// 1D コンピュートカーネルをディスパッチします。
+    /// Dispatches a 1D compute kernel (only effective inside ``Sketch/compute()``).
+    ///
+    /// ``createComputeKernel(source:function:)`` and ``createBuffer(count:type:)`` work in
+    /// `setup()` as well, but **the dispatch itself only works inside `compute()`**.
+    ///
+    /// ```swift
+    /// func compute() {
+    ///     dispatch(kernel, threads: 256) { enc in
+    ///         enc.setBuffer(buffer.buffer, offset: 0, index: 0)
+    ///     }
+    /// }
+    /// ```
     ///
     /// - Parameters:
-    ///   - kernel: ディスパッチするコンピュートカーネル。
-    ///   - threads: 総スレッド数。
-    ///   - configure: ディスパッチ前にコンピュートコマンドエンコーダーを構成するクロージャ。
+    ///   - kernel: The compute kernel to dispatch.
+    ///   - threads: The total thread count.
+    ///   - configure: A closure that configures the compute command encoder before the
+    ///     dispatch.
+    /// - Important: A call from `setup()` or `draw()` does nothing. Debug builds warn once
+    ///   (Issue #1092).
     public func dispatch(
         _ kernel: ComputeKernel,
         threads: Int,
@@ -84,13 +98,16 @@ extension Sketch {
         context.dispatch(kernel, threads: threads, configure: configure)
     }
 
-    /// 2D コンピュートカーネルをディスパッチします。
+    /// Dispatches a 2D compute kernel (only effective inside ``Sketch/compute()``).
     ///
     /// - Parameters:
-    ///   - kernel: ディスパッチするコンピュートカーネル。
-    ///   - width: スレッド単位のグリッド幅。
-    ///   - height: スレッド単位のグリッド高さ。
-    ///   - configure: ディスパッチ前にコンピュートコマンドエンコーダーを構成するクロージャ。
+    ///   - kernel: The compute kernel to dispatch.
+    ///   - width: The grid width in threads.
+    ///   - height: The grid height in threads.
+    ///   - configure: A closure that configures the compute command encoder before the
+    ///     dispatch.
+    /// - Important: A call from `setup()` or `draw()` does nothing. Debug builds warn once
+    ///   (Issue #1092).
     public func dispatch(
         _ kernel: ComputeKernel,
         width: Int,
@@ -100,7 +117,10 @@ extension Sketch {
         context.dispatch(kernel, width: width, height: height, configure: configure)
     }
 
-    /// ディスパッチ間の同期のためにコンピュートコマンドエンコーダーにバリアを挿入します。
+    /// Inserts a barrier to synchronize dispatches (only inside ``Sketch/compute()``).
+    ///
+    /// - Important: A call from `setup()` or `draw()` does nothing. Debug builds warn once
+    ///   (Issue #1092).
     public func computeBarrier() {
         context.computeBarrier()
     }
