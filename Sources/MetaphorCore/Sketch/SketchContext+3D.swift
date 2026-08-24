@@ -750,14 +750,13 @@ extension SketchContext {
         GPUBuffer<T>(device: renderer.device, data: data)
     }
 
-    /// 1D コンピュートカーネルをディスパッチします（``Sketch/compute()`` の中でだけ有効）。
+    /// Dispatches a 1D compute kernel (only effective inside ``Sketch/compute()``).
     /// - Parameters:
-    ///   - kernel: ディスパッチするコンピュートカーネル。
-    ///   - threads: 総スレッド数。
-    ///   - configure: ディスパッチ前にコンピュートエンコーダーを構成するクロージャ。
-    /// - Important: GPU の作業をエンコードできるのはコンピュートフェーズの間だけです。
-    ///   `setup()` / `draw()` から呼んでも何も起きません（DEBUG ビルドでは 1 度だけ
-    ///   警告します・Issue #1092）。
+    ///   - kernel: The compute kernel to dispatch.
+    ///   - threads: The total thread count.
+    ///   - configure: A closure that configures the compute encoder before the dispatch.
+    /// - Important: GPU work can only be encoded during the compute phase, so a call from
+    ///   `setup()` or `draw()` does nothing. Debug builds warn once (Issue #1092).
     public func dispatch(
         _ kernel: ComputeKernel,
         threads: Int,
@@ -777,15 +776,14 @@ extension SketchContext {
         encoder.dispatchThreads(gridSize, threadsPerThreadgroup: threadsPerGroup)
     }
 
-    /// 2D コンピュートカーネルをディスパッチします（``Sketch/compute()`` の中でだけ有効）。
+    /// Dispatches a 2D compute kernel (only effective inside ``Sketch/compute()``).
     /// - Parameters:
-    ///   - kernel: ディスパッチするコンピュートカーネル。
-    ///   - width: スレッド単位のグリッド幅。
-    ///   - height: スレッド単位のグリッド高さ。
-    ///   - configure: ディスパッチ前にコンピュートエンコーダーを構成するクロージャ。
-    /// - Important: GPU の作業をエンコードできるのはコンピュートフェーズの間だけです。
-    ///   `setup()` / `draw()` から呼んでも何も起きません（DEBUG ビルドでは 1 度だけ
-    ///   警告します・Issue #1092）。
+    ///   - kernel: The compute kernel to dispatch.
+    ///   - width: The grid width in threads.
+    ///   - height: The grid height in threads.
+    ///   - configure: A closure that configures the compute encoder before the dispatch.
+    /// - Important: GPU work can only be encoded during the compute phase, so a call from
+    ///   `setup()` or `draw()` does nothing. Debug builds warn once (Issue #1092).
     public func dispatch(
         _ kernel: ComputeKernel,
         width: Int,
@@ -808,12 +806,11 @@ extension SketchContext {
         encoder.dispatchThreads(gridSize, threadsPerThreadgroup: threadsPerGroup)
     }
 
-    /// コンピュートディスパッチ間にメモリバリアを挿入します（``Sketch/compute()`` の中でだけ有効）。
+    /// Inserts a memory barrier between compute dispatches (only inside ``Sketch/compute()``).
     ///
-    /// ディスパッチ同士のデータ依存関係を解決するために使います。
-    /// - Important: GPU の作業をエンコードできるのはコンピュートフェーズの間だけです。
-    ///   `setup()` / `draw()` から呼んでも何も起きません（DEBUG ビルドでは 1 度だけ
-    ///   警告します・Issue #1092）。
+    /// Use it to resolve data dependencies between dispatches.
+    /// - Important: GPU work can only be encoded during the compute phase, so a call from
+    ///   `setup()` or `draw()` does nothing. Debug builds warn once (Issue #1092).
     public func computeBarrier() {
         // コンピュートフェーズの中でまだ 1 度も dispatch していない場合もエンコーダーは
         // 無いが、そこでのバリアは順序を守るものが無いだけの無害な no-op なので黙って通す。
@@ -825,12 +822,12 @@ extension SketchContext {
         _computeEncoder?.memoryBarrier(scope: .buffers)
     }
 
-    /// コンピュートコマンドエンコーダーを遅延生成して返します。
+    /// Lazily creates and returns the compute command encoder.
     ///
-    /// コンピュートフェーズ（`beginCompute` / `endCompute` の間）の外では `nil` を返します。
-    /// 修正前はここが無言だったため、`setup()` / `draw()` から `dispatch` を呼んだ利用者には
-    /// 「エラーも警告も出ないのに何も起きない」としか見えなかった（Issue #1092）。
-    /// - Parameter api: 警告に載せる呼び出し元 API 名。
+    /// Returns `nil` outside the compute phase (between `beginCompute` and `endCompute`).
+    /// This used to return silently, which is why calling `dispatch` from `setup()` or
+    /// `draw()` looked like "no error, no warning, nothing happens" (Issue #1092).
+    /// - Parameter api: The caller-facing API name to put in the warning.
     func ensureComputeEncoder(api: String) -> MTLComputeCommandEncoder? {
         if let existing = _computeEncoder { return existing }
         guard let cb = _commandBuffer else {
@@ -843,11 +840,11 @@ extension SketchContext {
         return encoder
     }
 
-    /// コンピュートフェーズの外から GPU 作業を頼まれたことを API ごとに 1 度だけ警告します。
+    /// Warns once per API that compute work was requested outside the compute phase.
     ///
-    /// `draw()` から呼ばれると毎フレーム同じ行になるため、`didWarnPixelAccessBeforeLoad`
-    /// と同じ「ログを埋めない」作法に揃えています。
-    /// - Parameter api: 警告に載せる呼び出し元 API 名。
+    /// A call from `draw()` repeats the same line every frame, so this follows the same
+    /// "do not flood the log" rule as `didWarnPixelAccessBeforeLoad`.
+    /// - Parameter api: The caller-facing API name to put in the warning.
     func warnComputeOutsidePhase(_ api: String) {
         guard !_warnedComputeOutsidePhase.contains(api) else { return }
         _warnedComputeOutsidePhase.append(api)

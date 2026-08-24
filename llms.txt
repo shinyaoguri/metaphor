@@ -150,8 +150,8 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func colorMode(_ space: ColorSpace, _ max1: Float? = nil, _ max2: Float? = nil, _ max3: Float? = nil, _ maxA: Float? = nil)` -- Sets the color mode with a maximum value for each channel.
   - Note: Affects **both 2D and 3D** (channel interpretation for `fill(_:)-(Color)` and `stroke(_:)-(Color)` stays in step across both canvases; ADR-0005).
 - `func compute()` -- 各フレームの前に GPU コンピュート処理を実行します（オプション）。
-- `func computeBarrier()` -- ディスパッチ間の同期のためにバリアを挿入します（`Sketch/compute()` の中でだけ有効）。
-  - Important: `setup()` / `draw()` から呼んでも何も起きません（DEBUG ビルドでは 1 度だけ警告します・Issue #1092）。
+- `func computeBarrier()` -- Inserts a barrier to synchronize dispatches (only inside `Sketch/compute()`).
+  - Important: A call from `setup()` or `draw()` does nothing. Debug builds warn once (Issue #1092).
 - `func cone(radius: Float, height: Float, detail: Int = 24)` -- Draws a cone.
   - Note: Affects **3D only** (it is drawn on the 3D canvas. ADR-0005).
 - `func copy(_ sx: Float, _ sy: Float, _ sw: Float, _ sh: Float, _ dx: Float, _ dy: Float, _ dw: Float, _ dh: Float)` -- Copies a rectangular region of the canvas into another rectangular region (compatible with
@@ -227,10 +227,10 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func disablePerformanceHUD()` -- パフォーマンスヘッドアップディスプレイオーバーレイを無効にします。
 - `func disableShadows()` -- Disables shadow mapping.
   - Note: Affects **3D only** (ADR-0005).
-- `func dispatch(_ kernel: ComputeKernel, threads: Int, configure: (any MTLComputeCommandEncoder) -> Void)` -- 1D コンピュートカーネルをディスパッチします（`Sketch/compute()` の中でだけ有効）。
-  - Important: `setup()` / `draw()` から呼んでも何も起きません（DEBUG ビルドでは 1 度だけ警告します・Issue #1092）。
-- `func dispatch(_ kernel: ComputeKernel, width: Int, height: Int, configure: (any MTLComputeCommandEncoder) -> Void)` -- 2D コンピュートカーネルをディスパッチします（`Sketch/compute()` の中でだけ有効）。
-  - Important: `setup()` / `draw()` から呼んでも何も起きません（DEBUG ビルドでは 1 度だけ警告します・Issue #1092）。
+- `func dispatch(_ kernel: ComputeKernel, threads: Int, configure: (any MTLComputeCommandEncoder) -> Void)` -- Dispatches a 1D compute kernel (only effective inside `Sketch/compute()`).
+  - Important: A call from `setup()` or `draw()` does nothing. Debug builds warn once (Issue #1092).
+- `func dispatch(_ kernel: ComputeKernel, width: Int, height: Int, configure: (any MTLComputeCommandEncoder) -> Void)` -- Dispatches a 2D compute kernel (only effective inside `Sketch/compute()`).
+  - Important: A call from `setup()` or `draw()` does nothing. Debug builds warn once (Issue #1092).
 - `func draw()` -- 1フレームを描画します（描画メソッドを直接呼び出します）。
 - `func drawInstanced(_ mesh: Mesh, transforms: [float4x4])` -- Draws the same mesh in one batch with multiple transforms (explicit instancing).
   - Note: Affects **3D only** (it is drawn on the 3D canvas. ADR-0005).
