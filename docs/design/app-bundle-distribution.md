@@ -167,7 +167,7 @@ app metadata（表示名 / 識別子 / icon / 最小 OS / 用途文言 / 追加�
 
 - [ADR-0015](../adr/0015-app-bundle-runtime-resolution-vs-assembly.md) — 責務分担の判断と却下案
 - [ADR-0014](../adr/0014-viewer-frame-ipc-and-syphon-plugin.md) — Syphon 同梱の論点を消した判断
-- [docs/permissions.md](../permissions.md) — TCC と `Info.plist`（英語）。`metaphor bundle` の実装時に
-  「自分で `.app` を包む」節を更新する
+- [docs/permissions.md](../permissions.md) — TCC と `Info.plist`（英語）。`metaphor bundle` での包み方と
+  `metaphor-app.json` の書き方を案内している（[cli#190](https://github.com/shinyaoguri/metaphor-cli/issues/190) で更新済み）
 - [CONTRACT.md](../../CONTRACT.md) — `METAPHOR_STATE_DIR`（`.app` 起動で cwd が `/` になる問題の着地点）
 - [#416](https://github.com/shinyaoguri/metaphor/issues/416) — Level 4（常設運用）の担当
