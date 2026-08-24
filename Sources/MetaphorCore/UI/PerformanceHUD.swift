@@ -6,8 +6,7 @@ import Metal
 /// つまり **``Sketch/performance``（`performance.fps`）と Probe の `frame.json` の
 /// `performance` と同じ採取経路**で、画面に出る数字とスケッチ／エージェントが読む数字が
 /// 食い違いません（Issue #698）。GPU 時間だけはトラッカーの管轄外で、コマンドバッファの
-/// タイムスタンプから直接採ります。3 つとも、算出・実測ができないときは `0` ではなく
-/// `--` と出します（Issue #698 / #1016）。
+/// タイムスタンプから直接採ります。
 @MainActor
 public final class PerformanceHUD {
     /// 直近ウィンドウの実測フレームレート（fps）。算出に足るフレームが無いときは `nil`。
@@ -17,11 +16,12 @@ public final class PerformanceHUD {
     public private(set) var fps: Float?
     /// 直近ウィンドウの平均フレーム時間（ミリ秒）。算出不能なときは `nil`。
     public private(set) var frameTime: Float?
-    /// 直近のGPU実行時間（ミリ秒）。実測が届いていないときは `nil`。
+    /// The most recent GPU execution time (milliseconds), or `nil` when no
+    /// measurement has arrived.
     ///
-    /// `nil` になるのは、そのフレームの実測がまだ完了ハンドラから返ってきていない
-    /// とき（`noLoop()` の唯一のフレーム・どのスケッチでも最初の 1 フレーム）で、
-    /// 表示は `--` になります（Issue #1016）。
+    /// It is `nil` while the frame's measurement has not come back from the command
+    /// buffer's completion handler — the only frame of a `noLoop()` sketch, and the
+    /// first frame of any sketch — and the display is then `--` (Issue #1016).
     public private(set) var gpuTime: Float?
 
     /// 新しい PerformanceHUD インスタンスを作成します。
@@ -37,11 +37,12 @@ public final class PerformanceHUD {
         frameTime = stats.map { Float($0.frameTimeMeanMs) }
     }
 
-    /// コマンドバッファの実測からGPU実行時間を更新します。
+    /// Updates the GPU execution time from the command buffer's measurement.
     ///
-    /// 実測が届いていないことを呼び出し側で `0` に潰さないよう、Optional をそのまま
-    /// 受け取ります（Issue #1016）。
-    /// - Parameter durationMs: 直近フレームの GPU 実行時間（ミリ秒）。実測が無ければ `nil`。
+    /// The optional is taken as it is, so that callers never flatten "not measured
+    /// yet" into `0` (Issue #1016).
+    /// - Parameter durationMs: The GPU execution time of the last frame
+    ///   (milliseconds), or `nil` when there is no measurement.
     func updateGPUTime(_ durationMs: Double?) {
         gpuTime = durationMs.map { Float($0) }
     }
@@ -61,9 +62,9 @@ public final class PerformanceHUD {
         return String(format: "Frame: %.1f ms", frameTime)
     }
 
-    /// GPU 時間の表示。実測が届いていないときは `0.00` ではなく `--`
-    /// （`noLoop()` の作品で `GPU: 0.00 ms` と出すと、測れているように見える
-    /// 誤情報になるため — fps / フレーム時間と同じ表明の仕方に揃える）。
+    /// The GPU time as displayed. Without a measurement this reads `--` rather than
+    /// `0.00`: printing `GPU: 0.00 ms` for a `noLoop()` piece would look like a
+    /// measurement that was taken, which is why fps and frame time show `--` too.
     var gpuTimeText: String {
         guard let gpuTime else { return "GPU: -- ms" }
         return String(format: "GPU: %.2f ms", gpuTime)

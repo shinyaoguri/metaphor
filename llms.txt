@@ -1671,9 +1671,9 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var isOfflineRendering: Bool` -- 決定論的フレームタイミングのオフラインレンダリングモードを有効化
 - `var isPostProcessAvailable: Bool { get }` -- ポストプロセスエフェクトが利用可能かどうかを示す
 - `var isRenderingFrame: Bool { get }` -- いま `renderFrame()` の内側か（= `draw()` が走っている最中か）。
-- `var lastGPUDurationMs: Double? { get }` -- 最後に完了したフレームの GPU 実行時間（ミリ秒）。実測が届いていないときは `nil`。
-- `var lastGPUEndTime: Double { get }` -- 最後に完了したフレームの GPU 終了タイムスタンプ（秒）。実測が届いていないときは `0`。
-- `var lastGPUStartTime: Double { get }` -- 最後に完了したフレームの GPU 開始タイムスタンプ（秒）。実測が届いていないときは `0`。
+- `var lastGPUDurationMs: Double? { get }` -- The last completed frame's GPU execution time in milliseconds, or `nil`.
+- `var lastGPUEndTime: Double { get }` -- The last completed frame's GPU end timestamp, or `0` if unmeasured (seconds).
+- `var lastGPUStartTime: Double { get }` -- The last completed frame's GPU start timestamp, or `0` if unmeasured (seconds).
 - `var offlineDeltaTime: Double { get }` -- オフラインレンダリングモードでの1フレームあたりの固定デルタ時間を返します。
 - `var offlineFrameRate: Double` -- オフラインレンダリングモードでの時間計算に使用するフレームレート
 - `var onAfterDraw: ((any MTLCommandBuffer) -> Void)?` -- メイン描画パスの後にシャドウパスなどの追加レンダリングを行うコールバック
