@@ -688,8 +688,9 @@ extension Sketch {
     /// - Note: Affects **3D only** (ADR-0005).
     ///
     /// - Note: **Survives across frames.** Unlike the lights themselves, the shadow map is
-    ///   **not** reset at the start of a frame, so setting it once in `setup()` is enough.
-    ///   `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
+    ///   **not** reset at the start of a frame, so this stays in effect until you call
+    ///   `enableShadows()` again. `llms-sketch.txt` lists every state that does and does not
+    ///   survive a frame boundary.
     public func disableShadows() {
         context.disableShadows()
     }
@@ -1140,8 +1141,8 @@ extension Sketch {
     /// - Note: Affects **3D only** (ADR-0005).
     ///
     /// - Note: **Survives across frames.** Unlike the lights, the environment is **not** reset at
-    ///   the start of a frame, so setting it once in `setup()` is enough. `llms-sketch.txt` lists
-    ///   every state that does and does not survive a frame boundary.
+    ///   the start of a frame, so this stays in effect until you call `environment(_:)` again.
+    ///   `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
     public func noEnvironment() {
         context.noEnvironment()
     }

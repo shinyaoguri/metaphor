@@ -237,7 +237,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func disablePerformanceHUD()` -- パフォーマンスヘッドアップディスプレイオーバーレイを無効にします。
 - `func disableShadows()` -- Disables shadow mapping.
   - Note: Affects **3D only** (ADR-0005).
-  - Note: **Survives across frames.** Unlike the lights themselves, the shadow map is **not** reset at the start of a frame, so setting it once in `setup()` is enough. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
+  - Note: **Survives across frames.** Unlike the lights themselves, the shadow map is **not** reset at the start of a frame, so this stays in effect until you call `enableShadows()` again. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func dispatch(_ kernel: ComputeKernel, threads: Int, configure: (any MTLComputeCommandEncoder) -> Void)` -- Dispatches a 1D compute kernel (only effective inside `Sketch/compute()`).
   - Important: The call only **encodes** the kernel into the frame's command buffer. The GPU does not start it until the frame is committed, so an output `GPUBuffer` read later in the same `compute()` still holds the contents from before the dispatch. See `GPUBuffer` for when the writes become visible to the CPU.
   - Important: A call from `setup()` or `draw()` does nothing. Debug builds warn once (Issue #1092).
@@ -397,7 +397,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func noCursor()` -- カーソルを非表示にします。
 - `func noEnvironment()` -- Disables the environment (IBL and skybox).
   - Note: Affects **3D only** (ADR-0005).
-  - Note: **Survives across frames.** Unlike the lights, the environment is **not** reset at the start of a frame, so setting it once in `setup()` is enough. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
+  - Note: **Survives across frames.** Unlike the lights, the environment is **not** reset at the start of a frame, so this stays in effect until you call `environment(_:)` again. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func noFill()` -- Disables filling shapes.
   - Note: Affects **both 2D and 3D**. In 3D the faces stop being drawn, and calling `noStroke()` as well leaves that shape drawing nothing at all (ADR-0005).
 - `func noiseTexture(_ type: NoiseType, width: Int, height: Int, config: NoiseConfig = NoiseConfig()) -> MImage?` -- Generates a noise texture as an image (a convenience method).
