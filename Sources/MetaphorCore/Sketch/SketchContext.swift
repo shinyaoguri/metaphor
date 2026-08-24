@@ -246,6 +246,11 @@ public final class SketchContext {
     /// 遅延生成されるコンピュートコマンドエンコーダー。
     var _computeEncoder: MTLComputeCommandEncoder?
 
+    /// API names already warned about compute work requested outside the compute phase
+    /// (Issue #1092). A call from `draw()` repeats every frame, so each API warns only once.
+    /// An entry is appended only when a warning is emitted, so the count is the line count.
+    var _warnedComputeOutsidePhase: [String] = []
+
     // MARK: - GIF Export (D-19)
 
     /// GIF エクスポーターインスタンス。
