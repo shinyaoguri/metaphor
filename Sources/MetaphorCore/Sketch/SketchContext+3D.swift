@@ -750,11 +750,14 @@ extension SketchContext {
         GPUBuffer<T>(device: renderer.device, data: data)
     }
 
-    /// 1D コンピュートカーネルをディスパッチします。
+    /// 1D コンピュートカーネルをディスパッチします（``Sketch/compute()`` の中でだけ有効）。
     /// - Parameters:
     ///   - kernel: ディスパッチするコンピュートカーネル。
     ///   - threads: 総スレッド数。
     ///   - configure: ディスパッチ前にコンピュートエンコーダーを構成するクロージャ。
+    /// - Important: GPU の作業をエンコードできるのはコンピュートフェーズの間だけです。
+    ///   `setup()` / `draw()` から呼んでも何も起きません（DEBUG ビルドでは 1 度だけ
+    ///   警告します・Issue #1092）。
     public func dispatch(
         _ kernel: ComputeKernel,
         threads: Int,
@@ -764,7 +767,7 @@ extension SketchContext {
             metaphorWarning("dispatch: threads must be positive (got \(threads)); skipped")
             return
         }
-        guard let encoder = ensureComputeEncoder() else { return }
+        guard let encoder = ensureComputeEncoder(api: "dispatch") else { return }
         encoder.setComputePipelineState(kernel.pipelineState)
         configure(encoder)
 
@@ -774,12 +777,15 @@ extension SketchContext {
         encoder.dispatchThreads(gridSize, threadsPerThreadgroup: threadsPerGroup)
     }
 
-    /// 2D コンピュートカーネルをディスパッチします。
+    /// 2D コンピュートカーネルをディスパッチします（``Sketch/compute()`` の中でだけ有効）。
     /// - Parameters:
     ///   - kernel: ディスパッチするコンピュートカーネル。
     ///   - width: スレッド単位のグリッド幅。
     ///   - height: スレッド単位のグリッド高さ。
     ///   - configure: ディスパッチ前にコンピュートエンコーダーを構成するクロージャ。
+    /// - Important: GPU の作業をエンコードできるのはコンピュートフェーズの間だけです。
+    ///   `setup()` / `draw()` から呼んでも何も起きません（DEBUG ビルドでは 1 度だけ
+    ///   警告します・Issue #1092）。
     public func dispatch(
         _ kernel: ComputeKernel,
         width: Int,
@@ -791,7 +797,7 @@ extension SketchContext {
                 "dispatch: width/height must be positive (got \(width)x\(height)); skipped")
             return
         }
-        guard let encoder = ensureComputeEncoder() else { return }
+        guard let encoder = ensureComputeEncoder(api: "dispatch") else { return }
         encoder.setComputePipelineState(kernel.pipelineState)
         configure(encoder)
 
@@ -802,19 +808,52 @@ extension SketchContext {
         encoder.dispatchThreads(gridSize, threadsPerThreadgroup: threadsPerGroup)
     }
 
-    /// データ依存関係を解決するためにコンピュートディスパッチ間にメモリバリアを挿入します。
+    /// コンピュートディスパッチ間にメモリバリアを挿入します（``Sketch/compute()`` の中でだけ有効）。
+    ///
+    /// ディスパッチ同士のデータ依存関係を解決するために使います。
+    /// - Important: GPU の作業をエンコードできるのはコンピュートフェーズの間だけです。
+    ///   `setup()` / `draw()` から呼んでも何も起きません（DEBUG ビルドでは 1 度だけ
+    ///   警告します・Issue #1092）。
     public func computeBarrier() {
+        // コンピュートフェーズの中でまだ 1 度も dispatch していない場合もエンコーダーは
+        // 無いが、そこでのバリアは順序を守るものが無いだけの無害な no-op なので黙って通す。
+        // 警告するのは「そもそも場所が違う」ときだけ。
+        guard _commandBuffer != nil else {
+            warnComputeOutsidePhase("computeBarrier")
+            return
+        }
         _computeEncoder?.memoryBarrier(scope: .buffers)
     }
 
     /// コンピュートコマンドエンコーダーを遅延生成して返します。
-    func ensureComputeEncoder() -> MTLComputeCommandEncoder? {
+    ///
+    /// コンピュートフェーズ（`beginCompute` / `endCompute` の間）の外では `nil` を返します。
+    /// 修正前はここが無言だったため、`setup()` / `draw()` から `dispatch` を呼んだ利用者には
+    /// 「エラーも警告も出ないのに何も起きない」としか見えなかった（Issue #1092）。
+    /// - Parameter api: 警告に載せる呼び出し元 API 名。
+    func ensureComputeEncoder(api: String) -> MTLComputeCommandEncoder? {
         if let existing = _computeEncoder { return existing }
-        guard let cb = _commandBuffer else { return nil }
+        guard let cb = _commandBuffer else {
+            warnComputeOutsidePhase(api)
+            return nil
+        }
         let encoder = cb.makeComputeCommandEncoder()
         _computeEncoder = encoder
         renderer.didEncodeComputeWork = true
         return encoder
+    }
+
+    /// コンピュートフェーズの外から GPU 作業を頼まれたことを API ごとに 1 度だけ警告します。
+    ///
+    /// `draw()` から呼ばれると毎フレーム同じ行になるため、`didWarnPixelAccessBeforeLoad`
+    /// と同じ「ログを埋めない」作法に揃えています。
+    /// - Parameter api: 警告に載せる呼び出し元 API 名。
+    func warnComputeOutsidePhase(_ api: String) {
+        guard !_warnedComputeOutsidePhase.contains(api) else { return }
+        _warnedComputeOutsidePhase.append(api)
+        metaphorWarning(
+            "\(api): compute work can only be encoded from compute() — "
+                + "called outside the compute phase (setup()/draw()); skipped")
     }
 
     // MARK: - Particle System
@@ -844,7 +883,7 @@ extension SketchContext {
     /// パーティクルシステムを更新します（コンピュートフェーズ中に呼び出してください）。
     /// - Parameter system: 更新するパーティクルシステム。
     public func updateParticles(_ system: ParticleSystem) {
-        guard let encoder = ensureComputeEncoder() else { return }
+        guard let encoder = ensureComputeEncoder(api: "updateParticles") else { return }
         system.update(encoder: encoder, deltaTime: deltaTime, time: time)
     }
 

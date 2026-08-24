@@ -70,12 +70,25 @@ extension Sketch {
         context.createBuffer(data)
     }
 
-    /// 1D コンピュートカーネルをディスパッチします。
+    /// 1D コンピュートカーネルをディスパッチします（``Sketch/compute()`` の中でだけ有効）。
+    ///
+    /// ``createComputeKernel(source:function:)`` と ``createBuffer(count:type:)`` は
+    /// `setup()` でも動きますが、**ディスパッチだけは `compute()` の中でしかできません**。
+    ///
+    /// ```swift
+    /// func compute() {
+    ///     dispatch(kernel, threads: 256) { enc in
+    ///         enc.setBuffer(buffer.buffer, offset: 0, index: 0)
+    ///     }
+    /// }
+    /// ```
     ///
     /// - Parameters:
     ///   - kernel: ディスパッチするコンピュートカーネル。
     ///   - threads: 総スレッド数。
     ///   - configure: ディスパッチ前にコンピュートコマンドエンコーダーを構成するクロージャ。
+    /// - Important: `setup()` / `draw()` から呼んでも何も起きません（DEBUG ビルドでは
+    ///   1 度だけ警告します・Issue #1092）。
     public func dispatch(
         _ kernel: ComputeKernel,
         threads: Int,
@@ -84,13 +97,15 @@ extension Sketch {
         context.dispatch(kernel, threads: threads, configure: configure)
     }
 
-    /// 2D コンピュートカーネルをディスパッチします。
+    /// 2D コンピュートカーネルをディスパッチします（``Sketch/compute()`` の中でだけ有効）。
     ///
     /// - Parameters:
     ///   - kernel: ディスパッチするコンピュートカーネル。
     ///   - width: スレッド単位のグリッド幅。
     ///   - height: スレッド単位のグリッド高さ。
     ///   - configure: ディスパッチ前にコンピュートコマンドエンコーダーを構成するクロージャ。
+    /// - Important: `setup()` / `draw()` から呼んでも何も起きません（DEBUG ビルドでは
+    ///   1 度だけ警告します・Issue #1092）。
     public func dispatch(
         _ kernel: ComputeKernel,
         width: Int,
@@ -100,7 +115,10 @@ extension Sketch {
         context.dispatch(kernel, width: width, height: height, configure: configure)
     }
 
-    /// ディスパッチ間の同期のためにコンピュートコマンドエンコーダーにバリアを挿入します。
+    /// ディスパッチ間の同期のためにバリアを挿入します（``Sketch/compute()`` の中でだけ有効）。
+    ///
+    /// - Important: `setup()` / `draw()` から呼んでも何も起きません（DEBUG ビルドでは
+    ///   1 度だけ警告します・Issue #1092）。
     public func computeBarrier() {
         context.computeBarrier()
     }
