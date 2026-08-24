@@ -47,6 +47,22 @@ final class MySketch: Sketch {
 }
 ```
 
+### 導入
+
+動作環境は macOS 14.0+（Apple Silicon）・Swift 5.10+・Xcode 15.0+ です。
+`Package.swift` の `dependencies` に 1 行足し、ターゲットの `dependencies` に
+`.product(name: "metaphor", package: "metaphor")` を加えれば、上のコードが動きます。
+
+```swift
+dependencies: [
+    .package(url: "https://github.com/shinyaoguri/metaphor.git", from: "0.14.0")
+]
+```
+
+インストールから最初のスケッチが動くまでを手順で追うなら、チュートリアル
+[第 1 部 入門](https://shinyaoguri.github.io/metaphor/tutorial/getting-started/)が近道です
+（`metaphor` CLI を使う導入もそちらで扱います）。
+
 ### 2パスレンダリング
 
 metaphor は2パスレンダリングアーキテクチャを採用しています:
@@ -54,7 +70,12 @@ metaphor は2パスレンダリングアーキテクチャを採用していま�
 1. **オフスクリーンパス** — `draw()` のコードが、指定した解像度のオフスクリーンテクスチャにレンダリングされます。
 2. **ブリットパス** — 内蔵パイプラインがオフスクリーンテクスチャをアスペクト比を維持したままウィンドウに合成します。
 
-これによりレンダリング解像度がウィンドウサイズから分離され、動画エクスポートや外部出力（ライブビューア、[metaphor-syphon](https://github.com/shinyaoguri/metaphor-syphon) の Syphon 出力）を固定解像度で行えます。
+レンダリング解像度がウィンドウサイズから分離されることで、次の 4 つが成立します:
+
+- **解像度の独立性** — 窓の大きさに関わらず、常に指定した解像度で描かれます（``MetaphorCore/TextureManager``）。
+- **外部出力** — 固定解像度のフレームをライブビューアや VJ ソフトウェアへ送れます。ブリットの前に、登録された出力プラグイン（``MetaphorCore/MetaphorOutputPlugin``）が同じオフスクリーンテクスチャを受け取ります（Syphon は別パッケージ [metaphor-syphon](https://github.com/shinyaoguri/metaphor-syphon)）。
+- **動画エクスポート** — 窓を小さくしたまま、一定品質でフレームを書き出せます。
+- **ポストプロセス** — 表示前のオフスクリーンテクスチャに GPU エフェクトをかけられます（``MetaphorCore/PostEffect``）。
 
 ### 3レイヤー API
 
@@ -98,8 +119,6 @@ final class MySketch: Sketch {
 
 ### はじめに
 
-- <doc:GettingStarted>
-- <doc:Architecture>
 - ``/MetaphorCore/Sketch``
 - ``MetaphorCore/SketchConfig``
 
