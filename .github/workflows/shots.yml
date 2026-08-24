@@ -1,0 +1,195 @@
+name: Shots
+
+# 実行結果画像を CI で撮り直し、差分があれば PR を開く。
+#
+# これまで撮影はローカル専用だった。GPU が要り、Gyazo のトークンが要り、絵が
+# マシンをまたいで再現するか分からなかったため。3 つとも解けた:
+#
+#   - GPU: macos-26 ランナーにはある（METAPHOR_REQUIRE_GPU=1 で 2114 tests が green）
+#   - 再現性: 別マシン・別 GPU・別 Xcode・別 ffmpeg でも同じバイト列が出る
+#     （ADR-0010 の Amendment 2026-08-24。#1105 の --verify-bytes で実測）
+#   - トークン: CI では GitHub Secrets が正本（#1116）
+#
+# ## なぜ push ではなく PR か
+#
+# 撮り直した絵が変わったとき、それが**意図した変更なのか退行なのか**は機械では
+# 判別できない。台帳の指紋はスケッチと撮影設定しか見ないので、ライブラリの実装が
+# 変わって絵が変わっても「変わっていない」と答える（#586）。実際 #1112 で、実装
+# 変更に追いついていないエントリが見つかっている。
+#
+# 直接 push すると、その判別を誰もしないまま**退行が新しい正解として焼き付く**。
+# PR にすれば絵の変化が diff として残り、人が見てから merge できる。
+#
+# ## 撮り直すと URL が変わる
+#
+# アセットは不変・追記型（ADR-0008 / ADR-0010）。同じバイト列なら Gyazo は同じ URL を
+# 返し、generate-*-shots.py の upload() も「中身が同じなら上げ直さない」ので、絵が
+# 変わっていなければ何も起きない。変わったときだけ新しい URL が生まれ、古い URL は
+# 消さない（過去のリビジョンを開けば当時の絵が出る）。
+#
+# だから **--force を広く当てない**。既定は「台帳から見て古いものだけ」。
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'What to shoot'
+        required: true
+        type: choice
+        options:
+          - reference
+          - tutorial
+          - example
+        default: reference
+      only:
+        description: 'Filter passed to --only (empty = every stale shot)'
+        required: false
+        type: string
+      force:
+        description: 'Re-shoot even when the ledger looks fresh (creates new URLs)'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+concurrency:
+  # 同じ対象を並行して撮ると、台帳の書き戻しが競合する。
+  group: shots-${{ inputs.target }}
+  cancel-in-progress: false
+
+jobs:
+  shoot:
+    runs-on: macos-26
+    # reference 58 / tutorial 55 / example 259 点。全点を --force で撮り直すと
+    # example がジョブ上限 6 時間に届きうるので、そこは --only で分けて回す。
+    timeout-minutes: 330
+    permissions:
+      contents: write        # 撮影結果のブランチを push する
+      pull-requests: write   # その PR を開く
+      actions: write         # 開いた PR の CI を明示的に起動する（下記）
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_26.4.app
+      # 動きのある絵（reference は GIF、tutorial はアニメーション WebP）に要る。
+      # GitHub-hosted の macOS ランナーには入っていない（#1111）。
+      - name: Install ffmpeg
+        run: |
+          brew install ffmpeg
+          ffmpeg -version | head -1
+      # トークンが読めないことは、撮影を全部終えたあとの最後の 1 歩で分かっても
+      # 遅い（reference 58 点で 30 分以上を捨てる）。先に確かめて早く落とす。
+      # 値そのものは決して出さない — 長さだけ。
+      - name: Check the Gyazo token is readable
+        if: inputs.target != 'example'
+        env:
+          GYAZO_TOKEN: ${{ secrets.GYAZO_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import sys
+          sys.path.insert(0, "scripts")
+          from shots_common import ShotError, gyazo_token
+
+          try:
+              token = gyazo_token()
+          except ShotError as error:
+              print(f"::error::{error}")
+              raise SystemExit(1)
+          print(f"Gyazo token is readable ({len(token)} chars).")
+          PY
+      - name: Shoot
+        env:
+          # example の画像はリポジトリ内なので Gyazo は要らない（ADR-0008 の
+          # スコープ外）。渡しても使われないだけなので分岐は増やさない。
+          GYAZO_TOKEN: ${{ secrets.GYAZO_TOKEN }}
+          TARGET: ${{ inputs.target }}
+          ONLY: ${{ inputs.only }}
+          FORCE: ${{ inputs.force }}
+        run: |
+          set -eu
+          ARGS=()
+          if [ -n "$ONLY" ]; then
+            ARGS+=(--only "$ONLY")
+          fi
+          if [ "$FORCE" = "true" ]; then
+            ARGS+=(--force)
+          fi
+          # macOS ランナーの /bin/bash は 3.2 で、空配列の "${a[@]}" が set -u に
+          # unbound variable と見なされる（ci.yml の changelog ゲートと同じ回避形）。
+          python3 "scripts/generate-${TARGET}-shots.py" ${ARGS[@]+"${ARGS[@]}"} \
+            2>&1 | tee "$RUNNER_TEMP/shoot.log"
+      - name: Open a PR with the new shots
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET: ${{ inputs.target }}
+          ONLY: ${{ inputs.only }}
+          FORCE: ${{ inputs.force }}
+        run: |
+          set -eu
+          # git diff --quiet では足りない。example は新しい画像がパッケージ直下に
+          # 生まれる（＝ untracked）ので、追跡外も見る必要がある。
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "::notice::Nothing changed — every shot already matches the ledger."
+            exit 0
+          fi
+
+          BRANCH="shots/${TARGET}-${GITHUB_RUN_ID}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add -A
+          # PR タイトルは squash マージのコミット件名そのもの。ci.yml の
+          # Conventional Commits lint を満たす形で書く。
+          TITLE="docs(${TARGET}): 実行結果画像を撮り直す"
+          git commit -m "$TITLE"
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            "HEAD:$BRANCH"
+
+          {
+            echo "CI で撮り直した実行結果画像です（run [${GITHUB_RUN_ID}](https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})）。"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| 対象 | \`${TARGET}\` |"
+            echo "| \`--only\` | ${ONLY:-（指定なし＝古いものすべて）} |"
+            echo "| \`--force\` | ${FORCE} |"
+            echo
+            echo "## 見るべきこと"
+            echo
+            echo "**絵が変わっているなら、それが意図した変更か退行かを確かめてください。**"
+            echo "台帳の指紋はスケッチと撮影設定しか見ないので、ライブラリの実装が変わって"
+            echo "絵が変わっても機械では気付けません（[#586](https://github.com/${GITHUB_REPOSITORY}/issues/586)）。"
+            echo "この PR を確認せず merge すると、退行が新しい正解として焼き付きます。"
+            echo
+            echo "撮り直した URL は新規です。古い URL は消していません（アセットは不変・追記型）。"
+            echo
+            echo "<details><summary>撮影ログ</summary>"
+            echo
+            echo '```'
+            cat "$RUNNER_TEMP/shoot.log"
+            echo '```'
+            echo
+            echo "</details>"
+            echo
+            echo "---"
+            echo "<sub>🤖 Assisted by [Claude Code](https://claude.com/claude-code)</sub>"
+          } > "$RUNNER_TEMP/pr-body.md"
+
+          gh pr create --head "$BRANCH" --title "$TITLE" --body-file "$RUNNER_TEMP/pr-body.md"
+
+          # GITHUB_TOKEN による push / PR 作成は push・pull_request ワークフローを
+          # 起こさない（GitHub の再帰ガード）。このままだと required check が
+          # 永久に報告されず PR が merge できないので、workflow_dispatch で明示的に
+          # CI へ入れる（ガードの対象外。examples-index の自動 push と同じ手）。
+          gh workflow run ci.yml --ref "$BRANCH"
+      - name: Upload the shoot log
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: shoot-log-${{ inputs.target }}
+          path: ${{ runner.temp }}/shoot.log
+          if-no-files-found: ignore
+          retention-days: 14

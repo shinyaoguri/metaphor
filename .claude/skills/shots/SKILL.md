@@ -27,9 +27,8 @@ description: metaphor の実行結果画像（DocC リファレンス・チュ�
 
 ## 撮る前に
 
-- **GPU が要る**（実際にスケッチを走らせて Probe が書いた `frame.png` を拾う）。撮影と
-  アップロードはローカルで行う（`macos-26` ランナーにも GPU はあるが、上げるトークンを
-  CI に置いていない）
+- **GPU が要る**（実際にスケッチを走らせて Probe が書いた `frame.png` を拾う）。手元に
+  GPU が無いとき・手元を数時間塞ぎたくないときは **CI で撮れる**（下記）
 - **Gyazo のトークンが要る**（reference / tutorial のみ）。読み口は `secret-read` で、
   1Password がロックされていても Keychain のキャッシュから読める。詳細は repo-standards
   プラグインの `gyazo-capture` スキル
@@ -43,6 +42,23 @@ description: metaphor の実行結果画像（DocC リファレンス・チュ�
 
 - **撮り直すと URL が変わる**。アセットは不変・追記型で、古い URL は消さない（過去の
   リビジョンを開けば当時の絵が出る）。意味もなく `--force` を広く当てない
+
+## CI で撮る
+
+`shots.yml`（手動起動）が同じスクリプトを `macos-26` ランナーで走らせ、差分があれば
+**PR を開く**。手元の GPU を数時間塞がずに済む。
+
+```bash
+gh workflow run shots.yml -f target=reference
+gh workflow run shots.yml -f target=tutorial -f only=01-GettingStarted/03-SketchSkeleton -f force=true
+```
+
+`target` は `reference` / `tutorial` / `example`。トークンは Actions secrets の
+`GYAZO_TOKEN`（手元の `secret-read` とは別経路 — #1116）。
+
+**PR を確認せずに merge しない。** 絵が変わったのが意図した変更か退行かは機械では判別
+できない（台帳の指紋はスケッチと撮影設定しか見ないので、ライブラリの実装が変わって絵が
+変わっても気付けない — #586。実例は #1112）。直接 push ではなく PR にしているのはこのため。
 
 ## 撮ったあとにコミットするもの
 
