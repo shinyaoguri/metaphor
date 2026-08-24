@@ -309,3 +309,89 @@ struct OrbitControlPressFrameTests {
             "押下フラグは 1 フレームで消える: azimuth \(camera.azimuth) rad")
     }
 }
+
+// MARK: - #1127: 仰角の上下限に当たったときの速度
+
+/// 仰角が上下限に当たったフレームで余韻が捨てられることを確かめます（#1127）。
+///
+/// `update()` は角度だけを `minElevation` / `maxElevation` へ丸めていて、
+/// 速度はそのまま減衰していました。真上まで振り切って手を離すと、
+/// 減衰しきるまでカメラが上限を押し続け、逆向きのドラッグは
+/// 残った速度を打ち消すまで効きません。
+@Suite("D-20 Orbit Camera / elevation limits (#1127)")
+@MainActor
+struct OrbitCameraElevationLimitTests {
+
+    /// 上限へ振り切ったあと、逆向きの小さなドラッグが 1 フレームで効くこと。
+    @Test("上限に当たったあとの逆ドラッグはすぐ効く")
+    func reverseDragAfterHittingUpperLimitTakesEffectImmediately() {
+        let camera = OrbitCamera()
+        camera.damping = 0.9
+
+        // 上限を大きく超えるドラッグ（dy 負 → 仰角は正方向）
+        camera.handleMouseDrag(dx: 0, dy: -10_000)
+        camera.update()
+        #expect(camera.elevation == camera.maxElevation)
+
+        // 手を離してから 10px 下へドラッグし直す
+        camera.handleMouseDrag(dx: 0, dy: 10)
+        camera.update()
+
+        #expect(
+            camera.elevation < camera.maxElevation,
+            "上限に押し付けられたまま: elevation \(camera.elevation) rad")
+    }
+
+    /// 下限側も同じであること。
+    @Test("下限に当たったあとの逆ドラッグはすぐ効く")
+    func reverseDragAfterHittingLowerLimitTakesEffectImmediately() {
+        let camera = OrbitCamera()
+        camera.damping = 0.9
+
+        camera.handleMouseDrag(dx: 0, dy: 10_000)
+        camera.update()
+        #expect(camera.elevation == camera.minElevation)
+
+        camera.handleMouseDrag(dx: 0, dy: -10)
+        camera.update()
+
+        #expect(
+            camera.elevation > camera.minElevation,
+            "下限に押し付けられたまま: elevation \(camera.elevation) rad")
+    }
+
+    /// 上下限のない方位角の余韻は、仰角が壁に当たっても巻き添えで止まらないこと。
+    @Test("仰角が限界に当たっても方位角の余韻は続く")
+    func azimuthGlideSurvivesAnElevationLimitHit() {
+        let camera = OrbitCamera()
+        camera.damping = 0.9
+
+        // 斜めに振り切る: 仰角は上限へ、方位角は限界が無いので回り続ける
+        camera.handleMouseDrag(dx: 100, dy: -10_000)
+        camera.update()
+        #expect(camera.elevation == camera.maxElevation)
+
+        let azimuthAfterHit = camera.azimuth
+        camera.update()
+
+        #expect(
+            camera.azimuth != azimuthAfterHit,
+            "方位角の余韻まで止まっている: azimuth \(camera.azimuth) rad")
+    }
+
+    /// 限界に当たっていないフレームでは、これまでどおり余韻が続くこと。
+    @Test("限界に当たらない仰角の余韻はこれまでどおり続く")
+    func elevationGlideContinuesWhenNoLimitIsHit() {
+        let camera = OrbitCamera()
+        camera.damping = 0.9
+
+        // 上限（≈1.56 rad）に届かない小さなドラッグ
+        camera.handleMouseDrag(dx: 0, dy: -10)
+        camera.update()
+        let afterFirstUpdate = camera.elevation
+        camera.update()
+
+        #expect(camera.elevation > afterFirstUpdate)
+        #expect(camera.elevation < camera.maxElevation)
+    }
+}
