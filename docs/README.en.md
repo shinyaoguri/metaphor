@@ -41,6 +41,7 @@ this table.
   - [design/roadmap-processing-unity.md](design/roadmap-processing-unity.md) — Roadmap for attracting Processing / Unity users (living document, Epic list)
   - [design/live-tooling-params.md](design/live-tooling-params.md) — Live-tooling foundations. The Parameter Store (A) and stateful reload (B) are implemented on both the producer and consumer sides; the inspector (C) and round-trip latency (D) are still drafts (per-section status is tabulated at the top of the document)
   - [design/v1-release-plan.md](design/v1-release-plan.md) — v1.0.0 release readiness plan (review findings, prep tracks, release criteria)
+  - [design/app-bundle-distribution.md](design/app-bundle-distribution.md) — Shipping a finished sketch as a self-contained `.app` (levels, bundle layout, verification checks, clean-room smoke). The split of responsibilities is decided in [ADR-0015](adr/0015-app-bundle-runtime-resolution-vs-assembly.md)
 - **[releasing.md](releasing.md)** — Release procedure (weekly release train + `release:now` express), plus CHANGELOG promotion and release-note generation
 - **[release-pipeline.md](release-pipeline.md)** — Overview map of the three repositories (metaphor / metaphor-cli / homebrew-tap): dependency structure and the automated release chain, delegating details to releasing.md and metaphor-cli's docs (Japanese)
 

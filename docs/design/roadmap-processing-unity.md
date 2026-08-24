@@ -326,7 +326,9 @@ salvage は v0.9.0 依存で作られており、いま作り直すと 1 本目�
 
 - 実際に常設の現場（展示・据え置き）に置いて、**無人で複数日**運用する
 - キオスク・自動復帰・GPU エラー検知の要否を実測で判定する（作品を何本作っても開かない項目）
-- 前提として [#573](https://github.com/shinyaoguri/metaphor/issues/573)（`.app` 配布）を先に着手する
+- 前提として [#573](https://github.com/shinyaoguri/metaphor/issues/573)（`.app` 配布）が要る。方針は
+  [ADR-0015](../adr/0015-app-bundle-runtime-resolution-vs-assembly.md) で決着済みなので、残るのは
+  Level 1+2 の実装（[#1107](https://github.com/shinyaoguri/metaphor/issues/1107) / [cli#190](https://github.com/shinyaoguri/metaphor-cli/issues/190) / [cli#191](https://github.com/shinyaoguri/metaphor-cli/issues/191)）
 - G3（IBL / skybox）は作り直しではなく**新作の中で**使い、表現力の天井の効きを観測する
 
 なお 1 本目 `0815-strata` は要件（複数シーン + 複数入力 + 30 分無人稼働）を満たしているので、
@@ -338,7 +340,7 @@ Epic J の完了条件そのものは 3 本目を待たずに満たされてい�
 
 | 群 | Issue | 起票・着手の根拠 |
 |---|---|---|
-| ゲートの**上流** | [#573](https://github.com/shinyaoguri/metaphor/issues/573) `.app` 配布 | L の前提条件。**いつ着手してもよい** |
+| ゲートの**上流** | [#573](https://github.com/shinyaoguri/metaphor/issues/573) `.app` 配布 | L の前提条件。**2026-08-24 に決着**（[ADR-0015](../adr/0015-app-bundle-runtime-resolution-vs-assembly.md)・責務分担は「本体 = 実行時のファイル解決 / cli = bundle の組み立て」、保証範囲は Level 1+2）。実装は子 Issue [#1107](https://github.com/shinyaoguri/metaphor/issues/1107) / [#1108](https://github.com/shinyaoguri/metaphor/issues/1108) / [#1109](https://github.com/shinyaoguri/metaphor/issues/1109) / [cli#190](https://github.com/shinyaoguri/metaphor-cli/issues/190) / [cli#191](https://github.com/shinyaoguri/metaphor-cli/issues/191) |
 | 決定 7 の**推進項目** | [#563](https://github.com/shinyaoguri/metaphor/issues/563) / [#564](https://github.com/shinyaoguri/metaphor/issues/564) / [#567](https://github.com/shinyaoguri/metaphor/issues/567) / [#568](https://github.com/shinyaoguri/metaphor/issues/568) / [#608](https://github.com/shinyaoguri/metaphor/issues/608) | 実行・観測ループの優位を伸ばす中心目標。**ゲート対象外**（#563 は入力リプレイへスコープ縮小可 / #564・#608 は「oracle を書けない作品」へ論点が絞れた / #567 は実需未発生） |
 | 実需**待ちが正しい** | [#570](https://github.com/shinyaoguri/metaphor/issues/570) Take / [#571](https://github.com/shinyaoguri/metaphor/issues/571) Scene の寿命境界 | K の設計に直結。起きる条件を各 Issue 本文から読める形にした（#570 = 候補比較を繰り返す探索的制作 / #571 = リソースを手放さないと破綻する規模） |
 
