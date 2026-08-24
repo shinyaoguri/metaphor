@@ -1797,7 +1797,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func handleMouseDrag(dx: Float, dy: Float)` -- Rotates the camera by one drag delta.
 - `func handleScroll(delta: Float)` -- スクロール入力を適用してズーム距離を調整します。
 - `func reset(distance: Float = 500, azimuth: Float = 0, elevation: Float = 0.3)` -- カメラを指定された状態にリセットします。
-- `func update()` -- 速度にダンピングを適用し角度を更新します（毎フレーム呼び出し）。
+- `func update()` -- Advances the camera by one frame of damped motion. Call it every frame.
 
 ### `@propertyWrapper final class Param<Value> where Value : ParamRepresentable` -- スケッチのプロパティを **Parameter Store のパラメータとして宣言**する
   - Note: 値の読み書きは通常のプロパティと同じで、ストア未登録でも動作します（その場合は単なる格納プロパティとして振る舞う）。

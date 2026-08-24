@@ -150,13 +150,31 @@ public final class OrbitCamera {
         distance = max(minDistance, min(maxDistance, distance))
     }
 
-    /// 速度にダンピングを適用し角度を更新します（毎フレーム呼び出し）。
+    /// Advances the camera by one frame of damped motion. Call it every frame.
+    ///
+    /// With ``damping`` off there is nothing to advance: the angles are already
+    /// current, because ``handleMouseDrag(dx:dy:)`` wrote straight into them.
+    ///
+    /// Elevation stops at ``minElevation`` / ``maxElevation``. A frame that runs
+    /// into one of those limits drops the elevation velocity along with pinning
+    /// the angle, so letting go at the top does not leave the camera pressed
+    /// against the limit for the rest of the glide, and a drag back down takes
+    /// effect on the very next frame (Issue #1127). Azimuth has no limits and
+    /// keeps gliding either way.
     public func update() {
         guard damping > 0 else { return }
 
         azimuth += velocityAzimuth
-        elevation += velocityElevation
-        elevation = max(minElevation, min(maxElevation, elevation))
+
+        // 壁に当たったら止まる。角度だけ丸めて速度を残すと、手を離したあとも
+        // 数百 ms のあいだカメラが上下限を押し続け、逆向きのドラッグは残った
+        // 速度を打ち消すまで効かない（#1127）。判定は clamp の前後の比較で取る
+        // ので、丸めが起きなかったフレーム（壁のちょうど手前）の余韻は残る。
+        let unclampedElevation = elevation + velocityElevation
+        elevation = max(minElevation, min(maxElevation, unclampedElevation))
+        if elevation != unclampedElevation {
+            velocityElevation = 0
+        }
 
         let decay = effectiveDamping
         velocityAzimuth *= decay
