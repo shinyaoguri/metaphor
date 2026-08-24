@@ -1,4 +1,4 @@
-.PHONY: setup build clean clean-examples test test-verbose test-coverage test-lcov ci-check check-binary-targets preflight docs docs-check docs-ja docs-preview examples examples-check examples-list examples-index example-shots tutorial-snippets tutorial-shots tutorial-status reference-shots reference-i18n symbol-graphs llms-txt ai-docs-check freshness-check docs-links-check hooks contract-schema lint-workflows lint-python lint-swift format
+.PHONY: setup build clean clean-examples test test-verbose test-coverage test-lcov ci-check check-binary-targets preflight docs docs-check docs-ja docs-preview examples examples-check examples-list examples-index example-shots tutorial-snippets tutorial-shots tutorial-status reference-shots reference-i18n symbol-graphs llms-txt ai-docs-check freshness-check docs-links-check reference-links-check hooks contract-schema lint-workflows lint-python lint-swift format
 
 # Default target
 all: setup build
@@ -198,6 +198,17 @@ freshness-check:
 docs-links-check:
 	@python3 scripts/check-docs-links.py
 
+# Validate the DocC reference URLs that docs/** link out to (Issue #987)
+#
+# 上の docs-links-check の担当外（外部 URL）のうち、リファレンスだけをここで見る。
+# URL にはシグネチャが焼き込まれているので、引数ラベルが 1 つ増えただけで 404 になる
+# （#959 では 4 本が同時に死んでいた）。公開サイトへ HTTP は投げない — flaky を
+# 持ち込むうえ、見に行く先が公開済みのリファレンスでは main へ入る前の変更を
+# 検知できない。判定はローカルの DocC 出力に当てるので、`docs` に依存する
+# （実測 4 秒。symbol graph の抽出と docc convert はどちらも数秒）。
+reference-links-check: docs
+	@python3 scripts/check-reference-links.py --docs-dir $(DOCC_OUTPUT)
+
 # Validate wire-schema contract (contract/examples/ against contract/*.schema.json).
 # Requires check-jsonschema (pip install check-jsonschema).
 contract-schema:
@@ -359,6 +370,7 @@ help:
 	@echo "  make ai-docs-check  - Validate AI-facing docs and llms.txt assumptions"
 	@echo "  make freshness-check - Verify every generated artifact tracks its inputs"
 	@echo "  make docs-links-check - Check relative links in docs/** and the ADR index"
+	@echo "  make reference-links-check - Check the DocC reference URLs docs/** link out to"
 	@echo "  make contract-schema - Validate wire-schema contract (needs check-jsonschema)"
 	@echo "  make lint-workflows - Lint .github/workflows with actionlint (same as CI)"
 	@echo "  make lint-python    - Lint scripts/*.py with ruff (same as CI)"
