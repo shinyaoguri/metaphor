@@ -719,17 +719,26 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var b: Float` -- The blue component, on a 0.0 to 1.0 scale (out-of-range values are preserved).
 - `static let black: Color` -- Pure black.
 - `static let blue: Color` -- Pure blue.
+- `var brightness: Float { get }` -- The brightness of this color, on a 0.0 to 1.0 scale.
+  - Important: The value is **on a 0.0 to 1.0 scale and ignores `colorMode()`**, exactly like `r`, `g`, `b` and `a`. Under `colorMode(.hsb, 360, 100, 100)` a Processing sketch expects `brightness(c)` to be 0 to 100, so scale it yourself: `brightness(c) * 100`.
+  - Note: This is the largest of the three RGB components (the HSB "value"), not a perceptual luminance — pure blue and pure white both report 1.0.
 - `static let clear: Color` -- Fully transparent black.
 - `var clearColor: MTLClearColor { get }` -- The color as an `MTLClearColor` for use in a Metal render pass.
 - `static let cyan: Color` -- Pure cyan.
 - `var g: Float` -- The green component, on a 0.0 to 1.0 scale (out-of-range values are preserved).
 - `static let green: Color` -- Pure green.
+- `var hue: Float { get }` -- The hue of this color, on a 0.0 to 1.0 scale.
+  - Important: The value is **on a 0.0 to 1.0 scale and ignores `colorMode()`**, exactly like `r`, `g`, `b` and `a`. Under `colorMode(.hsb, 360, 100, 100)` a Processing sketch expects `hue(c)` to be 0 to 360, so scale it yourself: `hue(c) * 360`.
+  - Note: One full turn is 0.0 to 1.0 and the value never reaches 1.0 — pure red is 0.0, not 1.0. For a gray color (`saturation` of 0) the hue is undefined and 0.0 is returned, as in Processing.
 - `static let magenta: Color` -- Pure magenta.
 - `static let orange: Color` -- Orange.
 - `static var paramTypeTag: String { get }`
 - `var paramValue: ParamValue { get }`
 - `var r: Float` -- The red component, on a 0.0 to 1.0 scale (out-of-range values are preserved).
 - `static let red: Color` -- Pure red.
+- `var saturation: Float { get }` -- The saturation of this color, on a 0.0 to 1.0 scale.
+  - Important: The value is **on a 0.0 to 1.0 scale and ignores `colorMode()`**, exactly like `r`, `g`, `b` and `a`. Under `colorMode(.hsb, 360, 100, 100)` a Processing sketch expects `saturation(c)` to be 0 to 100, so scale it yourself: `saturation(c) * 100`.
+  - Note: Black has a saturation of 0.0.
 - `var simd: SIMD4<Float> { get }` -- The color as a `SIMD4<Float>` in (r, g, b, a) order.
 - `static let white: Color` -- Pure white.
 - `static let yellow: Color` -- Pure yellow.
@@ -2233,14 +2242,30 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### Math
 
+- `func alpha(_ c: Color) -> Float` -- Extracts the alpha component of a color (compatible with Processing's `alpha()`).
+  - Important: The result is **on a 0.0 to 1.0 scale and ignores `colorMode()`**, unlike Processing, where `alpha()` follows `maxAlpha`. It is straight (non-premultiplied) alpha, as everywhere in the public API (ADR-0012). See `hue(_:)` for the reasoning.
+  - Note: This returns `Color/a` unchanged, including out-of-range components. A local named `alpha` shadows this function inside its scope; use the `Color/a` property there.
 - `func bezierPoint(_ a: Float, _ b: Float, _ c: Float, _ d: Float, _ t: Float) -> Float` -- Evaluates a point on a cubic Bezier curve at the given parameter.
 - `func bezierTangent(_ a: Float, _ b: Float, _ c: Float, _ d: Float, _ t: Float) -> Float` -- Evaluates the tangent of a cubic Bezier curve at the given parameter.
+- `func blue(_ c: Color) -> Float` -- Extracts the blue component of a color (compatible with Processing's `blue()`).
+  - Important: The result is **on a 0.0 to 1.0 scale and ignores `colorMode()`**, unlike Processing. See `red(_:)` for the porting trap and `hue(_:)` for the reasoning.
+  - Note: This returns `Color/b` unchanged, including out-of-range components. A local named `blue` shadows this function inside its scope; use the `Color/b` property there.
+- `func brightness(_ c: Color) -> Float` -- Extracts the brightness of a color (compatible with Processing's `brightness()`).
+  - Important: The result is **on a 0.0 to 1.0 scale and ignores `colorMode()`**, unlike Processing. See `hue(_:)` for why, and scale by hand when porting: `brightness(c) * 100` under `colorMode(HSB, 360, 100, 100)`.
+  - Note: This is the largest of the three RGB components (the HSB "value"), not a perceptual luminance. A local named `brightness` shadows this function inside its scope; use the `Color/brightness` property there.
 - `func constrain(_ value: Float, _ low: Float, _ high: Float) -> Float` -- Constrains a value to the given range.
 - `func curvePoint(_ a: Float, _ b: Float, _ c: Float, _ d: Float, _ t: Float) -> Float` -- Evaluates a point on a Catmull-Rom spline at the given parameter.
 - `func curveTangent(_ a: Float, _ b: Float, _ c: Float, _ d: Float, _ t: Float) -> Float` -- Evaluates the tangent of a Catmull-Rom spline at the given parameter.
 - `func degrees(_ radians: Float) -> Float` -- Converts an angle in radians to degrees.
 - `func dist(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float) -> Float` -- Calculates the Euclidean distance between two 2D points.
 - `func dist(_ x1: Float, _ y1: Float, _ z1: Float, _ x2: Float, _ y2: Float, _ z2: Float) -> Float` -- Calculates the Euclidean distance between two 3D points.
+- `func green(_ c: Color) -> Float` -- Extracts the green component of a color (compatible with Processing's `green()`).
+  - Important: The result is **on a 0.0 to 1.0 scale and ignores `colorMode()`**, unlike Processing. See `red(_:)` for the porting trap and `hue(_:)` for the reasoning.
+  - Note: This returns `Color/g` unchanged, including out-of-range components. A local named `green` shadows this function inside its scope; use the `Color/g` property there.
+- `func hue(_ c: Color) -> Float` -- Extracts the hue of a color (compatible with Processing's `hue()`).
+  - Important: The result is **on a 0.0 to 1.0 scale and ignores `colorMode()`**, unlike Processing, where `hue()` follows the current color mode. metaphor draws the line between the two scales at the type: the numeric `fill` / `stroke` / `background` / `tint` overloads follow `colorMode()`, while `Color` values are always normalized. These extractors take a `Color` and are the exact inverse of `Color/init(hue:saturation:brightness:alpha:)`, so they stay on the normalized side. Porting `colorMode(HSB, 360, 100, 100)` code means scaling by hand: `hue(c) * 360`.
+  - Note: One full turn is 0.0 to 1.0 and the value never reaches 1.0 — pure red is 0.0. A gray color returns 0.0, as in Processing.
+  - Note: Swift does not keep functions and variables in separate namespaces, so a local named `hue` shadows this function inside its scope. Use the `Color/hue` property instead there.
 - `func lerp<T>(_ a: T, _ b: T, _ t: T) -> T where T : FloatingPoint` -- Linearly interpolates between two values.
 - `func lerp(_ a: SIMD2<Float>, _ b: SIMD2<Float>, _ t: Float) -> SIMD2<Float>` -- Linearly interpolates between two 2D vectors.
 - `func lerp(_ a: SIMD3<Float>, _ b: SIMD3<Float>, _ t: Float) -> SIMD3<Float>` -- Linearly interpolates between two 3D vectors.
@@ -2257,7 +2282,13 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func random(_ low: Float, _ high: Float) -> Float` -- Returns a random Float value within the given range.
 - `func randomGaussian(_ mean: Float = 0, _ sd: Float = 1) -> Float` -- Returns a random value from a Gaussian (normal) distribution using the Box-Muller transform.
 - `func randomSeed(_ seed: UInt64)` -- Sets the seed of the pseudo-random number generator.
+- `func red(_ c: Color) -> Float` -- Extracts the red component of a color (compatible with Processing's `red()`).
+  - Important: The result is **on a 0.0 to 1.0 scale and ignores `colorMode()`**, unlike Processing. Ported code such as `fill(red(c), green(c), blue(c))` therefore compiles but draws almost black under the default `colorMode(.rgb, 255)` — pass the `Color` straight to `fill(_:)` instead, or scale by hand with `red(c) * 255`. See `hue(_:)` for the reasoning.
+  - Note: This returns `Color/r` unchanged, including components outside 0.0...1.0 (see "Out-of-range components" in `Color`). A local named `red` shadows this function inside its scope; use the `Color/r` property there.
 - `func saturate(_ x: Float) -> Float` -- Clamps a value to the range [0, 1].
+- `func saturation(_ c: Color) -> Float` -- Extracts the saturation of a color (compatible with Processing's `saturation()`).
+  - Important: The result is **on a 0.0 to 1.0 scale and ignores `colorMode()`**, unlike Processing. See `hue(_:)` for why, and scale by hand when porting: `saturation(c) * 100` under `colorMode(HSB, 360, 100, 100)`.
+  - Note: A local named `saturation` shadows this function inside its scope; use the `Color/saturation` property there.
 - `func smoothstep(_ edge0: Float, _ edge1: Float, _ x: Float) -> Float` -- Performs Hermite interpolation between two edges.
 - `func sq(_ value: Float) -> Float` -- Calculates the square of a value.
 

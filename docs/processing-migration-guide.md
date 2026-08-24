@@ -193,8 +193,9 @@ The default color mode is **RGB with a 0–255 range, exactly like Processing**,
 | `color(…)` packed into `pixels[]` | `color(_ r: Float, _ g: Float, _ b: Float) -> UInt32` (free function, 0–255 in, packed `0xAARRGGBB` out) |
 | `tint(…)` / `noTint()` | `tint(…)` (same overloads as `fill`) / `noTint()` |
 | `blendMode(ADD)` | `blendMode(.additive)`; also `.alpha` `.multiply` `.screen` `.subtract` `.darkest` `.lightest` `.difference` `.exclusion` `.opaque` |
-| `red(c)` / `green(c)` / `hue(c)` … | `c.r` / `c.g` / `c.b` / `c.a` (always 0–1, ignoring `colorMode`) — there are **no `hue()`/`saturation()`/`brightness()`/`alpha()` extractors** and no RGB→HSB conversion ([#811](https://github.com/shinyaoguri/metaphor/issues/811)) |
-| `blendColor(c1, c2, MULTIPLY)` | — not implemented ([#811](https://github.com/shinyaoguri/metaphor/issues/811)); `blendMode()` applies to drawing, not to a pair of colors |
+| `red(c)` / `green(c)` / `blue(c)` / `alpha(c)` | `red(_ c: Color) -> Float` / `green(…)` / `blue(…)` / `alpha(…)` (free functions), or the `c.r` / `c.g` / `c.b` / `c.a` properties. **The result is 0–1 and ignores `colorMode`** — see [Two color ranges](#two-color-ranges-0255-numbers-01-color) |
+| `hue(c)` / `saturation(c)` / `brightness(c)` | `hue(_ c: Color) -> Float` / `saturation(…)` / `brightness(…)` (free functions), or the `c.hue` / `c.saturation` / `c.brightness` properties. **0–1, ignoring `colorMode`**: under `colorMode(HSB, 360, 100, 100)` write `hue(c) * 360` |
+| `blendColor(c1, c2, MULTIPLY)` | — not implemented ([#1153](https://github.com/shinyaoguri/metaphor/issues/1153)); `blendMode()` applies to drawing, not to a pair of colors |
 
 Note the two distinct color entry points — see
 [Two color ranges](#two-color-ranges-0255-numbers-01-color) in the pitfalls.
@@ -607,6 +608,36 @@ they are always normalized. The numeric `fill` / `stroke` / `background` /
 with `fill(.white)` in the same sketch is the classic way to confuse yourself;
 pick one convention per sketch.
 
+**The extractors sit on the normalized side.** `hue(c)`, `saturation(c)`,
+`brightness(c)`, `alpha(c)`, `red(c)`, `green(c)` and `blue(c)` take a `Color`
+and are the exact inverse of `Color(hue:saturation:brightness:alpha:)`, so they
+return 0–1 and ignore `colorMode()` — unlike Processing, where they follow the
+current mode. Two consequences worth memorizing:
+
+```swift
+colorMode(.hsb, 360, 100, 100)
+let c = Color(hue: 0.5, saturation: 1, brightness: 1)   // cyan
+
+hue(c)                       // 0.5, not 180
+hue(c) * 360                 // 180 — scale by hand when porting
+
+fill(red(c), green(c), blue(c))   // ⚠️ compiles, draws almost black:
+                                  //    fill() wants 0–255 here
+fill(c)                           // ✅ pass the Color straight through
+```
+
+`red(c)` / `green(c)` / `blue(c)` / `alpha(c)` are exact aliases of `c.r` / `c.g`
+/ `c.b` / `c.a`, out-of-range components included. The HSB three clamp the RGB
+components into 0–1 before converting (the same guard
+`Color(hue:saturation:brightness:)` applies on the way in), so they report the
+color **as it is drawn**.
+
+One Swift-specific gotcha: Swift does not keep functions and variables in
+separate namespaces the way Java does, so a local named `hue` (or `red`,
+`alpha`, …) shadows the free function inside its scope. Processing code like
+`float hue = hue(c);` therefore does not port literally — use the `c.hue`
+property there, or rename the local.
+
 ### `Sketch` is `@MainActor`
 
 The `Sketch` protocol is annotated `@MainActor`, so `setup()`, `draw()` and the
@@ -985,7 +1016,7 @@ sizes, colors) stay unlabelled, optional modifiers get labels (ADR-0007).
 | `loadShape()` (SVG as `PShape`) | Planned, Phase 2 — [Epic #288](https://github.com/shinyaoguri/metaphor/issues/288). Today: `loadModel()` reads OBJ / USDZ / ABC into a `Mesh`; SVG is export-only. |
 | canvas-wide `filter()` and `blend()` | Planned, Phase 2. Today `filter(_ image: MImage, _ type: FilterType)` filters an image, and post-process effects (`addPostEffect`) cover the whole frame. |
 | `PDF` export | Demand-gated, Phase 4 — [Epic #288](https://github.com/shinyaoguri/metaphor/issues/288). `DXF` export likewise has no equivalent. |
-| `hue()` / `saturation()` / `brightness()` / `alpha()` / `blendColor()` | Not implemented — [#811](https://github.com/shinyaoguri/metaphor/issues/811). `Color` converts HSB→RGB but not back. |
+| `blendColor()` | Not implemented — [#1153](https://github.com/shinyaoguri/metaphor/issues/1153). `blendMode()` configures drawing, not a pair of colors. The component extractors (`hue()` / `saturation()` / `brightness()` / `alpha()` / `red()` / `green()` / `blue()`) **do** exist — they return 0–1 and ignore `colorMode`. |
 | `quadraticVertex()`, `bezierDetail()`, `shapeMode()` | Not implemented — [#813](https://github.com/shinyaoguri/metaphor/issues/813). |
 | `ambient()`, `lightFalloff()`, `lightSpecular()`, `textureMode()`, `textureWrap()`, `beginCamera()` / `endCamera()`, `frustum()` | Not implemented — [#815](https://github.com/shinyaoguri/metaphor/issues/815). |
 | p5 `textStyle()` / `textWrap()` / `textBounds()` | Not implemented — [#816](https://github.com/shinyaoguri/metaphor/issues/816). A style-qualified family name (`textFont("Helvetica Neue Bold")`) covers bold and italic. |
