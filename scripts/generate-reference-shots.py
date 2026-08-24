@@ -94,8 +94,9 @@ Gyazo に無駄な URL を積まずに済む）。
 指す中身が入れ替わっていないことを後から確かめるためのもの。URL の生死は週次のワーク
 フローが見る（scripts/check-image-urls.py）。
 
-撮影とアップロードはローカルで行い、doc コメントと台帳をコミットする（CI で走るのは
-`--check` / `--compile-only` と、上げない `--verify-bytes` だけ）。
+撮影は手元でも CI でも走る。CI 側は `.github/workflows/shots.yml`（手動起動）が撮り、
+差分があれば **PR を開く** — 絵が変わったのが意図した変更か退行かは機械では判別できず、
+直接 push すると誰も確かめないまま退行が焼き付くため（#586 / #1112）。
 """
 
 from __future__ import annotations
