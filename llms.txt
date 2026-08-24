@@ -89,10 +89,13 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func addPostEffect(_ effect: any PostEffect)` -- ポストプロセスエフェクトをパイプラインに追加します。
 - `func ambientLight(_ strength: Float)` -- Sets the intensity of the ambient light from a grayscale value.
   - Note: Affects **3D only** (2D drawing is not affected by lighting. ADR-0005).
+  - Note: **Resets every frame.** The ambient light returns to its default at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func ambientLight(_ r: Float, _ g: Float, _ b: Float)` -- Sets the color of the ambient light from RGB values.
   - Note: Affects **3D only** (ADR-0005).
+  - Note: **Resets every frame.** The ambient light returns to its default at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func ambientOcclusion(_ value: Float)` -- Sets the PBR ambient occlusion coefficient.
   - Note: Affects **3D only** (ADR-0005).
+  - Note: **Resets every frame.** The material returns to its defaults at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func applyMatrix(_ matrix: float3x3)` -- Multiplies the current 2D transform by a 3x3 matrix.
   - Note: Affects **2D only**. For 3D, use `applyMatrix(_:)` (the `float4x4` version). The unification with P3D semantics is limited to `translate(_:_:)` / `rotate(_:)` / `scale(_:_:)`, and applying a matrix directly is out of scope (ADR-0005 Amendment 2026-08-02).
 - `func applyMatrix(_ matrix: float4x4)` -- Multiplies the current 3D transform by a 4x4 matrix.
@@ -133,6 +136,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
   - Note: Affects **3D only** (it is drawn on the 3D canvas. ADR-0005).
 - `func camera(eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float> = SIMD3(0, 1, 0))` -- Sets the 3D camera from eye, center, and up vectors.
   - Note: Affects **3D only** (2D drawing is not affected by the camera. ADR-0005).
+  - Note: **Resets every frame.** The camera returns to the default pixel-space view at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func ciFilter(_ image: MImage, _ preset: CIFilterPreset)` -- Applies a CoreImage filter preset to an image.
 - `func ciFilter(_ image: MImage, name: String, parameters: [String : Any] = [:])` -- Applies a CoreImage filter to an image by name, with custom parameters.
 - `func ciGenerate(_ preset: CIFilterPreset, width: Int, height: Int) -> MImage?` -- Generates an image using a CoreImage generator filter.
@@ -228,10 +232,12 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func decodeState<T>(_ data: Data, as type: T.Type = T.self) -> T? where T : Decodable` -- `restoreState(_:)` で受け取ったデータをデコードします。失敗したら `nil`。
 - `func directionalLight(_ x: Float, _ y: Float, _ z: Float, color: Color = .white, intensity: Float = 1.0)` -- Adds a directional light.
   - Note: Affects **3D only** (2D drawing is not affected by lighting. ADR-0005).
+  - Note: **Resets every frame.** The set of lights is emptied at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func disableFeedback()` -- Disables framebuffer feedback.
 - `func disablePerformanceHUD()` -- パフォーマンスヘッドアップディスプレイオーバーレイを無効にします。
 - `func disableShadows()` -- Disables shadow mapping.
   - Note: Affects **3D only** (ADR-0005).
+  - Note: **Survives across frames.** Unlike the lights themselves, the shadow map is **not** reset at the start of a frame, so this stays in effect until you call `enableShadows()` again. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func dispatch(_ kernel: ComputeKernel, threads: Int, configure: (any MTLComputeCommandEncoder) -> Void)` -- Dispatches a 1D compute kernel (only effective inside `Sketch/compute()`).
   - Important: The call only **encodes** the kernel into the frame's command buffer. The GPU does not start it until the frame is committed, so an output `GPUBuffer` read later in the same `compute()` still holds the contents from before the dispatch. See `GPUBuffer` for when the writes become visible to the CPU.
   - Important: A call from `setup()` or `draw()` does nothing. Debug builds warn once (Issue #1092).
@@ -253,14 +259,18 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
   - Note: Affects **2D only** (it is for `ellipse(_:_:_:_:)` and does not change how the position of 3D primitives is interpreted; ADR-0005).
 - `func emissive(_ color: Color)` -- Sets the emissive (self-illumination) color.
   - Note: Affects **3D only** (ADR-0005).
+  - Note: **Resets every frame.** The material returns to its defaults at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func emissive(_ gray: Float)` -- Sets the emissive color from a grayscale value.
   - Note: Affects **3D only** (ADR-0005).
+  - Note: **Resets every frame.** The material returns to its defaults at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func emissive(_ v1: Float, _ v2: Float, _ v3: Float)` -- Sets the emissive color from channel values.
   - Note: Affects **3D only** (2D drawing is not affected by materials. ADR-0005).
+  - Note: **Resets every frame.** The material returns to its defaults at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func enableFeedback()` -- Enables framebuffer feedback, giving access to the previous frame.
 - `func enablePerformanceHUD()` -- パフォーマンスヘッドアップディスプレイオーバーレイを有効にします。
 - `func enableShadows(resolution: Int = 2048)` -- Enables shadow mapping.
   - Note: Affects **3D only** (only 3D shapes cast shadows. ADR-0005).
+  - Note: **Survives across frames.** Unlike the lights themselves, the shadow map is **not** reset at the start of a frame, so setting it once in `setup()` is enough. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
   - Note: **Layering of 2D and 3D** (#832 / the Amendment section of ADR-0003). On the default immediate path (shadows off), the layering is determined by **encode order, not call order**. 2D is collected into a batch and flushed at the end of the frame, so **2D comes in front of 3D by default** (2D drawn before `box()` still ends up in front). If the 2D batch is flushed partway through, however, it falls behind any 3D encoded after that — the triggers are a change of `blendMode()`, alternating with `image()` or `text()`, alternating with instanced drawing such as `circles()`, `beginClip()` / `endClip()`, `loadPixels()`, and the vertex buffer limit. **To layer in call order**, either enable this `enableShadows()` or take the recording path with the environment variable `METAPHOR_COMMAND_RECORD=1` (in both cases `Canvas3D` finalizes the 2D right before it records the 3D, so the call order is restored as is).
 - `func encodeState<T>(_ value: T) -> Data? where T : Encodable` -- 状態を JSON へエンコードします。失敗したら `nil`（= 状態を保存しない）。
 - `func endClip()` -- Ends the current clip region and restores the previous state.
@@ -281,12 +291,14 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func endVideoRecordAsync() async` -- Stops the video recording asynchronously and finalizes the file.
 - `func environment(_ preset: EnvironmentPreset, intensity: Float = 1.0, background: Bool = true)` -- Sets the environment (IBL and the background skybox).
   - Note: Affects **3D only** (ADR-0005). It is not restored by `pushStyle()` / `popStyle()`; it is treated as a property of the whole screen.
+  - Note: **Survives across frames.** Unlike the lights, the environment is **not** reset at the start of a frame, so setting it once in `setup()` is enough. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
   - Note: IBL applies to **the PBR path only** (when you call `roughness(_:)` or enable `pbr(_:)`). The Blinn-Phong image does not change.
   - Note: If tone mapping has not been specified, it is promoted automatically to `ToneMapMode/acesFilmic` (because adding an environment pushes the luminance above 1.0). If you specified `toneMapping(_:)` explicitly, that wins.
   - Note: When `background: true`, the skybox is drawn exactly once, **right before the first 3D drawing**. Therefore 2D drawn before that is covered by the skybox, while 2D drawn after it (a HUD or other foreground) stays on top. On a frame that draws no 3D at all, the skybox is not drawn either.
   - Note: If `ambientLight(_:)` has not been specified explicitly, the default ambient becomes 0 (so that it is not added twice with the diffuse term of the IBL).
 - `func exposure(_ value: Float)` -- Sets the exposure multiplier applied before tone mapping.
   - Note: Affects **3D only** (ADR-0005). It is not restored by `pushStyle()` / `popStyle()`.
+  - Note: **Survives across frames.** Unlike the rest of the material state, the exposure is a property of the whole screen and is **not** reset at the start of a frame, so setting it once in `setup()` is enough. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func fileDropped(_ paths: [String])` -- ファイルがウィンドウへドラッグ＆ドロップされた時に呼ばれます。
 - `func fill(_ color: Color)` -- Sets the fill color.
   - Note: Affects **both 2D and 3D**. In 3D it becomes the color of primitives and meshes, and when a `texture(_:)` is applied it is multiplied into the texture color (ADR-0005).
@@ -326,6 +338,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func keyTyped()` -- 文字入力を生成するキー押下時に呼ばれます（Processing の `keyTyped()` 互換）。
 - `func lights()` -- Enables the default lighting (a directional light and an ambient light).
   - Note: Affects **3D only** (2D drawing is not affected by lighting. ADR-0005).
+  - Note: **Resets every frame.** The set of lights is emptied at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func line(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float)` -- Draws a line between two points.
   - Note: Affects **2D only** (for a 3D line, pass `ShapeMode/lines` to `beginShape3D(_:)`. ADR-0005).
 - `func linearGradient(_ x: Float, _ y: Float, _ w: Float, _ h: Float, _ c1: Color, _ c2: Color, axis: GradientAxis = .vertical)` -- Draws a rectangle filled with a linear gradient.
@@ -360,10 +373,12 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `static func main()` -- スケッチアプリケーションを起動します（`@main` 属性から呼ばれます）。
 - `func material(_ customMaterial: CustomMaterial)` -- Applies a custom material to subsequent 3D drawing.
   - Note: Affects **3D only** (ADR-0005).
+  - Note: **Resets every frame.** The custom material binding is cleared at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func mesh(_ mesh: Mesh)` -- Draws a prebuilt mesh.
   - Note: Affects **3D only** (it is drawn on the 3D canvas. ADR-0005).
 - `func metallic(_ value: Float)` -- Sets the metallic coefficient of the material.
   - Note: Affects **3D only** (ADR-0005).
+  - Note: **Resets every frame.** The material returns to its defaults at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func modelX(_ x: Float, _ y: Float, _ z: Float) -> Float` -- Returns the world x coordinate of a 3D model coordinate taken through the current transform.
   - Note: **3D only**. Use `screenX(_:_:_:)` when you want screen coordinates in pixels.
   - Important: What comes back is a **world coordinate**, independent of the camera. Changing `camera(eye:center:up:)` or `perspective(fov:near:far:)` does not change the value (the same semantics as Processing's `modelX()`).
@@ -382,20 +397,24 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func noCursor()` -- カーソルを非表示にします。
 - `func noEnvironment()` -- Disables the environment (IBL and skybox).
   - Note: Affects **3D only** (ADR-0005).
+  - Note: **Survives across frames.** Unlike the lights, the environment is **not** reset at the start of a frame, so this stays in effect until you call `environment(_:)` again. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func noFill()` -- Disables filling shapes.
   - Note: Affects **both 2D and 3D**. In 3D the faces stop being drawn, and calling `noStroke()` as well leaves that shape drawing nothing at all (ADR-0005).
 - `func noiseTexture(_ type: NoiseType, width: Int, height: Int, config: NoiseConfig = NoiseConfig()) -> MImage?` -- Generates a noise texture as an image (a convenience method).
 - `func noLights()` -- Disables all lights.
   - Note: Affects **3D only** (ADR-0005).
+  - Note: **Resets every frame.** The set of lights is emptied at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func noLoop()` -- アニメーションループを停止します。
 - `func noMaterial()` -- Clears the active custom material and returns to the default shading.
   - Note: Affects **3D only** (ADR-0005).
+  - Note: **Resets every frame.** The custom material binding is cleared at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func normal(_ nx: Float, _ ny: Float, _ nz: Float)` -- Sets the normal vector for subsequent 3D vertices.
   - Note: Affects **3D only** (2D shapes have no normals. ADR-0005).
 - `func noStroke()` -- Disables stroking shapes.
   - Note: Affects **both 2D and 3D**. 3D has no stroke by default to begin with, so the appearance does not change unless `stroke(_:)-(Color)` has been called (ADR-0005).
 - `func noTexture()` -- Clears the active texture.
   - Note: Affects **3D only** (ADR-0005).
+  - Note: **Resets every frame.** The texture binding is cleared at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func noTint()` -- Clears the image tint.
   - Note: Affects **2D only** (the counterpart to `tint(_:)-(Color)`; ADR-0005).
 - `func orbitControl()` -- オービットカメラコントロールを有効にします（`draw()` 内で呼び出してください）。
@@ -403,10 +422,13 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func ortho(left: Float? = nil, right: Float? = nil, bottom: Float? = nil, top: Float? = nil, near: Float? = nil, far: Float? = nil)` -- Sets an orthographic projection.
   - Important: Following the convention of projection matrices, `bottom` is the side where y in view space is **smaller**. Because y in metaphor points down the screen just as it does in 2D, `bottom` corresponds to the **top** edge of the screen and `top` to the **bottom** edge. Passing the two the other way around flips the image vertically.
   - Note: Affects **3D only** (2D drawing is not affected by the projection. ADR-0005).
+  - Note: **Resets every frame.** The projection returns to the default perspective at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func pbr(_ enabled: Bool)` -- Switches the PBR rendering mode explicitly.
   - Note: Affects **3D only** (ADR-0005).
+  - Note: **Resets every frame.** The material returns to its defaults (PBR off) at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func perspective(fov: Float = Float.pi / 3, near: Float = 0.1, far: Float = 10000)` -- Sets a perspective projection.
   - Note: Affects **3D only** (2D drawing is not affected by the projection. ADR-0005).
+  - Note: **Resets every frame.** The projection returns to the default perspective (a 60° field of view) at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func plane(_ width: Float, _ height: Float)` -- Draws a plane.
   - Note: Affects **3D only** (it is drawn on the 3D canvas. ADR-0005).
 - `func plugin(id: String) -> (any MetaphorPlugin)?` -- 識別子を指定して登録済みプラグインを検索します。
@@ -414,6 +436,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
   - Note: Affects **2D only** (for a 3D point, pass `ShapeMode/points` to `beginShape3D(_:)`. ADR-0005).
 - `func pointLight(_ x: Float, _ y: Float, _ z: Float, color: Color = .white, falloff: Float = 0.1, intensity: Float = 1.0)` -- Adds a point light at the given position.
   - Note: Affects **3D only** (ADR-0005).
+  - Note: **Resets every frame.** The set of lights is emptied at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func polygon(_ points: [(Float, Float)])` -- Draws a polygon from an array of coordinate tuples.
   - Note: Affects **2D only** (3D is built with `beginShape3D(_:)`. ADR-0005).
 - `func polygon(_ points: [Vec2])` -- Draws a polygon from an array of `Vec2` values.
@@ -471,6 +494,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
   - Note: Affects **3D only**. The one-argument `rotate(_:)` affects both 2D and 3D, and on the 3D side it is the same rotation around the z axis as this method (ADR-0005 Amendment 2026-08-02).
 - `func roughness(_ value: Float)` -- Sets the PBR roughness (this switches to PBR mode automatically).
   - Note: Affects **3D only** (ADR-0005).
+  - Note: **Resets every frame.** The material returns to its defaults (roughness 0.5, PBR off) at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func save()` -- Saves the current frame to `output/metaphor_<timestamp>.png`.
 - `func save(_ path: String)` -- Saves the current frame to the given file path.
 - `func saveFrame(_ filename: String? = nil)` -- Saves a single frame to an image file.
@@ -507,6 +531,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func shader(_ shader: Shader2D)` -- Applies a custom fragment shader to subsequent 2D drawing.
 - `func shadowBias(_ value: Float)` -- Sets the shadow depth bias used to reduce shadow acne.
   - Note: Affects **3D only** (ADR-0005).
+  - Note: **Survives across frames.** The shadow bias is **not** reset at the start of a frame, so setting it once in `setup()` is enough. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func shape(_ s: MShape)` -- Draws a retained shape at the origin.
 - `func shape(_ s: MShape, _ x: Float, _ y: Float)` -- Draws a retained shape at the given position.
 - `func shape(_ s: MShape, _ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- Draws a retained shape at the given position and size.
@@ -516,16 +541,21 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
   - Note: Affects **2D only**. The unification with P3D semantics is limited to `translate(_:_:)` / `rotate(_:)` / `scale(_:_:)`, and shear is out of scope (ADR-0005 Amendment 2026-08-02).
 - `func shininess(_ value: Float)` -- Sets the specular shininess exponent.
   - Note: Affects **3D only** (ADR-0005).
+  - Note: **Resets every frame.** The material returns to its defaults at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func specular(_ color: Color)` -- Sets the color of specular highlights.
   - Note: Affects **3D only** (2D drawing is not affected by materials. ADR-0005).
+  - Note: **Resets every frame.** The material returns to its defaults at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func specular(_ gray: Float)` -- Sets the color of specular highlights from a grayscale value.
   - Note: Affects **3D only** (ADR-0005).
+  - Note: **Resets every frame.** The material returns to its defaults at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func specular(_ v1: Float, _ v2: Float, _ v3: Float)` -- Sets the color of specular highlights from channel values.
   - Note: Affects **3D only** (2D drawing is not affected by materials. ADR-0005).
+  - Note: **Resets every frame.** The material returns to its defaults at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func sphere(_ radius: Float, detail: Int = 24)` -- Draws a sphere.
   - Note: Affects **3D only** (it is drawn on the 3D canvas. ADR-0005).
 - `func spotLight(_ x: Float, _ y: Float, _ z: Float, _ dirX: Float, _ dirY: Float, _ dirZ: Float, angle: Float = Float.pi / 6, falloff: Float = 0.01, color: Color = .white, intensity: Float = 1.0)` -- Adds a spot light at the given position and direction.
   - Note: Affects **3D only** (ADR-0005).
+  - Note: **Resets every frame.** The set of lights is emptied at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func square(_ x: Float, _ y: Float, _ size: Float)` -- Draws a square.
   - Note: Affects **2D only** (the 3D cube is `box(_:)`. ADR-0005).
 - `func stroke(_ color: Color)` -- Sets the stroke color.
@@ -556,6 +586,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func textToShape(_ string: String, _ x: Float, _ y: Float, sampleFactor: Float = 0.25) -> MShape` -- Converts the outlines of a text into a retained shape that can be drawn with its holes.
 - `func texture(_ img: MImage)` -- Sets the texture for subsequent 3D shapes.
   - Note: Affects **3D only** (to draw an image in 2D, use `image()`. ADR-0005).
+  - Note: **Resets every frame.** The texture binding is cleared at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func textWidth(_ string: String) -> Float` -- Computes the width of a text string with the current font settings.
 - `func tint(_ color: Color)` -- Sets the tint color for images.
   - Note: Affects **2D only**. It applies to images drawn with `image()` and has no effect on 3D `texture(_:)` — a 3D texture is tinted by multiplying in the `fill(_:)-(Color)` color, so there is no dedicated tint slot to begin with (ADR-0005). Use `fill(_:)-(Color)` when you want to multiply a color into textured 3D.
@@ -568,6 +599,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func toneMapping(_ mode: ToneMapMode)` -- Sets the tone mapping applied to the 3D lighting result.
   - Note: This applies to **the 3D lighting result only**. The colors of 2D drawing do not change (the asymmetry is deliberate: 3D shading is a physical quantity, while a 2D color is a final color). It does not apply to drawing with no lights at all (the unlit pass) either.
   - Note: It is **not restored** by `pushStyle()` / `popStyle()`. It is treated as a property of the whole screen.
+  - Note: **Survives across frames.** Unlike the rest of the material state, tone mapping is a property of the whole screen and is **not** reset at the start of a frame, so setting it once in `setup()` is enough. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func torus(ringRadius: Float, tubeRadius: Float, detail: Int = 24)` -- Draws a torus (a doughnut shape).
   - Note: Affects **3D only** (it is drawn on the 3D canvas. ADR-0005).
 - `func translate(_ x: Float, _ y: Float)` -- Applies a translation to the current transform.
