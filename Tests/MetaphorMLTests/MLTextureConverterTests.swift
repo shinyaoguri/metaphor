@@ -244,4 +244,121 @@ struct MLTextureConverterTests {
         #expect(pixels[8] == 127)
         #expect(pixels[12] == 63)
     }
+
+    // MARK: - dataType ごとの読み出し経路（#1102）
+    //
+    // 元は 1 本のジェネリックなローカル関数がクロージャ経由で 5 つの型を捌いており、
+    // テストは .float32 しか通っていなかった。その形が Xcode 26.4.1 の SIL 最適化を
+    // 落とすため 2 本のジェネリック関数へ分けたので、**どの経路も同じ絵を出すこと**を
+    // ここで押さえる。上の strided テストと同じ配置・同じ期待値に揃えてある
+    // （(0,0)=最小 / (0,1)=最大 / (1,0)=中間 / (1,1)=1/4）。
+
+    @Test("texture from Double MLMultiArray matches the Float path")
+    func textureFromDoubleMultiArray() throws {
+        let device = MTLCreateSystemDefaultDevice()!
+        let queue = device.makeCommandQueue()!
+        let converter = MLTextureConverter(device: device, commandQueue: queue)
+
+        let values: [Double] = [0.0, 1.0, 0.9, 0.5, 0.25, 0.8]
+        let pointer = UnsafeMutablePointer<Double>.allocate(capacity: values.count)
+        pointer.initialize(from: values, count: values.count)
+        let multiArray = try MLMultiArray(
+            dataPointer: pointer,
+            shape: [2, 2],
+            dataType: .double,
+            strides: [3, 1],
+            deallocator: { _ in
+                pointer.deinitialize(count: values.count)
+                pointer.deallocate()
+            }
+        )
+
+        guard let texture = converter.texture(from: multiArray, normalize: false) else {
+            Issue.record("Expected texture")
+            return
+        }
+
+        var pixels = [UInt8](repeating: 0, count: 2 * 2 * 4)
+        texture.getBytes(
+            &pixels, bytesPerRow: 2 * 4, from: MTLRegionMake2D(0, 0, 2, 2), mipmapLevel: 0)
+
+        #expect(pixels[0] == 0)
+        #expect(pixels[4] == 255)
+        #expect(pixels[8] == 127)
+        #expect(pixels[12] == 63)
+    }
+
+    @Test("texture from Float16 MLMultiArray matches the Float path")
+    func textureFromFloat16MultiArray() throws {
+        let device = MTLCreateSystemDefaultDevice()!
+        let queue = device.makeCommandQueue()!
+        let converter = MLTextureConverter(device: device, commandQueue: queue)
+
+        // 0.25 / 0.5 / 1.0 は Float16 でも正確に表せる（誤差の出る 0.9 / 0.8 は
+        // strides の都合で読まれない位置に置いてある）。
+        let values: [Float16] = [0.0, 1.0, 0.9, 0.5, 0.25, 0.8]
+        let pointer = UnsafeMutablePointer<Float16>.allocate(capacity: values.count)
+        pointer.initialize(from: values, count: values.count)
+        let multiArray = try MLMultiArray(
+            dataPointer: pointer,
+            shape: [2, 2],
+            dataType: .float16,
+            strides: [3, 1],
+            deallocator: { _ in
+                pointer.deinitialize(count: values.count)
+                pointer.deallocate()
+            }
+        )
+
+        guard let texture = converter.texture(from: multiArray, normalize: false) else {
+            Issue.record("Expected texture")
+            return
+        }
+
+        var pixels = [UInt8](repeating: 0, count: 2 * 2 * 4)
+        texture.getBytes(
+            &pixels, bytesPerRow: 2 * 4, from: MTLRegionMake2D(0, 0, 2, 2), mipmapLevel: 0)
+
+        #expect(pixels[0] == 0)
+        #expect(pixels[4] == 255)
+        #expect(pixels[8] == 127)
+        #expect(pixels[12] == 63)
+    }
+
+    @Test("texture from Int32 MLMultiArray normalizes like the Float path")
+    func textureFromInt32MultiArray() throws {
+        let device = MTLCreateSystemDefaultDevice()!
+        let queue = device.makeCommandQueue()!
+        let converter = MLTextureConverter(device: device, commandQueue: queue)
+
+        // 整数なので 0..1 の生値では中間調が作れない。min-max 正規化に通して
+        // 0 / 4 / 2 / 1 を 0 / 1.0 / 0.5 / 0.25 に写し、上と同じ期待値に揃える。
+        let values: [Int32] = [0, 4, 99, 2, 1, 99]
+        let pointer = UnsafeMutablePointer<Int32>.allocate(capacity: values.count)
+        pointer.initialize(from: values, count: values.count)
+        let multiArray = try MLMultiArray(
+            dataPointer: pointer,
+            shape: [2, 2],
+            dataType: .int32,
+            strides: [3, 1],
+            deallocator: { _ in
+                pointer.deinitialize(count: values.count)
+                pointer.deallocate()
+            }
+        )
+
+        guard let texture = converter.texture(from: multiArray, normalize: true) else {
+            Issue.record("Expected texture")
+            return
+        }
+
+        var pixels = [UInt8](repeating: 0, count: 2 * 2 * 4)
+        texture.getBytes(
+            &pixels, bytesPerRow: 2 * 4, from: MTLRegionMake2D(0, 0, 2, 2), mipmapLevel: 0)
+
+        #expect(pixels[0] == 0)
+        #expect(pixels[4] == 255)
+        #expect(pixels[8] == 127)
+        #expect(pixels[12] == 63)
+    }
 }
