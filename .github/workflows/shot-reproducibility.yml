@@ -46,6 +46,18 @@ jobs:
           persist-credentials: false
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_26.4.app
+      # 動きのあるスニペットは GIF を作るので ffmpeg が要る。GitHub-hosted の macOS
+      # ランナーには入っていない（初回の実測 run 32681341740 が
+      # 「ffmpeg が見つからない（GIF の生成に要る）」で落ちて分かった）。
+      #
+      # 静止画だけを撮るなら無くても通るが、対象に motion が混ざっているかは --only の
+      # 中身次第なので常に入れる。ここが GIF のバイト一致を左右する変数そのものでも
+      # ある — ffmpeg の版が手元と違えば、同じフレーム列から別のバイト列が出る。
+      # 一致しなかったときに版を疑えるよう、入れた版をログに残す。
+      - name: Install ffmpeg
+        run: |
+          brew install ffmpeg
+          ffmpeg -version | head -1
       # 撮影はヘッドレス（METAPHOR_VIEWER=1）で走るのでウィンドウは開かないが、
       # Metal のデバイスは要る。GPU が無いランナーではここで落ちる。
       - name: Verify shot reproducibility
