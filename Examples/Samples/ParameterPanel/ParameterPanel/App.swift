@@ -69,7 +69,7 @@ final class ParameterPanelApp: Sketch {
                 r: tint.r * (0.4 + phase * 0.6),
                 g: tint.g,
                 b: tint.b,
-                a: 1.0
+                alpha: 1.0
             )
         }
     }
