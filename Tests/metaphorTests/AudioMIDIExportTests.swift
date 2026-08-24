@@ -382,6 +382,59 @@ struct OrbitCameraTests {
         #expect(afterMultipleUpdates != afterFirstUpdate)
     }
 
+    /// ドラッグの総回転量が `damping` に依存しないことを確かめます（#1099）。
+    ///
+    /// `damping` が決めるのは「離したあとの余韻の長さ」だけで、
+    /// 「ドラッグ 1 ピクセルあたり何ラジアン回るか」は `sensitivity` だけで決まります。
+    /// 利得補正が無いと総回転量が `1 / (1 - damping)` 倍に膨らみます。
+    @Test(
+        "Damping does not change total rotation",
+        arguments: [Float(0.5), 0.86, 0.9, 0.95])
+    func dampingPreservesTotalRotation(damping: Float) {
+        /// 60 フレーム × 10px を水平にドラッグし、余韻が止まるまで回しきった方位角。
+        func totalAzimuthChange(damping: Float) -> Float {
+            let camera = OrbitCamera()
+            camera.damping = damping
+            for _ in 0..<60 {
+                camera.handleMouseDrag(dx: 10, dy: 0)
+                camera.update()
+            }
+            // update() は速度が十分小さくなるとゼロへ丸めるので、必ず止まる
+            for _ in 0..<100_000 {
+                let before = camera.azimuth
+                camera.update()
+                if camera.azimuth == before { break }
+            }
+            return camera.azimuth
+        }
+
+        let undamped = totalAzimuthChange(damping: 0)
+        let damped = totalAzimuthChange(damping: damping)
+
+        // sensitivity 0.005 rad/px × 600px = 3.0 rad（dx 正 → 方位角は負へ）
+        #expect(abs(undamped + 3.0) < 0.001)
+        // 差は速度のゼロ丸め（0.0001 rad/frame）による打ち切り分だけ
+        #expect(
+            abs(damped - undamped) < 0.01,
+            "damping \(damping): \(damped) rad vs undamped \(undamped) rad")
+    }
+
+    /// `damping = 1` でもカメラが固まらないことを確かめます（#1099）。
+    ///
+    /// 利得 `1 - damping` がゼロになると入力が速度へ一切乗らなくなるため、
+    /// 内部では 1 未満へ丸めます。代入した値そのものは保たれます。
+    @Test("Damping of 1 does not freeze the camera")
+    func dampingOneStillRotates() {
+        let camera = OrbitCamera()
+        camera.damping = 1
+
+        camera.handleMouseDrag(dx: 100, dy: 0)
+        camera.update()
+
+        #expect(camera.azimuth != 0)
+        #expect(camera.damping == 1)
+    }
+
     @Test("Up vector is (0,1,0)")
     func upVector() {
         let camera = OrbitCamera()

@@ -31,7 +31,10 @@ public final class OrbitCamera {
 
     // MARK: - Sensitivity
 
-    /// マウスドラッグ回転の感度
+    /// マウスドラッグ回転の感度（ラジアン / ピクセル）。
+    ///
+    /// ``damping`` とは独立です。ドラッグ 1 ピクセルあたりの回転量は
+    /// ダンピングの有無にかかわらずこの値になります。
     public var sensitivity: Float = 0.005
 
     /// スクロールホイールズームの感度
@@ -53,8 +56,23 @@ public final class OrbitCamera {
 
     // MARK: - Damping
 
-    /// ダンピング係数（0 = ダンピングなし、1に近いほど慣性が強い）
+    /// ダンピング係数（0 = ダンピングなし、1に近いほど慣性が強い）。
+    ///
+    /// 決めるのは**ドラッグを離したあとの余韻の長さだけ**です。ドラッグ中の回転量は
+    /// ``sensitivity`` だけで決まり、この値を上げても下げても変わりません（#1099）。
+    ///
+    /// 有効範囲は 0 以上 1 未満です。1 以上を代入してもプロパティの値はそのまま保たれますが、
+    /// 内部では 1 未満に丸めて扱います（1 では余韻が永久に減衰しないため）。
     public var damping: Float = 0
+
+    /// 実際の計算に使うダンピング係数（`[0, 1)` に丸めたもの）。
+    ///
+    /// 上限を 1 未満に留めるのは、`damping == 1` だと
+    /// ``handleMouseDrag(dx:dy:)`` の利得 `1 - damping` がゼロになり
+    /// カメラが一切動かなくなるためです。
+    private var effectiveDamping: Float {
+        min(max(damping, 0), 0.999)
+    }
 
     /// Y軸周りの現在の回転速度
     private var velocityAzimuth: Float = 0
@@ -93,6 +111,14 @@ public final class OrbitCamera {
     // MARK: - Input Handling
 
     /// マウスドラッグの差分を適用してカメラを回転させます。
+    ///
+    /// ``damping`` が有効なときは角度ではなく速度へ積みますが、その際に
+    /// `1 - damping` を掛けて利得を打ち消します。速度は毎フレーム `damping` 倍に
+    /// 減衰しながら角度へ足されるので、1 回の入力が最終的に生む回転量は
+    /// `d * (1 - damping) * (1 + damping + damping² + …) = d` となり、
+    /// ダンピング無しの場合と一致します。補正を省くと総回転量が
+    /// `1 / (1 - damping)` 倍に膨らみます（#1099）。
+    ///
     /// - Parameters:
     ///   - dx: 水平ドラッグ量（ピクセル）。
     ///   - dy: 垂直ドラッグ量（ピクセル）。
@@ -101,8 +127,10 @@ public final class OrbitCamera {
         let dElevation = -dy * sensitivity
 
         if damping > 0 {
-            velocityAzimuth += dAzimuth
-            velocityElevation += dElevation
+            // 減衰しながら積分される分の利得を、入力側で先に打ち消す
+            let gain = 1 - effectiveDamping
+            velocityAzimuth += dAzimuth * gain
+            velocityElevation += dElevation * gain
         } else {
             azimuth += dAzimuth
             elevation += dElevation
@@ -125,8 +153,9 @@ public final class OrbitCamera {
         elevation += velocityElevation
         elevation = max(minElevation, min(maxElevation, elevation))
 
-        velocityAzimuth *= damping
-        velocityElevation *= damping
+        let decay = effectiveDamping
+        velocityAzimuth *= decay
+        velocityElevation *= decay
 
         // 無視できる速度をゼロに設定
         if abs(velocityAzimuth) < 0.0001 { velocityAzimuth = 0 }
