@@ -2,6 +2,16 @@
 #
 # pre-push: ensure generated AI-facing files track their inputs
 #
+# ここが持つのは **「push する range を見て、どの検査を鳴らすか」だけ**。検査の実体と
+# 復旧手順のメッセージは scripts/check-generated-freshness.sh が正本で、pre-push を
+# 通らない経路（scripts/signed-commit.py の GraphQL コミット）と `make freshness-check`
+# も同じものを呼ぶ（Issue #978）。
+#
+# トリガーを分けているのは、経路ごとに「何を見られるか」が違うため。ここは range
+# （`base..local_sha`）を見られるので、マージで陳腐化した生成物も拾える。作業ツリー
+# しか見られない signed-commit.py 側は代わりに全部を走らせる。理由の全文は
+# check-generated-freshness.sh の冒頭。
+#
 # llms.txt is regenerated and verified when the push touches its inputs.
 # そのリストは scripts/changed-llms-inputs.sh が正本で、per-PR CI も同じものを
 # 呼ぶ（以前ここと ci.yml が別々にリストを持っていて、Makefile の symbol-graphs
@@ -140,135 +150,19 @@ while read -r _ local_sha _ remote_sha; do
     fi
 done
 
-# --- llms.txt staleness check -------------------------------------------------
-if [ "$needs_llms" -eq 1 ]; then
-    echo "[pre-push] llms.txt inputs changed — verifying it is up to date..."
-    llms_log="$(mktemp)"
-    if ! make llms-txt >"$llms_log" 2>&1; then
-        echo "[pre-push] ❌ make llms-txt failed. Fix the build and re-push." >&2
-        echo "[pre-push] --- make llms-txt output (tail) ---" >&2
-        tail -40 "$llms_log" >&2
-        rm -f "$llms_log"
-        exit 1
-    fi
-    rm -f "$llms_log"
-    if ! git diff --quiet llms.txt 2>/dev/null; then
-        echo "[pre-push] ❌ llms.txt is stale. Regenerated for you — review and commit:" >&2
-        echo "" >&2
-        echo "    git add llms.txt && git commit --amend --no-edit  # or a new commit" >&2
-        echo "    git push" >&2
-        echo "" >&2
-        exit 1
-    fi
-    echo "[pre-push] ✅ llms.txt is up to date."
-fi
+# 鳴らす検査を集めて、実体へ一度で渡す（順序は実体側の並びが決める）。
+checks=""
+[ "$needs_llms" -eq 1 ] && checks="$checks llms"
+[ "$needs_index" -eq 1 ] && checks="$checks index"
+[ "$needs_shaders" -eq 1 ] && checks="$checks shaders"
+[ "$needs_tutorial" -eq 1 ] && checks="$checks tutorial"
+[ "$needs_reference" -eq 1 ] && checks="$checks reference"
+[ "$needs_status" -eq 1 ] && checks="$checks status"
+[ "$needs_format" -eq 1 ] && checks="$checks format"
 
-# --- examples index staleness check ------------------------------------------
-if [ "$needs_index" -eq 1 ]; then
-    echo "[pre-push] Examples/ or generator changed — verifying examples index is up to date..."
-    if ! python3 scripts/generate-examples-index.py >/dev/null 2>&1; then
-        echo "[pre-push] ❌ generate-examples-index.py failed." >&2
-        exit 1
-    fi
-    if ! git diff --quiet docs/ai/examples-index.md docs/ai/examples-index.json 2>/dev/null; then
-        echo "[pre-push] ❌ examples index is stale. Regenerated for you — review and commit:" >&2
-        echo "" >&2
-        echo "    git add docs/ai/examples-index.md docs/ai/examples-index.json" >&2
-        echo "    git commit --amend --no-edit  # or a new commit" >&2
-        echo "    git push" >&2
-        echo "" >&2
-        exit 1
-    fi
-    echo "[pre-push] ✅ examples index is up to date."
-fi
-
-# --- shader sources staleness check -------------------------------------------
-if [ "$needs_shaders" -eq 1 ]; then
-    echo "[pre-push] Shaders changed — verifying generated shader sources are up to date..."
-    if ! python3 scripts/generate-shader-sources.py --check; then
-        echo "[pre-push] ❌ Generated shader sources are stale (canonical is Metal/*.metal and Metal/*.h)." >&2
-        echo "[pre-push] Regenerate and commit:" >&2
-        echo "" >&2
-        echo "    python3 scripts/generate-shader-sources.py" >&2
-        echo "    git add Sources/MetaphorCore/Shaders/ShaderSources Sources/MetaphorCore/Shaders/BuiltinShaders+Generated.swift" >&2
-        echo "    git commit --amend --no-edit  # or a new commit" >&2
-        echo "" >&2
-        exit 1
-    fi
-    echo "[pre-push] ✅ shader sources are up to date."
-fi
-
-# --- tutorial snippets staleness check ----------------------------------------
-if [ "$needs_tutorial" -eq 1 ]; then
-    echo "[pre-push] Tutorial code or prose changed — verifying embedded snippets..."
-    if ! python3 scripts/generate-tutorial-snippets.py --check; then
-        echo "[pre-push] ❌ docs/tutorial の埋め込みが古い（正典は Examples/Tutorial/**）。" >&2
-        echo "[pre-push] 再生成してコミットしてください:" >&2
-        echo "" >&2
-        echo "    python3 scripts/generate-tutorial-snippets.py" >&2
-        echo "    git add docs/tutorial" >&2
-        echo "    git commit --amend --no-edit  # or a new commit" >&2
-        echo "" >&2
-        exit 1
-    fi
-    echo "[pre-push] ✅ tutorial snippets are up to date."
-
-    echo "[pre-push] Verifying tutorial result images are up to date..."
-    if ! python3 scripts/generate-tutorial-shots.py --check; then
-        echo "[pre-push] ❌ docs/tutorial/images が古い。撮り直してコミットしてください:" >&2
-        echo "" >&2
-        echo "    make tutorial-shots" >&2
-        echo "    git add docs/tutorial/images" >&2
-        echo "" >&2
-        exit 1
-    fi
-fi
-
-# --- reference result images staleness check ----------------------------------
-if [ "$needs_reference" -eq 1 ]; then
-    echo "[pre-push] Sources or reference config changed — verifying reference result images..."
-    if ! python3 scripts/generate-reference-shots.py --check; then
-        echo "[pre-push] ❌ doc コメントの実行結果画像が古い（正典はスニペット）。" >&2
-        echo "[pre-push] 撮り直してコミットしてください（GPU と Gyazo トークンが要ります）:" >&2
-        echo "" >&2
-        echo "    make reference-shots" >&2
-        echo "    git add Sources docs/reference/images/manifest.json" >&2
-        echo "" >&2
-        echo "[pre-push] （CI の必須ゲートと同じ検査です。ここで止めるのは早く気付くため）" >&2
-        exit 1
-    fi
-    echo "[pre-push] ✅ reference result images are up to date."
-fi
-
-# --- tutorial publication status check ----------------------------------------
-if [ "$needs_status" -eq 1 ]; then
-    echo "[pre-push] Tutorial prose or an entry doc changed — verifying publication status..."
-    if ! python3 scripts/generate-tutorial-status.py --check; then
-        echo "[pre-push] ❌ 公開状況の案内が古い（正典は docs/tutorial/*.md の frontmatter）。" >&2
-        echo "[pre-push] 再生成してコミットしてください:" >&2
-        echo "" >&2
-        echo "    python3 scripts/generate-tutorial-status.py" >&2
-        echo "    git add README.md README.en.md docs/README.md docs/README.en.md Examples/README.md" >&2
-        echo "    git commit --amend --no-edit  # or a new commit" >&2
-        echo "" >&2
-        exit 1
-    fi
-    echo "[pre-push] ✅ tutorial publication status is up to date."
-fi
-
-# --- swift-format check -------------------------------------------------------
-if [ "$needs_format" -eq 1 ]; then
-    echo "[pre-push] Swift sources or .swift-format changed — verifying formatting..."
-    if ! ./scripts/lint-swift.sh > /dev/null; then
-        echo "[pre-push] ❌ .swift-format どおりに整形されていないファイルがある。" >&2
-        echo "[pre-push] 整形してコミットしてください:" >&2
-        echo "" >&2
-        echo "    make format" >&2
-        echo "" >&2
-        echo "[pre-push] 対象の一覧は make lint-swift で出ます。" >&2
-        exit 1
-    fi
-    echo "[pre-push] ✅ Swift sources are formatted."
+if [ -n "$checks" ]; then
+    # shellcheck disable=SC2086  # 検査名の並びは意図的に単語分割させる
+    scripts/check-generated-freshness.sh --label '[pre-push]' $checks
 fi
 
 exit 0

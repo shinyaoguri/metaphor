@@ -10,11 +10,17 @@ shows up as a failed release after the Syphon build and a full CI run. So the
 two pure pieces — reading `git status --porcelain` and assembling the GraphQL
 input — are tested directly, with the release workflow's own change set (edited
 files plus deleted `changelog.d/` entries) as the central case.
+
+Since #978 there is a third: the script does not go through `pre-push`, so it
+runs the freshness checks itself before sending. What has to hold is that a
+stale tree stops the send **before a single file is encoded**, and that the two
+ways out (`--skip-freshness`, `--dry-run`) are the only ways out.
 """
 
 import base64
 import importlib.util
 import io
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -181,6 +187,41 @@ class _RepoTestCase(unittest.TestCase):
             code = sc.main([*args, "--repo-root", str(self.repo), "--dry-run"])
         return code, out.getvalue(), err.getvalue()
 
+    def run_send(self, *args: str) -> tuple[int, str, str]:
+        """`main()` の**送信する側**の経路（`--dry-run` を付けない）。
+
+        `--dry-run` は鮮度検査を飛ばすので、検査そのものを見るテストはこちらを
+        使う。`gh` まで到達させないのは呼び出し側の責任（検査で止まるか、
+        `encode_file` を差し替えて手前で打ち切るか）。
+        """
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            code = sc.main([*args, "--repo-root", str(self.repo)])
+        return code, out.getvalue(), err.getvalue()
+
+    def install_freshness_stub(self, exit_code: int) -> Path:
+        """鮮度検査の実体を、呼ばれた印を残すだけのスタブに差し替える。
+
+        本物は `make llms-txt` まで走るので、ここで見たいディスパッチには重すぎる
+        （実体側の検証は test_check_generated_freshness.py）。返すのは「呼ばれた」
+        印のパスで、飛ばす経路のテストはこれが**無い**ことを見る。
+        """
+        # 印はリポジトリの外へ置く。中に置くと `git status --porcelain` が拾って
+        # しまい、テストが「変更セットの読み取り」の方を壊す。
+        marker = Path(tempfile.mkdtemp()) / "freshness-ran"
+        self.addCleanup(shutil.rmtree, marker.parent, True)
+        script = self.repo / sc.FRESHNESS_SCRIPT
+        script.parent.mkdir(parents=True, exist_ok=True)
+        script.write_text(
+            f'#!/bin/sh\ntouch "{marker}"\nexit {exit_code}\n', encoding="utf-8"
+        )
+        script.chmod(0o755)
+        # 実体は本物のリポジトリでも追跡されているファイル。コミットしておかないと
+        # 未追跡ディレクトリ `scripts/` として変更セットに混ざる。
+        hermetic_git("add", "scripts", cwd=self.repo)
+        hermetic_git("commit", "-q", "-m", "freshness checker", cwd=self.repo)
+        return marker
+
 
 class ResolveHeadTests(_RepoTestCase):
     """`expectedHeadOid` only accepts 40 characters; everything else is expanded.
@@ -310,6 +351,89 @@ class MainTests(_RepoTestCase):
         self.assertIn("--expected-head", err)
         self.assertIn("no-such-ref", err)
         encode.assert_not_called()
+
+
+class FreshnessGateTests(_RepoTestCase):
+    """#978: この経路は pre-push を通らないので、歯止めを自分で持つ。
+
+    2026-08-18 の docs 一掃バッチでは 1Password の SSH エージェントがハングして
+    本スクリプトが復旧手段になり、鮮度検査を通らないまま 22 コミットが main へ
+    入った。拾ったのは CI で、手元の歯止めは 1 つも効いていなかった。
+    """
+
+    def test_check_freshness_passes_the_scripts_exit_code_through(self):
+        for code in (0, 1, 7):
+            with self.subTest(code=code):
+                self.install_freshness_stub(code)
+                self.assertEqual(sc.check_freshness(self.repo), code)
+
+    def test_a_missing_checker_is_an_error_not_a_skip(self):
+        # 実体が見つからないときに 0 を返すと、歯止めは黙って外れる — #978 で
+        # 塞いだのと同じ形の失敗なので、ここは必ず落とす。
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            code = sc.check_freshness(self.repo)
+        self.assertEqual(code, 1)
+        self.assertIn(sc.FRESHNESS_SCRIPT, err.getvalue())
+
+    def test_a_stale_tree_stops_the_send_before_anything_is_encoded(self):
+        marker = self.install_freshness_stub(1)
+        (self.repo / "Package.swift").write_text("// v1\n", encoding="utf-8")
+
+        with mock.patch.object(sc, "encode_file") as encode:
+            code, _, err = self.run_send(
+                "--repo", "o/n", "--branch", "b",
+                "--expected-head", _FULL_SHA, "--message", "m",
+            )
+        self.assertEqual(code, 1)
+        self.assertIn("nothing was sent", err)
+        self.assertTrue(marker.is_file())
+        encode.assert_not_called()
+
+    def test_skip_freshness_is_the_way_past_the_gate(self):
+        # release.yml が渡す唯一の抜け道。検査が落ちる状態でも素通りし、しかも
+        # 検査自体が走らないこと（runner で `make llms-txt` を踏まないこと）まで見る。
+        marker = self.install_freshness_stub(1)
+        (self.repo / "Package.swift").write_text("// v1\n", encoding="utf-8")
+
+        sentinel = RuntimeError("reached the encoding step")
+        with mock.patch.object(sc, "encode_file", side_effect=sentinel):
+            with self.assertRaises(RuntimeError):
+                self.run_send(
+                    "--repo", "o/n", "--branch", "b",
+                    "--expected-head", _FULL_SHA, "--message", "m",
+                    "--skip-freshness",
+                )
+        self.assertFalse(marker.is_file())
+
+    def test_dry_run_does_not_run_the_check(self):
+        # `--dry-run` は 1 バイトも送らないので守るものが無い。ビルドを走らせずに
+        # 変更セットを確かめられる性質は残す。
+        marker = self.install_freshness_stub(1)
+        (self.repo / "Package.swift").write_text("// v1\n", encoding="utf-8")
+
+        code, out, _ = self.run_main(
+            "--repo", "o/n", "--branch", "b",
+            "--expected-head", _FULL_SHA, "--message", "m",
+        )
+        self.assertEqual(code, 0)
+        self.assertIn("Package.swift", out)
+        self.assertFalse(marker.is_file())
+
+    def test_a_bad_expected_head_still_fails_before_the_build(self):
+        # 引数の間違いは `make llms-txt` の数分を待たずに返ってくること（#981 の
+        # 「先に読める形で落とす」を鮮度検査が押し戻さない）。
+        marker = self.install_freshness_stub(0)
+        self.seed()
+        (self.repo / "Package.swift").write_text("// v1\n", encoding="utf-8")
+
+        code, _, err = self.run_send(
+            "--repo", "o/n", "--branch", "b",
+            "--expected-head", "no-such-ref", "--message", "m",
+        )
+        self.assertEqual(code, 1)
+        self.assertIn("--expected-head", err)
+        self.assertFalse(marker.is_file())
 
 
 if __name__ == "__main__":
