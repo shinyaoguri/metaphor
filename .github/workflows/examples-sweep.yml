@@ -35,9 +35,38 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_26.4.app
       - name: Build examples
+        env:
+          FULL: ${{ inputs.full }}
         run: |
-          if [ "${{ inputs.full }}" = "true" ]; then
-            ./scripts/run-examples.sh --build-only
+          if [ "$FULL" = "true" ]; then
+            ./scripts/run-examples.sh --build-only --log "$RUNNER_TEMP/examples.log"
           else
-            ./scripts/run-examples.sh --build-only --smoke
+            ./scripts/run-examples.sh --build-only --smoke --log "$RUNNER_TEMP/examples.log"
           fi
+      # 失敗の本文はスクリプトが --log のファイルへ書いている（run-examples.sh の
+      # `=== BUILD FAILURE: <path> ===`）。書いていないのではなく、**ランナーごと
+      # 捨てられていた** — job が終わればファイルは消えるので、回収しなければ GitHub
+      # 側から中身に到達できない。実際それで #1102（DynamicParticlesImmediate が CI
+      # でのみ失敗）が 3 週間追えないままになった（#1103）。
+      #
+      # ログに直接出すのは、短い失敗なら artifact を開くより速いから。artifact も
+      # 残すのは、全数スイープで何十本も落ちるとログが流れるため。golden image の
+      # 差分画像を artifact へ上げている ci.yml と同じ考え方。
+      - name: Show build failures
+        if: failure()
+        run: |
+          if [ -f "$RUNNER_TEMP/examples.log" ]; then
+            echo "::group::examples build log"
+            cat "$RUNNER_TEMP/examples.log"
+            echo "::endgroup::"
+          else
+            echo "::warning::no build log at $RUNNER_TEMP/examples.log"
+          fi
+      - name: Upload build log
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: examples-build-log
+          path: ${{ runner.temp }}/examples.log
+          if-no-files-found: ignore
+          retention-days: 14
