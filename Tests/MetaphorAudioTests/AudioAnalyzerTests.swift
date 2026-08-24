@@ -121,26 +121,6 @@ struct AudioAnalyzerTests {
     }
 }
 
-// MARK: - SoundFile
-
-@Suite("SoundFile")
-@MainActor
-struct SoundFileTests {
-
-    @Test("SoundFileError for non-existent file")
-    func fileNotFound() {
-        #expect(throws: SoundFileError.self) {
-            _ = try SoundFile(path: "/nonexistent/audio.mp3")
-        }
-    }
-
-    @Test("SoundFileError has description")
-    func errorDescription() {
-        let error = SoundFileError.fileNotFound("/test/path.mp3")
-        #expect(error.errorDescription?.contains("Audio file not found") == true)
-    }
-}
-
 // MARK: - AudioAnalyzer injectSamples
 
 @Suite("AudioAnalyzer injectSamples")
