@@ -424,6 +424,10 @@ extension Sketch {
 
 extension Sketch {
     /// オービットカメラコントロールを有効にします（``draw()`` 内で呼び出してください）。
+    ///
+    /// - Note: The frame a button goes down in is measured from the press point, not
+    ///   from where the cursor was a frame earlier, so a click that lands far from the
+    ///   last known cursor position does not spin the camera (Issue #1100).
     public func orbitControl() {
         context.orbitControl()
     }
