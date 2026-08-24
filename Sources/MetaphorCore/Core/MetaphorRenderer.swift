@@ -212,11 +212,45 @@ public final class MetaphorRenderer: NSObject {
 
     // MARK: - GPU 時間
 
-    /// 最後に完了したフレームの GPU 開始タイムスタンプ（秒）
-    public private(set) var lastGPUStartTime: Double = 0
+    /// 最後に完了したフレームの GPU 実測時刻（秒）。完了ハンドラが一度も走っていない
+    /// 間は `nil`。
+    ///
+    /// 「まだ受け取っていない」と「0 秒だった」を取り違えないよう、2 つのタイムスタンプは
+    /// 1 つの Optional に束ねて持つ（#1016）。
+    private var lastGPUTimestamps: (start: Double, end: Double)?
 
-    /// 最後に完了したフレームの GPU 終了タイムスタンプ（秒）
-    public private(set) var lastGPUEndTime: Double = 0
+    /// 最後に完了したフレームの GPU 開始タイムスタンプ（秒）。実測が届いていないときは `0`。
+    public var lastGPUStartTime: Double { lastGPUTimestamps?.start ?? 0 }
+
+    /// 最後に完了したフレームの GPU 終了タイムスタンプ（秒）。実測が届いていないときは `0`。
+    public var lastGPUEndTime: Double { lastGPUTimestamps?.end ?? 0 }
+
+    /// 最後に完了したフレームの GPU 実行時間（ミリ秒）。実測が届いていないときは `nil`。
+    ///
+    /// 期間として成立しない（`end <= start`）実測も `nil` に倒します。
+    ///
+    /// GPU 実測時刻はコマンドバッファの完了ハンドラ経由で届くので、**そのフレームを
+    /// 描き終えたあと**にしか入りません。`noLoop()` のスケッチには次のフレームが無く、
+    /// 唯一のフレームは必ず未受信のまま終わります。ここで `0` を返すと PerformanceHUD が
+    /// `GPU: 0.00 ms` と実測を名乗ってしまうため、Optional で区別します（#1016。
+    /// fps / フレーム時間が算出不能なとき `--` と出すのと同じ扱い）。
+    public var lastGPUDurationMs: Double? {
+        lastGPUTimestamps.flatMap { Self.gpuDurationMs(start: $0.start, end: $0.end) }
+    }
+
+    /// 実測時刻の組を「実測として名乗ってよい実行時間（ミリ秒）」へ畳みます。
+    ///
+    /// GPU タイムスタンプが取れない環境では完了ハンドラが `0` を返すことがあり、
+    /// そのまま渡すと未受信と区別のつかない `0.00 ms` になります。期間として
+    /// 成立しない（`end <= start`）ものは実測を名乗らせません。
+    /// - Parameters:
+    ///   - start: GPU 開始タイムスタンプ（秒）。
+    ///   - end: GPU 終了タイムスタンプ（秒）。
+    /// - Returns: 実行時間（ミリ秒）。実測として成立しないときは `nil`。
+    nonisolated static func gpuDurationMs(start: Double, end: Double) -> Double? {
+        guard end > start else { return nil }
+        return (end - start) * 1000
+    }
 
     // MARK: - フレームエクスポート
 
@@ -1243,8 +1277,7 @@ public final class MetaphorRenderer: NSObject {
             // main.async へ渡す前に let へ束ね直す（延命は dispatch の間だけ）。
             let renderer = self
             DispatchQueue.main.async {
-                renderer?.lastGPUStartTime = start
-                renderer?.lastGPUEndTime = end
+                renderer?.lastGPUTimestamps = (start: start, end: end)
             }
         }
         let attachFrameCompletion: (MTLCommandBuffer) -> Void = { buffer in
