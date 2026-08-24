@@ -1,20 +1,33 @@
 name: Examples Sweep
 
-# Examples（271 パッケージ）は per-PR CI では検証しない（各 example が独立した
+# Examples（343 パッケージ）は per-PR CI では検証しない（各 example が独立した
 # SwiftPM パッケージで metaphor をフルビルドするためコストが高い。ci.yml の
 # コメント参照）。代わりに:
-#   - 週次: 代表セット（scripts/ci-smoke-examples.txt、~19 件）をビルドして
-#     公開 API ドリフトを検出する
-#   - 手動: workflow_dispatch の full=true で全数スイープ
-#   - リリース前: release.yml が同じ代表セットをビルドする
+#   - 週次: **全数**を 5 シャードに分けてビルドし、公開 API ドリフトを検出する
+#   - 手動: workflow_dispatch の smoke=true で代表セット（~19 件）だけに絞る
+#   - リリース前: release.yml が代表セットをビルドする
 # 失敗はこの workflow の失敗として可視化される（Issue #147）。
+#
+# ## なぜ 5 分割か
+#
+# 1 本あたり「クリーンビルドからの swift build -c release」で実測およそ 60 秒
+# （smoke 19 本で 13〜19 分）。343 本を 1 ジョブで回すと 5.7 時間で、GitHub-hosted の
+# **ジョブ上限 6 時間**にほぼ張り付く。example が数本増えるか 1 本重くなれば、
+# 検査が終わる前に強制キャンセルされる。
+#
+# 5 は Free プランの **macOS 同時実行ジョブ上限**。それ以上に割っても 5 つずつ順に
+# 流れるだけなので、上限ちょうどが最短になる。1 シャード 69 本 = 約 70 分。
+#
+# public リポジトリの分数は無料なので、これで「全数を毎週」が現実的になった。
+# 以前は代表セット 19 件しか回しておらず、残り 324 本は手動 dispatch を誰かが
+# 思い出したときにしか検証されていなかった。
 on:
   schedule:
     - cron: '0 21 * * 5'   # 毎週土曜 06:00 JST（金曜 21:00 UTC）
   workflow_dispatch:
     inputs:
-      full:
-        description: 'Build ALL examples instead of the smoke subset'
+      smoke:
+        description: 'Build only the curated smoke subset instead of all examples'
         required: false
         type: boolean
         default: false
@@ -29,19 +42,30 @@ concurrency:
 jobs:
   sweep:
     runs-on: macos-26
-    timeout-minutes: 350
+    strategy:
+      # 1 シャードの失敗で他を止めない。どのシャードで何が落ちたかを一度に知りたい
+      # （途中で止めると、次の run まで残りの失敗が見えない）。
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5]
+    # 1 シャード 69 本 × 60 秒 = 約 70 分。倍を上限に置く（ハングの検出用であって、
+    # 通常はここまで来ない）。
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@v7
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode_26.4.app
       - name: Build examples
         env:
-          FULL: ${{ inputs.full }}
+          SMOKE: ${{ inputs.smoke }}
+          SHARD: ${{ matrix.shard }}
         run: |
-          if [ "$FULL" = "true" ]; then
-            ./scripts/run-examples.sh --build-only --log "$RUNNER_TEMP/examples.log"
+          if [ "$SMOKE" = "true" ]; then
+            ./scripts/run-examples.sh --build-only --smoke \
+              --shard "$SHARD/5" --log "$RUNNER_TEMP/examples.log"
           else
-            ./scripts/run-examples.sh --build-only --smoke --log "$RUNNER_TEMP/examples.log"
+            ./scripts/run-examples.sh --build-only \
+              --shard "$SHARD/5" --log "$RUNNER_TEMP/examples.log"
           fi
       # 失敗の本文はスクリプトが --log のファイルへ書いている（run-examples.sh の
       # `=== BUILD FAILURE: <path> ===`）。書いていないのではなく、**ランナーごと
@@ -56,7 +80,7 @@ jobs:
         if: failure()
         run: |
           if [ -f "$RUNNER_TEMP/examples.log" ]; then
-            echo "::group::examples build log"
+            echo "::group::examples build log (shard ${{ matrix.shard }}/5)"
             cat "$RUNNER_TEMP/examples.log"
             echo "::endgroup::"
           else
@@ -66,7 +90,8 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: examples-build-log
+          # シャードごとに名前を分ける（同名だとアップロードが衝突する）。
+          name: examples-build-log-shard-${{ matrix.shard }}
           path: ${{ runner.temp }}/examples.log
           if-no-files-found: ignore
           retention-days: 14

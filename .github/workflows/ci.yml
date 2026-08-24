@@ -611,9 +611,9 @@ jobs:
   # 見合わない（macOS ランナーは 10 倍課金）。分担は次のとおり:
   #   - PR が Examples/ を触ったとき → 触った example だけを下の 2 ジョブが建てる
   #     （Issue #329 / W2-7。壊れた example が最も入りやすい瞬間を押さえる）
-  #   - 週次 + リリース前 → 代表セット（~19 本）を examples-sweep.yml と
-  #     release.yml が建てて公開 API ドリフトを検出する（Issue #147）
-  #   - 全数スイープ → examples-sweep.yml の workflow_dispatch（full=true）
+  #   - 週次 → **全数**を examples-sweep.yml が 5 シャードに分けて建て、公開 API
+  #     ドリフトを検出する（Issue #147。1 ジョブではジョブ上限 6 時間に収まらない）
+  #   - リリース前 → 代表セット（~19 本）を release.yml が建てる
   # 手元での確認: `make examples-check`（全数）/
   # `./scripts/run-examples.sh --build-only --smoke`（代表セット）。
   #

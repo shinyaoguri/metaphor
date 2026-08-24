@@ -128,8 +128,9 @@ swift run
 CI での検証範囲は 3 段構えです（全 278 本を毎 PR で建てるのはコストが見合わないため）:
 
 - **PR が `Examples/` を触ったとき** — 触った example だけを `ci.yml` の `examples-diff-build` がビルド（対象の列挙は `./scripts/changed-examples.sh`）
-- **週次 + リリース前** — 代表セット（~19 本）を `examples-sweep.yml` と `release.yml` がビルド
-- **全数** — `examples-sweep.yml` の workflow_dispatch（`full=true`）、または手元で `make examples-check`
+- **週次** — **全数**を `examples-sweep.yml` が 5 シャードに分けてビルド（1 シャード約 70 分。GitHub-hosted のジョブ上限 6 時間に 1 ジョブでは収まらないため分割している）
+- **リリース前** — 代表セット（~19 本）を `release.yml` がビルド
+- **手元** — `make examples-check`（全数）／ `./scripts/run-examples.sh --build-only --smoke`（代表セット）
 
 ## 生成物の管理（重要）
 
