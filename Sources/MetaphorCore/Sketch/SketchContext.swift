@@ -575,7 +575,7 @@ public final class SketchContext {
             // 表示は `performance.fps` / Probe の `frame.json` と同じ採取経路
             // （レンダラーのトラッカーの直近ウィンドウ）から取る（#698）。
             hud.update(stats: renderer.frameRateTracker.windowStats(now: CACurrentMediaTime()))
-            hud.updateGPUTime(start: renderer.lastGPUStartTime, end: renderer.lastGPUEndTime)
+            hud.updateGPUTime(renderer.lastGPUDurationMs)
             hud.draw(
                 canvas: canvas, width: Float(renderer.textureManager.width),
                 height: Float(renderer.textureManager.height))

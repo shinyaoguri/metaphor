@@ -16,8 +16,13 @@ public final class PerformanceHUD {
     public private(set) var fps: Float?
     /// 直近ウィンドウの平均フレーム時間（ミリ秒）。算出不能なときは `nil`。
     public private(set) var frameTime: Float?
-    /// 直近のGPU実行時間（ミリ秒）
-    public private(set) var gpuTime: Float = 0
+    /// The most recent GPU execution time (milliseconds), or `nil` when no
+    /// measurement has arrived.
+    ///
+    /// It is `nil` while the frame's measurement has not come back from the command
+    /// buffer's completion handler — the only frame of a `noLoop()` sketch, and the
+    /// first frame of any sketch — and the display is then `--` (Issue #1016).
+    public private(set) var gpuTime: Float?
 
     /// 新しい PerformanceHUD インスタンスを作成します。
     public init() {}
@@ -32,12 +37,14 @@ public final class PerformanceHUD {
         frameTime = stats.map { Float($0.frameTimeMeanMs) }
     }
 
-    /// コマンドバッファのタイムスタンプからGPU実行時間を更新します。
-    /// - Parameters:
-    ///   - start: GPU開始タイムスタンプ（秒）。
-    ///   - end: GPU終了タイムスタンプ（秒）。
-    func updateGPUTime(start: Double, end: Double) {
-        gpuTime = Float((end - start) * 1000)  // ms
+    /// Updates the GPU execution time from the command buffer's measurement.
+    ///
+    /// The optional is taken as it is, so that callers never flatten "not measured
+    /// yet" into `0` (Issue #1016).
+    /// - Parameter durationMs: The GPU execution time of the last frame
+    ///   (milliseconds), or `nil` when there is no measurement.
+    func updateGPUTime(_ durationMs: Double?) {
+        gpuTime = durationMs.map { Float($0) }
     }
 
     // MARK: - 表示文字列
@@ -55,9 +62,12 @@ public final class PerformanceHUD {
         return String(format: "Frame: %.1f ms", frameTime)
     }
 
-    /// GPU 時間の表示。
+    /// The GPU time as displayed. Without a measurement this reads `--` rather than
+    /// `0.00`: printing `GPU: 0.00 ms` for a `noLoop()` piece would look like a
+    /// measurement that was taken, which is why fps and frame time show `--` too.
     var gpuTimeText: String {
-        String(format: "GPU: %.2f ms", gpuTime)
+        guard let gpuTime else { return "GPU: -- ms" }
+        return String(format: "GPU: %.2f ms", gpuTime)
     }
 
     // MARK: - 見た目
