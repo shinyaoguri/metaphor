@@ -1,4 +1,4 @@
-.PHONY: setup build clean clean-examples test test-verbose test-coverage test-lcov ci-check check-binary-targets preflight docs docs-check docs-ja docs-preview examples examples-check examples-list examples-index example-shots tutorial-snippets tutorial-shots tutorial-status reference-shots reference-i18n symbol-graphs llms-txt ai-docs-check docs-links-check hooks contract-schema lint-workflows lint-python lint-swift format
+.PHONY: setup build clean clean-examples test test-verbose test-coverage test-lcov ci-check check-binary-targets preflight docs docs-check docs-ja docs-preview examples examples-check examples-list examples-index example-shots tutorial-snippets tutorial-shots tutorial-status reference-shots reference-i18n symbol-graphs llms-txt ai-docs-check freshness-check docs-links-check hooks contract-schema lint-workflows lint-python lint-swift format
 
 # Default target
 all: setup build
@@ -76,8 +76,12 @@ test-lcov:
 # ここで再現できないもの（いずれも別の場所で担保されている）:
 #   - Swift 5.10 / Xcode 15.4 でのビルド → CI の build-swift-5-10
 #   - CONTRACT.md のクロスリポ byte-identity → GitHub API が要るので CI のみ
-#   - 生成物の鮮度（llms.txt / examples index / shader sources /
-#     tutorial snippets / tutorial publication status）→ pre-push フック
+#
+# 生成物の鮮度は 2026-08-25 からここでも見る（#978）。pre-push は push する range
+# から必要な検査だけを選ぶので、**そもそも push しない限り一度も鳴らない** —
+# ローカルの検証コマンドとして案内しているのが ci-check である以上、そこに無い検査は
+# 「押し忘れ」ではなく「押せない」。実体は scripts/check-generated-freshness.sh で、
+# pre-push と signed-commit.py も同じものを呼ぶ。
 #
 # NOTE: swiftc のフラグが変わるとビルドキャッシュは作り直しになるので、
 # `make build` と交互に走らせると毎回フルリビルドになる。実測で 10 秒台
@@ -90,6 +94,7 @@ ci-check:
 	swift build -Xswiftc -warnings-as-errors
 	@echo "Testing with -warnings-as-errors (CI parity)..."
 	METAPHOR_REQUIRE_GPU=1 swift test -Xswiftc -warnings-as-errors
+	@$(MAKE) --no-print-directory freshness-check
 
 # Clean build artifacts (including every per-example .build)
 clean: clean-examples
@@ -171,6 +176,19 @@ llms-txt: symbol-graphs
 # Validate AI-facing docs and generated-reference assumptions
 ai-docs-check:
 	@./scripts/validate-ai-docs.sh
+
+# 生成物が入力に追随しているかを 1 コマンドで検査する（Issue #978）
+#
+# 実体は pre-push フックと共有する。違うのはトリガーだけで、pre-push は push する
+# range から必要な検査を選び、ここと signed-commit.py は経路を問わず全部を走らせる
+# （作業ツリーしか見られない側で変更パスから絞ると、`git merge origin/main` 由来の
+# 陳腐化を取りこぼす — #786 / #972）。
+#
+# ai-docs-check には寄せていない。あちらは「ドキュメントの記述がコードと合っているか」
+# を**ビルドせずに**見る軽い検査で、`make llms-txt`（= `swift build`）を持ち込むと
+# 性格が変わる。こちらは既にビルドしている ci-check にぶら下げる。
+freshness-check:
+	@./scripts/check-generated-freshness.sh --all
 
 # Validate relative links in docs/** and the ADR index (Issue #1044)
 #
@@ -339,6 +357,7 @@ help:
 	@echo "  make symbol-graphs  - Extract symbol graphs (shared step)"
 	@echo "  make llms-txt       - Generate llms.txt (AI API reference)"
 	@echo "  make ai-docs-check  - Validate AI-facing docs and llms.txt assumptions"
+	@echo "  make freshness-check - Verify every generated artifact tracks its inputs"
 	@echo "  make docs-links-check - Check relative links in docs/** and the ADR index"
 	@echo "  make contract-schema - Validate wire-schema contract (needs check-jsonschema)"
 	@echo "  make lint-workflows - Lint .github/workflows with actionlint (same as CI)"

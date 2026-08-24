@@ -134,7 +134,7 @@ CI での検証範囲は 3 段構えです（全 278 本を毎 PR で建てる�
 
 ## 生成物の管理（重要）
 
-以下のファイルはチェックインされていますが**生成物**です。手で編集せず、入力を変えたら再生成してコミットします。pre-push フックと CI が陳腐化を検出します。
+以下のファイルはチェックインされていますが**生成物**です。手で編集せず、入力を変えたら再生成してコミットします。陳腐化は pre-push フック・`make freshness-check`・CI の 3 つが検出します（実体は `scripts/check-generated-freshness.sh` の 1 本）。
 
 | 出力 | 入力 | 再生成コマンド |
 |---|---|---|
@@ -152,6 +152,8 @@ CI での検証範囲は 3 段構えです（全 278 本を毎 PR で建てる�
 - **前文（カスタムシェーダーへ配る MSL の頭）は 2D / 3D / postFX とも `.h` からの生成物**です（3D は #707、postFX は #718、2D は #714）。構造体を直すときは `Shaders/Metal/Metaphor{Canvas2D,Canvas3D,PostProcess}Types.h` を直して再生成します — Swift 側に前文の文字列を書き足さないでください。組み込みシェーダーも同じ `.h` を include するので、片方だけ直して食い違うことがありません（`ShaderPreludeTests` が Swift 側とのレイアウト一致まで見ます）。
 - 生成器のフィルタ規則は `python3 -m unittest discover -s scripts/tests` で検証します（CI 常設・ビルド不要）。「生成物が最新か」のチェックは規則そのものを守れません — API 面を取りこぼしても出力は自己整合したまま緑になるため、採用・除外の判断を変えたらここにテストを足します。
 - **テストの中で一時リポジトリを `git init` するときは `scripts/tests/_git_helpers.py` の `init_repo()` / `git()` を使います**（#979）。素の `git` は開発機のグローバル設定を継ぐので、コミット署名を設定したマシンではテスト中の `git commit` まで署名を要求され、署名エージェントが使えなければ exit 128、ロック中なら応答待ちで止まります。CI の runner には署名設定が無く常に green なので、**このずれは CI からは永久に見えません**。密封の中身と、それが効いていることの回帰テストは `scripts/tests/test_git_helpers.py`。
+- **鮮度検査は `make freshness-check` で 1 コマンドで回せます**（`make ci-check` からも呼ばれます）。pre-push は push する range から必要な検査だけを選ぶので、**push しない限り一度も鳴りません** — 手元で先に確かめたいときはこちらです。GPU が要る撮影系は `--check`（指紋の照合）だけなので、GPU が無くても通ります。
+- **`scripts/signed-commit.py`（GitHub API 経由の署名コミット）は pre-push を通りません**。`git push` ではなく GraphQL へ直接投げるためで、署名は外れませんが**鮮度検査だけが外れます**（[#978](https://github.com/shinyaoguri/metaphor/issues/978)）。いまは送信の前に同じ検査を自分で走らせ、陳腐化していたら 1 バイトも送らずに止まります。降りられるのは `--skip-freshness` を明示したときだけで、渡しているのは `release.yml` だけです（runner の変更セットに `MetaphorVersion.swift` が入るため `make llms-txt` = `swift build` が丸ごと乗るのと、リリースブランチの PR で CI が同じ検査を独立に回すため）。
 - AI 向けドキュメント（CLAUDE.md / docs/ai/）とコードの整合は `make ai-docs-check` で検証できます。ドキュメント・モジュール一覧・バージョンスニペットを変えたら実行してください。
 - `docs/**` の相対リンクと `docs/adr/README.md` の索引の整合は `make docs-links-check` で検証できます（CI でも毎 PR 走ります）。ドキュメントを移動・改名した、見出しを変えた、ADR を足したときに実行してください。
 

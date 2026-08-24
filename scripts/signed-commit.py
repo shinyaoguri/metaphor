@@ -29,6 +29,26 @@ itself only accepts the full 40-character form (Issue #981).
 
 `--dry-run` prints what would be sent instead of sending it, which is the only
 way to exercise this outside a real release.
+
+**このスクリプトは pre-push フックを一切通りません。** `git push` ではなく GraphQL
+へ直接投げるためで、署名は外れません（GitHub 自身が署名し、ブランチ保護のルール
+セットもサーバー側で独立に効く）。外れるのは **pre-push が担っていた生成物の鮮度
+検査だけ**です（Issue #978）。実際 2026-08-18 の docs 一掃バッチでは 1Password の
+SSH エージェントがハングして本スクリプトが復旧手段になり、鮮度検査を通らない経路で
+22 コミットが main へ入りました（CI が拾ったので実害は出ませんでしたが、ローカルの
+歯止めはゼロでした）。「使う前に手で検査する」という文書ルールは、**本スクリプトを
+使う状況＝署名系が壊れているときほど守られません**。
+
+そこで送信の前に `scripts/check-generated-freshness.sh --all` を走らせ、陳腐化して
+いたら **1 バイトも送らずに** abort します。降りられるのは `--skip-freshness` を
+明示したときだけです。
+
+いま降りているのは release.yml だけで、理由は 2 つあります。runner の変更セット
+（`BUMP_PATHS`）には `Sources/MetaphorCore/Core/MetaphorVersion.swift` が入るので
+llms.txt の検査が起動して `make llms-txt` = `swift build` が丸ごと乗ること、そして
+リリースブランチの PR で CI が同じ検査を独立に回すことです。
+
+`--dry-run` は何も送らないので、鮮度検査も走りません。
 """
 
 import argparse
@@ -37,6 +57,11 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+
+# pre-push が呼ぶのと同じ実体。あちらは push する range から必要な検査だけを選べる
+# が、この経路が見られるのは作業ツリーだけなので、変更パスから絞ると `git merge
+# origin/main` 由来の陳腐化（#786 / #972）を取りこぼす。だから `--all`。
+FRESHNESS_SCRIPT = "scripts/check-generated-freshness.sh"
 
 MUTATION = """
 mutation($input: CreateCommitOnBranchInput!) {
@@ -125,6 +150,29 @@ def encode_file(path: Path) -> str:
     return base64.b64encode(path.read_bytes()).decode("ascii")
 
 
+def check_freshness(repo_root: Path) -> int:
+    """Run the pre-push freshness checks against `repo_root`; 0 means fresh.
+
+    Output goes straight to this process's stderr/stdout: the recovery commands
+    the script prints are the whole point, and swallowing them would leave the
+    caller with an exit code and no instructions.
+
+    A missing script is an error, not a skip. Degrading silently to "no checks"
+    is precisely the failure this gate exists to close (#978).
+    """
+    script = repo_root / FRESHNESS_SCRIPT
+    if not script.is_file():
+        print(
+            f"::error::{script} not found — cannot verify that generated "
+            "artifacts are up to date. Pass --skip-freshness to commit anyway.",
+            file=sys.stderr,
+        )
+        return 1
+    return subprocess.run(
+        [str(script), "--label", "[signed-commit]", "--all"], cwd=str(repo_root)
+    ).returncode
+
+
 def resolve_head(ref: str, repo_root: Path) -> str:
     """Expand `ref` to the full 40-character SHA `expectedHeadOid` requires.
 
@@ -181,6 +229,14 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
+        "--skip-freshness",
+        action="store_true",
+        help=(
+            "Skip the generated-artifact freshness checks. Only release.yml "
+            "passes this — see the module docstring for why."
+        ),
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Print what would be sent instead of sending it.",
@@ -198,6 +254,19 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return 1
+
+    # Before the change set is read: the checks regenerate llms.txt and the
+    # examples index in place, so a stale tree has to be caught (and aborted on)
+    # while `git status` still reflects what the author actually meant to send.
+    if not args.skip_freshness and not args.dry_run:
+        freshness = check_freshness(args.repo_root)
+        if freshness != 0:
+            print(
+                "::error::Generated artifacts are stale — nothing was sent. "
+                "Regenerate and commit them, or pass --skip-freshness.",
+                file=sys.stderr,
+            )
+            return freshness
 
     command = ["git", "-C", str(args.repo_root), "status", "--porcelain"]
     if args.paths:

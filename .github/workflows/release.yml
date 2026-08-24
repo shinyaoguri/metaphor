@@ -231,11 +231,19 @@ jobs:
           for bump_path in "${BUMP_PATHS[@]}"; do
             PATH_ARGS+=(--path "$bump_path")
           done
+          #
+          # --skip-freshness: signed-commit.py は既定で pre-push と同じ生成物の
+          # 鮮度検査を走らせる（そうしないとこの経路だけ歯止めが無くなる — #978）。
+          # リリース経路だけが降りるのは、BUMP_PATHS に MetaphorVersion.swift =
+          # llms.txt の入力が入るため runner で `make llms-txt`（= `swift build`）
+          # が丸ごと乗るのと、リリースブランチの PR で CI が同じ検査を独立に回す
+          # ため。ここを外すとリリースが数分と新しい失敗点を抱える。
           python3 scripts/signed-commit.py \
             --repo "$GITHUB_REPOSITORY" \
             --branch "$RELEASE_BRANCH" \
             --expected-head "$BASE_SHA" \
             --message "Release ${TAG_NAME}" \
+            --skip-freshness \
             "${PATH_ARGS[@]}"
 
       # --- Human-readable release notes (Issue #335) ---
