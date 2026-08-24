@@ -175,8 +175,8 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func createDynamicMesh() -> DynamicMesh` -- Creates a new, empty dynamic mesh.
   - Note: The mesh that is created can be drawn in **3D only** (`dynamicMesh(_:)`. ADR-0005).
 - `func createEffectPass(_ input: any RenderPassNode, effects: [any PostEffect]) -> EffectPass?` -- Creates an effect pass that applies post-processing effects to a render pass.
-- `func createGraphics(_ w: Int, _ h: Int) -> Graphics?` -- Creates a 2D offscreen graphics buffer.
-- `func createGraphics3D(_ w: Int, _ h: Int) -> Graphics3D?` -- Creates a 3D offscreen graphics buffer.
+- `func createGraphics(_ w: Int, _ h: Int) -> Graphics?` -- Creates a 2D offscreen graphics buffer that starts out transparent.
+- `func createGraphics3D(_ w: Int, _ h: Int) -> Graphics3D?` -- Creates a 3D offscreen graphics buffer that starts out transparent.
 - `func createImage(_ width: Int, _ height: Int) -> MImage?` -- Creates a blank image of the given size.
 - `func createMaterial(source: String, fragmentFunction: String, vertexFunction: String? = nil) throws -> CustomMaterial` -- Creates a custom shader material from MSL source code.
   - Note: The material that is created applies to **3D only**. To apply a custom shader to 2D, use `loadShader(_:fragment:)` / `shader(_:)` (ADR-0005).

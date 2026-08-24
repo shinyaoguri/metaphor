@@ -266,7 +266,7 @@ Processing, `noFill()` does not make it disappear. See
 | `img.resize(w, h)` | `MImage.resize(_ width: Int, _ height: Int)` |
 | `img.mask(m)` | `MImage.mask(_ maskImage: MImage)` |
 | `blend(…)` | — not implemented |
-| `createGraphics(w, h)` / `PGraphics` | `createGraphics(_ w: Int, _ h: Int) -> Graphics?`, plus `createGraphics3D(_:_:) -> Graphics3D?` |
+| `createGraphics(w, h)` / `PGraphics` | `createGraphics(_ w: Int, _ h: Int) -> Graphics?`, plus `createGraphics3D(_:_:) -> Graphics3D?`. Both start out **transparent**, as in Processing — call `background()` inside `beginDraw()` / `endDraw()` for an opaque backdrop |
 | `pg.beginDraw()` / `pg.endDraw()` | `Graphics.beginDraw()` / `Graphics.endDraw(wait: Bool = false)`; draw it with `image(pg, x, y)` |
 
 ### Pixels

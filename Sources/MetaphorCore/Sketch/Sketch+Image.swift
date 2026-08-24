@@ -190,7 +190,12 @@ extension Sketch {
         context.copy(sx, sy, sw, sh, dx, dy, dw, dh)
     }
 
-    /// Creates a 2D offscreen graphics buffer.
+    /// Creates a 2D offscreen graphics buffer that starts out transparent.
+    ///
+    /// The buffer begins fully transparent (alpha 0), so placing it over the main canvas with
+    /// `image()` — or in the foreground of a `MergePass(.alpha)` — leaves whatever is underneath
+    /// visible. Call `background()` between `beginDraw()` and `endDraw()` for an opaque
+    /// backdrop (#914).
     ///
     /// - Parameters:
     ///   - w: The buffer width in pixels. 1 or greater.
@@ -201,7 +206,11 @@ extension Sketch {
         context.createGraphics(w, h)
     }
 
-    /// Creates a 3D offscreen graphics buffer.
+    /// Creates a 3D offscreen graphics buffer that starts out transparent.
+    ///
+    /// As with ``createGraphics(_:_:)``, the buffer begins fully transparent (alpha 0) so it can be
+    /// layered. Call `background()` between `beginDraw()` and `endDraw()` for an opaque
+    /// backdrop (#914).
     ///
     /// - Parameters:
     ///   - w: The buffer width in pixels. 1 or greater.
