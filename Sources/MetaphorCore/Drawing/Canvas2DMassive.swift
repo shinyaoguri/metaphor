@@ -7,13 +7,54 @@ import simd
 /// ``Canvas2D/circles(_:)`` and ``Canvas2D/circles(_:count:)``. Values are in
 /// the current 2D coordinate space; the active Canvas2D transform is applied to
 /// the whole batch when it is drawn.
+///
+/// ## Filling a buffer from a compute kernel
+///
+/// ``Canvas2D/circles(_:count:)`` draws the bytes of a `GPUBuffer<CircleInstance>` exactly as
+/// they stand, so a kernel that writes one has to declare the very same struct. This is the
+/// definition the library itself compiles (`MetaphorCanvas2DMassive.metal`); paste it as is:
+///
+/// ```metal
+/// struct CircleInstance {
+///     float2 position;   // offset  0
+///     float  diameter;   // offset  8
+///     float  _pad;       // offset 12  (unused)
+///     float4 color;      // offset 16
+/// };                     // stride 32, 16-byte aligned
+/// ```
+///
+/// The padding slot is missing from the property list above because the Swift declaration
+/// keeps it internal, and it may be left out of the MSL struct too: `float4 color` is 16-byte
+/// aligned, so it lands at offset 16 with or without a named `_pad`. The field *order* is the
+/// part that cannot be left out.
+///
+/// - Important: The memory order is the declaration order, not the alphabetical order this
+///   documentation lists the properties in. The matching MSL declaration is
+///   `struct CircleInstance { float2 position; float diameter; float _pad; float4 color; };` —
+///   `position` at 0, `diameter` at 8, four unused bytes at 12, `color` at 16, stride 32.
+///
+/// - Note: An MSL struct written in that alphabetical order (`color`, `diameter`, `position`)
+///   compiles without a warning and still measures 32 bytes, so nothing flags it. It simply
+///   draws no circle at all: every center is reinterpreted from color bits and lands off
+///   screen, and every diameter is garbage. When a `GPUBuffer` batch renders nothing while the
+///   same values drawn from a `[CircleInstance]` array render fine, check this order first.
 public struct CircleInstance: Sendable, Equatable {
     /// Circle center in local 2D coordinates.
+    ///
+    /// - Note: First in memory, at offset 0. See the type's own documentation for the full
+    ///   layout: the properties are listed alphabetically here, not in memory order.
     public var position: SIMD2<Float>
     /// Circle diameter in local units.
+    ///
+    /// - Note: Second in memory, at offset 8, followed by four bytes of padding.
     public var diameter: Float
+    // Keeps `color` on its natural 16-byte boundary, matching `float _pad` in
+    // `MetaphorCanvas2DMassive.metal`. Internal, so it never reaches the public documentation —
+    // which is why the type's doc comment spells the layout out (#1090).
     var _padding: Float = 0
     /// Per-circle RGBA color, normalized to 0...1.
+    ///
+    /// - Note: Last in memory, at offset 16, despite being listed first alphabetically.
     public var color: SIMD4<Float>
 
     /// Creates a circle instance from a center vector, diameter, and SIMD color.
@@ -84,6 +125,11 @@ extension Canvas2D {
     ///
     /// Use this overload when a compute kernel updates the circle data on the
     /// GPU, or when the data already lives in a ``GPUBuffer``.
+    ///
+    /// - Important: The buffer is drawn byte for byte, so the struct a kernel writes has to
+    ///   match ``CircleInstance`` in memory order — `position` at 0, `diameter` at 8, padding
+    ///   at 12, `color` at 16. Getting it wrong compiles cleanly and draws nothing; the MSL
+    ///   definition to paste is in the documentation for ``CircleInstance``.
     ///
     /// - Parameters:
     ///   - instances: Source GPU buffer.

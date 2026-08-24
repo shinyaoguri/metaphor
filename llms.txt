@@ -142,6 +142,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
   - Note: Affects **2D only** (the 3D batch draw is `drawInstanced(_:transforms:)`. ADR-0005).
 - `func circles(_ instances: GPUBuffer<CircleInstance>, count: Int? = nil)` -- Draws circle instances held in a GPU buffer in a single batch.
   - Note: Affects **2D only** (the 3D batch draw is `drawInstanced(_:transforms:)`. ADR-0005).
+  - Important: The buffer is drawn byte for byte, so a compute kernel that fills it has to declare the struct in `CircleInstance`'s memory order — `position` at 0, `diameter` at 8, padding at 12, `color` at 16, stride 32 — not in the alphabetical order the properties are documented in. The wrong order compiles without a warning and draws nothing at all; the MSL definition to paste is in the documentation for `CircleInstance`.
 - `func clearCaches()` -- GPU メモリを解放するためにすべての内部キャッシュをクリアします。
 - `func clearPostEffects()` -- パイプラインからすべてのポストプロセスエフェクトを削除します。
 - `func closeAllWindows()` -- このスケッチから作成されたすべてのセカンダリウィンドウを閉じます。
@@ -666,10 +667,15 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `let name: String` -- ユーザーに表示できるデバイス名（例: "FaceTime HD カメラ"）
 
 ### `struct CircleInstance` -- A compact per-circle record for explicit bulk 2D drawing.
+  - Important: The memory order is the declaration order, not the alphabetical order this documentation lists the properties in. The matching MSL declaration is `struct CircleInstance { float2 position; float diameter; float _pad; float4 color; };` — `position` at 0, `diameter` at 8, four unused bytes at 12, `color` at 16, stride 32.
+  - Note: An MSL struct written in that alphabetical order (`color`, `diameter`, `position`) compiles without a warning and still measures 32 bytes, so nothing flags it. It simply draws no circle at all: every center is reinterpreted from color bits and lands off screen, and every diameter is garbage. When a `GPUBuffer` batch renders nothing while the same values drawn from a `[CircleInstance]` array render fine, check this order first.
 
 - `var color: SIMD4<Float>` -- Per-circle RGBA color, normalized to 0...1.
+  - Note: Last in memory, at offset 16, despite being listed first alphabetically.
 - `var diameter: Float` -- Circle diameter in local units.
+  - Note: Second in memory, at offset 8, followed by four bytes of padding.
 - `var position: SIMD2<Float>` -- Circle center in local 2D coordinates.
+  - Note: First in memory, at offset 0. See the type's own documentation for the full layout: the properties are listed alphabetically here, not in memory order.
 - `init(position: SIMD2<Float>, diameter: Float, color: SIMD4<Float> = SIMD4(1, 1, 1, 1))` -- Creates a circle instance from a center vector, diameter, and SIMD color.
 - `init(position: SIMD2<Float>, diameter: Float, color: Color)` -- Creates a circle instance from a center vector, diameter, and `Color`.
 - `init(x: Float, y: Float, diameter: Float, color: Color = .white)` -- Creates a circle instance from scalar coordinates, diameter, and `Color`.

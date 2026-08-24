@@ -16,6 +16,22 @@ struct CircleInstanceLayoutTests {
         #expect(MemoryLayout<CircleInstance>.alignment == 16)
     }
 
+    /// `circles(_ instances: GPUBuffer<CircleInstance>, count:)` は渡されたバイト列を
+    /// そのままインスタンスとして解釈するので、フィールドの offset は
+    /// `MetaphorCanvas2DMassive.metal` の `struct CircleInstance` との契約であり、
+    /// `CircleInstance` の doc コメントが「そのまま貼れる MSL 定義」として公開している値でもある。
+    ///
+    /// stride と alignment だけでは守れない: 宣言順を doc の並び（アルファベット順:
+    /// color / diameter / position）へ入れ替えても stride 32 / alignment 16 は変わらず、
+    /// 上の `layout()` は緑のまま通る。offset を固定して初めて、宣言順が動いた瞬間に赤くなる（#1090）。
+    @Test("フィールドの offset が MSL 側の struct と doc コメントの表に一致する")
+    func fieldOffsets() {
+        #expect(MemoryLayout<CircleInstance>.offset(of: \.position) == 0)
+        #expect(MemoryLayout<CircleInstance>.offset(of: \.diameter) == 8)
+        #expect(MemoryLayout<CircleInstance>.offset(of: \._padding) == 12)
+        #expect(MemoryLayout<CircleInstance>.offset(of: \.color) == 16)
+    }
+
     @Test("CircleInstance stores position, diameter, and color")
     func fields() {
         let inst = CircleInstance(
