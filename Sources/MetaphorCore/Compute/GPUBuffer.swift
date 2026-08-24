@@ -27,8 +27,10 @@ public final class GPUBuffer<T> {
     ///   - device: バッファ確保に使用する Metal デバイス
     ///   - count: 確保する要素数
     public init?(device: MTLDevice, count: Int) {
-        let byteLength = MemoryLayout<T>.stride * count
-        guard byteLength > 0,
+        // 掛け算はガードの内側で行う。先に書くと、大きな count が `nil` ではなく
+        // 算術オーバーフローの trap になり、Optional を返す契約が効かなくなる (#1091)。
+        let (byteLength, overflow) = MemoryLayout<T>.stride.multipliedReportingOverflow(by: count)
+        guard !overflow, byteLength > 0,
             let buffer = device.makeBuffer(length: byteLength, options: .storageModeShared)
         else {
             return nil
@@ -45,8 +47,10 @@ public final class GPUBuffer<T> {
     ///   - data: バッファにコピーする初期データの配列
     public init?(device: MTLDevice, data: [T]) {
         let count = data.count
-        let byteLength = MemoryLayout<T>.stride * count
-        guard byteLength > 0,
+        // `data.count` 由来なので溢れようがないが、掛け算をガードの内側に置く形は
+        // `init?(device:count:)` と揃えておく (#1091)。
+        let (byteLength, overflow) = MemoryLayout<T>.stride.multipliedReportingOverflow(by: count)
+        guard !overflow, byteLength > 0,
             let buffer = device.makeBuffer(length: byteLength, options: .storageModeShared)
         else {
             return nil

@@ -235,11 +235,20 @@ public final class ParticleSystem {
             throw MetaphorError.particle(.bufferCreationFailed)
         }
 
+        // 掛け算はガードの内側で行う。先に書くと、大きな count が
+        // `.bufferCreationFailed` ではなく算術オーバーフローの trap になる (#1091)。
+        let (bufferSize, overflow) = MemoryLayout<Particle>.stride.multipliedReportingOverflow(
+            by: count
+        )
+        guard !overflow else {
+            metaphorWarning("ParticleSystem: count is too large (got \(count))")
+            throw MetaphorError.particle(.bufferCreationFailed)
+        }
+
         self.device = device
         self.count = count
 
         // ダブルバッファリングパーティクルデータ
-        let bufferSize = MemoryLayout<Particle>.stride * count
         guard let a = device.makeBuffer(length: bufferSize, options: .storageModeShared),
             let b = device.makeBuffer(length: bufferSize, options: .storageModeShared)
         else {
