@@ -333,3 +333,221 @@ struct ShaderPreludeTests {
         }
     }
 }
+
+// MARK: - 前文構造体のフィールドの並び（#1146）
+
+/// カスタムシェーダへ配る前文の構造体を、Swift 側の実レイアウトと**フィールド単位で**突き合わせる。
+///
+/// 上の ``ShaderPreludeTests`` が持つ `static_assert(sizeof(...) == ...)` が見ているのは
+/// **バイト数だけ**で、同じ型が隣り合っていると入れ替えが素通りする。#1146 で実測したところ、
+/// `Canvas2DShaderUniforms` の `resolution` と `mouse` を入れ替えて生成物まで揃えても
+/// `make ci-check` が exit 0 で通った（2159 tests passed / freshness も緑）。前文 6 型の
+/// 隣接 31 か所のうち **26 か所**が `sizeof` では区別できない。
+///
+/// 並びがずれると**ユーザーのカスタムシェーダが黙って別の値を読む** —
+/// `u.resolution` がマウス座標になり、`u.time` がフレーム数になる。コンパイルは通り、
+/// 警告も出ない。とくに `Canvas2DShaderUniforms` は**組み込みシェーダーが 1 つも使わない**
+/// ので、#1142 の `CircleInstance` にあった「描画テストが偶発的に拾う」保険すら無い。
+///
+/// ここは GPU を使わない。``ShaderPreludeTests`` は `MTLCreateSystemDefaultDevice()` が
+/// 見えないとまるごと skip されるが、前文はただの文字列なので、GPU の無い環境でも
+/// 契約を見る目が 1 つ残る。
+///
+/// 手で書くのは**フィールド名と MSL の型名だけ**で、offset と size は `MemoryLayout` から取る。
+/// Swift 側を直せば期待値は自動で追従し、**MSL 側だけが動いたときに赤くなる**（両方が揃って
+/// 動くのは正しい変更で、ユーザーのソースは実行時に現在の前文と一緒にコンパイルされるので
+/// 影響が無い）。
+@Suite("Shader Prelude Layout")
+struct ShaderPreludeLayoutTests {
+
+    // MARK: 2D（#291 のカスタムシェーダが読む側）
+
+    @Test("Canvas2DShaderUniforms の並びが Swift 側と一致する")
+    func canvas2DShaderUniformsLayout() throws {
+        try Self.expectLayout(
+            of: Canvas2DShaderUniforms.self,
+            named: "Canvas2DShaderUniforms",
+            in: BuiltinShaders.canvas2DStructs,
+            origin: "BuiltinShaders.canvas2DStructs",
+            fields: [
+                Expectation("resolution", "float2", \Canvas2DShaderUniforms.resolution),
+                Expectation("mouse", "float2", \Canvas2DShaderUniforms.mouse),
+                Expectation("time", "float", \Canvas2DShaderUniforms.time),
+                Expectation("frameCount", "uint", \Canvas2DShaderUniforms.frameCount),
+            ])
+    }
+
+    // MARK: 3D（#713 のカスタムマテリアルが読む側）
+
+    @Test("Canvas3DUniforms の並びが Swift 側と一致する")
+    func canvas3DUniformsLayout() throws {
+        try Self.expectLayout(
+            of: Canvas3DUniforms.self,
+            named: "Canvas3DUniforms",
+            in: BuiltinShaders.canvas3DStructs,
+            origin: "BuiltinShaders.canvas3DStructs",
+            fields: [
+                Expectation("modelMatrix", "float4x4", \Canvas3DUniforms.modelMatrix),
+                Expectation(
+                    "viewProjectionMatrix", "float4x4", \Canvas3DUniforms.viewProjectionMatrix),
+                Expectation("normalMatrix", "float4x4", \Canvas3DUniforms.normalMatrix),
+                Expectation("color", "float4", \Canvas3DUniforms.color),
+                Expectation("cameraPosition", "float4", \Canvas3DUniforms.cameraPosition),
+                Expectation("time", "float", \Canvas3DUniforms.time),
+                Expectation("lightCount", "uint", \Canvas3DUniforms.lightCount),
+                Expectation("hasTexture", "uint", \Canvas3DUniforms.hasTexture),
+                Expectation("_pad", "uint", \Canvas3DUniforms._pad),
+            ])
+    }
+
+    @Test("Light3D の並びが Swift 側と一致する")
+    func light3DLayout() throws {
+        try Self.expectLayout(
+            of: Light3D.self,
+            named: "Light3D",
+            in: BuiltinShaders.canvas3DStructs,
+            origin: "BuiltinShaders.canvas3DStructs",
+            fields: [
+                Expectation("positionAndType", "float4", \Light3D.positionAndType),
+                Expectation("directionAndCutoff", "float4", \Light3D.directionAndCutoff),
+                Expectation("colorAndIntensity", "float4", \Light3D.colorAndIntensity),
+                Expectation(
+                    "attenuationAndOuterCutoff", "float4", \Light3D.attenuationAndOuterCutoff),
+            ])
+    }
+
+    @Test("Material3D の並びが Swift 側と一致する")
+    func material3DLayout() throws {
+        try Self.expectLayout(
+            of: Material3D.self,
+            named: "Material3D",
+            in: BuiltinShaders.canvas3DStructs,
+            origin: "BuiltinShaders.canvas3DStructs",
+            fields: [
+                Expectation("ambientColor", "float4", \Material3D.ambientColor),
+                Expectation("specularAndShininess", "float4", \Material3D.specularAndShininess),
+                Expectation("emissiveAndMetallic", "float4", \Material3D.emissiveAndMetallic),
+                Expectation("pbrParams", "float4", \Material3D.pbrParams),
+                Expectation("toneMapParams", "float4", \Material3D.toneMapParams),
+            ])
+    }
+
+    @Test("ShadowFragmentUniforms の並びが Swift 側と一致する")
+    func shadowFragmentUniformsLayout() throws {
+        try Self.expectLayout(
+            of: ShadowFragmentUniforms.self,
+            named: "ShadowFragmentUniforms",
+            in: BuiltinShaders.canvas3DStructs,
+            origin: "BuiltinShaders.canvas3DStructs",
+            fields: [
+                Expectation(
+                    "lightSpaceMatrix", "float4x4", \ShadowFragmentUniforms.lightSpaceMatrix),
+                Expectation("shadowBias", "float", \ShadowFragmentUniforms.shadowBias),
+                Expectation("shadowEnabled", "float", \ShadowFragmentUniforms.shadowEnabled),
+                Expectation("_pad", "float2", \ShadowFragmentUniforms._pad),
+            ])
+    }
+
+    // MARK: postFX（#718 のカスタムエフェクトが読む側）
+
+    @Test("PostProcessParams の並びが Swift 側と一致する")
+    func postProcessParamsLayout() throws {
+        try Self.expectLayout(
+            of: PostProcessParams.self,
+            named: "PostProcessParams",
+            in: PostProcessShaders.commonStructs,
+            origin: "PostProcessShaders.commonStructs",
+            fields: [
+                Expectation("texelSize", "float2", \PostProcessParams.texelSize),
+                Expectation("intensity", "float", \PostProcessParams.intensity),
+                Expectation("threshold", "float", \PostProcessParams.threshold),
+                Expectation("brightness", "float", \PostProcessParams.brightness),
+                Expectation("contrast", "float", \PostProcessParams.contrast),
+                Expectation("saturation", "float", \PostProcessParams.saturation),
+                Expectation("temperature", "float", \PostProcessParams.temperature),
+                Expectation("radius", "float", \PostProcessParams.radius),
+                Expectation("smoothness", "float", \PostProcessParams.smoothness),
+                Expectation("_pad0", "float", \PostProcessParams._pad0),
+                Expectation("_pad1", "float", \PostProcessParams._pad1),
+            ])
+    }
+
+    // MARK: - 突き合わせの実体
+
+    /// MSL 側に期待する 1 フィールド。offset と size は Swift の実レイアウトから取る。
+    struct Expectation {
+        let name: String
+        let mslType: String
+        let offset: Int?
+        let size: Int
+
+        init<Root, Value>(_ name: String, _ mslType: String, _ keyPath: KeyPath<Root, Value>) {
+            self.name = name
+            self.mslType = mslType
+            self.offset = MemoryLayout<Root>.offset(of: keyPath)
+            self.size = MemoryLayout<Value>.size
+        }
+    }
+
+    /// 前文から `struct <名前>` を読み、`Root` の実レイアウトと突き合わせる。
+    ///
+    /// offset と型名の**両方**を見る。`float4` → `float3` は MSL でも 16 バイト
+    /// （`float3` は 12 ではない）なので offset も stride も動かず、型名を固定して初めて
+    /// 赤くなる（`float` → `uint` に至ってはバイト幅まで同じで、解釈だけが変わる）。
+    private static func expectLayout<Root>(
+        of root: Root.Type,
+        named structName: String,
+        in prelude: String,
+        origin: String,
+        fields expected: [Expectation]
+    ) throws {
+        let layouts = try MSLStructReader.layouts(ofStructNamed: structName, in: prelude)
+
+        // 個数の下限は「リーダが何も拾えなくなって常に緑」への保険。
+        #expect(
+            layouts.count == 1,
+            "\(origin) から struct \(structName) を 1 つ読めるはずが \(layouts.count) 個だった")
+        guard let layout = layouts.first else { return }
+
+        #expect(
+            layout.stride == MemoryLayout<Root>.stride,
+            """
+            \(origin): \(structName) の MSL の stride は \(layout.stride) だが Swift は \
+            \(MemoryLayout<Root>.stride)（読めた並び: \(layout.summary)）
+            """)
+        #expect(
+            layout.fields.count == expected.count,
+            """
+            \(origin): \(structName) の MSL は \(layout.fields.count) フィールドだが \
+            期待は \(expected.count)（読めた並び: \(layout.summary)）
+            """)
+
+        for entry in expected {
+            guard let field = layout.field(named: entry.name) else {
+                Issue.record(
+                    "\(origin): \(structName) に \(entry.name) が無い（読めた並び: \(layout.summary)）")
+                continue
+            }
+            #expect(
+                field.offset == entry.offset,
+                """
+                \(origin): \(structName).\(entry.name) は MSL で offset \(field.offset) だが \
+                Swift は \(entry.offset.map(String.init) ?? "nil")（読めた並び: \(layout.summary)）
+                """)
+            #expect(
+                field.type == entry.mslType,
+                """
+                \(origin): \(structName).\(entry.name) の MSL の型は \(field.type) だが \
+                \(entry.mslType) であるべき（読めた並び: \(layout.summary)）
+                """)
+            // 型表と Swift 側のサイズが食い違ったら、それは検査側の取り違え。
+            #expect(
+                field.size == entry.size,
+                """
+                \(origin): \(structName).\(entry.name) は MSL の \(field.type) が \
+                \(field.size) バイト、Swift は \(entry.size) バイト — \
+                MSLStructReader.knownTypes を疑うこと
+                """)
+        }
+    }
+}
