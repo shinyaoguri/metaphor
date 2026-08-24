@@ -81,7 +81,7 @@ there is discarded before anything is drawn.
 | Matrix / style stacks | an unbalanced `push()` / `pushStyle()` / `pushMatrix()` cannot leak into the next frame |
 | Clipping region | `beginClip`, `endClip` |
 
-### Carried over between frames — set these once in `setup()`
+### Carried over between frames — setting these once in `setup()` is enough
 
 | What | APIs |
 |---|---|
@@ -93,9 +93,9 @@ there is discarded before anything is drawn.
 | Environment (IBL / skybox) | `environment`, `noEnvironment` |
 | Tone mapping | `toneMapping`, `exposure` |
 
-The last two rows are the easy ones to misread: `toneMapping` and `exposure` are
-carried on the material internally, yet they are treated as properties of the
-whole screen and are **not** rolled back when the material resets.
+The last row is the easy one to misread: `toneMapping` and `exposure` are carried
+on the material internally, yet they are treated as properties of the whole
+screen and are **not** rolled back when the material resets.
 
 ## Tunable Values (`@Param`)
 
