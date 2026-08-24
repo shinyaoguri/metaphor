@@ -67,7 +67,18 @@ public final class OrbitCamera {
     /// The useful range is `0 ..< 1`. Reading the property gives back whatever
     /// you assigned, but a value of `1` or more is treated as slightly less
     /// than `1` internally, because a glide that never decays never stops.
-    public var damping: Float = 0
+    ///
+    /// Setting it to `0` also throws away any glide already in flight: no
+    /// inertia means there is nothing left to carry. Keeping it would freeze
+    /// the glide instead — ``update()`` returns early while damping is off, so
+    /// the stored speed never decays — and the camera would take off on its own
+    /// the moment you raised the value again, however long you waited in
+    /// between (Issue #1128).
+    public var damping: Float = 0 {
+        didSet {
+            if damping <= 0 { stopGlide() }
+        }
+    }
 
     /// ``damping`` clamped to `[0, 1)`, which is what the math actually uses.
     ///
@@ -82,6 +93,17 @@ public final class OrbitCamera {
     private var velocityAzimuth: Float = 0
     /// 水平軸周りの現在の回転速度
     private var velocityElevation: Float = 0
+
+    /// Throws away the glide, leaving both angles where they are.
+    ///
+    /// The velocities are only ever written while ``damping`` is above zero
+    /// (``handleMouseDrag(dx:dy:)`` guards on it and ``update()`` returns before
+    /// touching them), so dropping them here keeps "no damping means no stored
+    /// speed" true at every point (Issue #1128).
+    private func stopGlide() {
+        velocityAzimuth = 0
+        velocityElevation = 0
+    }
 
     // MARK: - Computed Properties
 
@@ -194,7 +216,6 @@ public final class OrbitCamera {
         self.distance = distance
         self.azimuth = azimuth
         self.elevation = elevation
-        self.velocityAzimuth = 0
-        self.velocityElevation = 0
+        stopGlide()
     }
 }

@@ -1780,7 +1780,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 ### `final class OrbitCamera` -- マウスドラッグとスクロールで3Dカメラオービットをインタラクティブに制御します。
 
 - `var azimuth: Float` -- 水平方向の角度（ラジアン、Y軸周りの回転）
-- `var damping: Float` -- Inertia: how long the camera keeps gliding after you let go.
+- `var damping: Float { get set }` -- Inertia: how long the camera keeps gliding after you let go.
 - `var distance: Float` -- カメラからターゲットまでの距離
 - `var elevation: Float` -- 垂直方向の角度（ラジアン、水平面からの上下回転）
 - `var eye: SIMD3<Float> { get }` -- 球面座標をデカルト座標に変換してカメラ位置を計算します。

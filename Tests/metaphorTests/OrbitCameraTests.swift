@@ -395,3 +395,136 @@ struct OrbitCameraElevationLimitTests {
         #expect(camera.elevation < camera.maxElevation)
     }
 }
+
+// MARK: - #1128: damping を 0 に戻したときの速度
+
+/// `damping` を 0 に戻した時点で余韻が捨てられることを確かめます（#1128）。
+///
+/// `update()` は `damping > 0` でないと何もせずに戻るので、0 にした瞬間の速度が
+/// そのまま保存されていました。`update()` が走らない = 減衰もしないため、何秒
+/// 置いても目減りせず、あとで 0 より大きくすると触っていないカメラが古い速度で
+/// 動き出します。
+@Suite("D-20 Orbit Camera / damping back to zero (#1128)")
+@MainActor
+struct OrbitCameraDampingZeroTests {
+
+    /// ドラッグして余韻を乗せたカメラ。
+    private static func gliding(damping: Float = 0.9) -> OrbitCamera {
+        let camera = OrbitCamera()
+        camera.damping = damping
+        for _ in 0..<20 {
+            camera.handleMouseDrag(dx: 14, dy: 0)
+            camera.update()
+        }
+        return camera
+    }
+
+    /// 余韻が止まるまで回しきり、動いたフレーム数を返します。
+    private static func settle(_ camera: OrbitCamera) -> Int {
+        var frames = 0
+        for _ in 0..<100_000 {
+            let before = camera.azimuth
+            camera.update()
+            if camera.azimuth == before { break }
+            frames += 1
+        }
+        return frames
+    }
+
+    @Test("damping を 0 に戻して 0.9 へ戻しても、触っていないカメラは動かない")
+    func restoringDampingDoesNotReviveTheOldGlide() {
+        let camera = Self.gliding()
+        camera.damping = 0
+
+        let frozen = camera.azimuth
+        for _ in 0..<60 { camera.update() }
+        #expect(camera.azimuth == frozen, "damping 0 では動かない")
+
+        camera.damping = 0.9
+        let revived = Self.settle(camera)
+
+        #expect(
+            camera.azimuth == frozen,
+            "触っていないのに \(camera.azimuth - frozen) rad 動いた（\(revived) フレーム）")
+    }
+
+    /// 待ち時間に関係なく生き返らないこと。`damping = 0` の間は減衰も走らないので、
+    /// 「しばらく置けば消える」は成り立ちません。
+    @Test(
+        "damping 0 のまま何フレーム置いても生き返らない",
+        arguments: [1, 10, 600])
+    func restoringDampingDoesNotReviveAfterAnyIdle(idleFrames: Int) {
+        let camera = Self.gliding()
+        camera.damping = 0
+        for _ in 0..<idleFrames { camera.update() }
+
+        let frozen = camera.azimuth
+        camera.damping = 0.9
+        _ = Self.settle(camera)
+
+        #expect(
+            camera.azimuth == frozen,
+            "\(idleFrames) フレーム後: \(camera.azimuth - frozen) rad 動いた")
+    }
+
+    /// 仰角側も同じであること。
+    @Test("仰角の余韻も damping を 0 にした時点で捨てられる")
+    func elevationGlideIsDroppedTogether() {
+        let camera = OrbitCamera()
+        camera.damping = 0.9
+        for _ in 0..<20 {
+            camera.handleMouseDrag(dx: 0, dy: -6)
+            camera.update()
+        }
+        camera.damping = 0
+
+        let frozen = camera.elevation
+        camera.damping = 0.9
+        for _ in 0..<200 { camera.update() }
+
+        #expect(
+            camera.elevation == frozen,
+            "触っていないのに \(camera.elevation - frozen) rad 動いた")
+    }
+
+    /// 余韻の途中で同じ `damping` を代入し直しても、余韻は止まらないこと。
+    /// GUI やパラメータストアが毎フレーム同じ値を書き戻す経路で効いてきます。
+    @Test("damping に 0 より大きい値を入れ直しても余韻は続く")
+    func reassigningAPositiveDampingKeepsTheGlide() {
+        let camera = Self.gliding()
+        let beforeReassign = camera.azimuth
+
+        camera.damping = 0.9
+        camera.update()
+
+        #expect(camera.azimuth != beforeReassign, "同じ値の代入で余韻が消えている")
+    }
+
+    /// `damping = 0` にしたあと、新しいドラッグは普通に効くこと（角度へ直接入る経路）。
+    @Test("damping を 0 にしたあとの新しいドラッグは普通に効く")
+    func draggingStillWorksAfterDroppingDampingToZero() {
+        let camera = Self.gliding()
+        camera.damping = 0
+
+        let before = camera.azimuth
+        camera.handleMouseDrag(dx: 10, dy: 0)
+
+        #expect(abs(camera.azimuth - (before - 10 * camera.sensitivity)) < 1e-6)
+    }
+
+    /// `damping` を 0 にしたあと 0.9 へ戻して**新たにドラッグ**すれば、
+    /// これまでどおり余韻つきで回ること（捨てすぎていないことの確認）。
+    @Test("damping を戻したあとの新しいドラッグには余韻が付く")
+    func glideComesBackForNewInput() {
+        let camera = Self.gliding()
+        camera.damping = 0
+        camera.damping = 0.9
+
+        camera.handleMouseDrag(dx: 14, dy: 0)
+        camera.update()
+        let afterFirstUpdate = camera.azimuth
+        camera.update()
+
+        #expect(camera.azimuth != afterFirstUpdate, "新しい入力の余韻が出ていない")
+    }
+}
