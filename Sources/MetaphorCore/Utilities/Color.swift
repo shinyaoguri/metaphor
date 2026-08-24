@@ -256,6 +256,83 @@ public struct Color: Sendable, Equatable {
         )
     }
 
+    // MARK: - HSB Components
+
+    /// The hue of this color, on a 0.0 to 1.0 scale.
+    ///
+    /// This is the inverse of ``init(hue:saturation:brightness:alpha:)``: feeding ``hue``,
+    /// ``saturation``, ``brightness`` and ``a`` back into that initializer reproduces the color.
+    ///
+    /// - Important: The value is **on a 0.0 to 1.0 scale and ignores `colorMode()`**, exactly like
+    ///   ``r``, ``g``, ``b`` and ``a``. Under `colorMode(.hsb, 360, 100, 100)` a Processing sketch
+    ///   expects `hue(c)` to be 0 to 360, so scale it yourself: `hue(c) * 360`.
+    ///
+    /// - Note: One full turn is 0.0 to 1.0 and the value never reaches 1.0 — pure red is 0.0, not
+    ///   1.0. For a gray color (``saturation`` of 0) the hue is undefined and 0.0 is returned,
+    ///   as in Processing.
+    public var hue: Float { hsbComponents.hue }
+
+    /// The saturation of this color, on a 0.0 to 1.0 scale.
+    ///
+    /// - Important: The value is **on a 0.0 to 1.0 scale and ignores `colorMode()`**, exactly like
+    ///   ``r``, ``g``, ``b`` and ``a``. Under `colorMode(.hsb, 360, 100, 100)` a Processing sketch
+    ///   expects `saturation(c)` to be 0 to 100, so scale it yourself: `saturation(c) * 100`.
+    ///
+    /// - Note: Black has a saturation of 0.0.
+    public var saturation: Float { hsbComponents.saturation }
+
+    /// The brightness of this color, on a 0.0 to 1.0 scale.
+    ///
+    /// - Important: The value is **on a 0.0 to 1.0 scale and ignores `colorMode()`**, exactly like
+    ///   ``r``, ``g``, ``b`` and ``a``. Under `colorMode(.hsb, 360, 100, 100)` a Processing sketch
+    ///   expects `brightness(c)` to be 0 to 100, so scale it yourself: `brightness(c) * 100`.
+    ///
+    /// - Note: This is the largest of the three RGB components (the HSB "value"), not a perceptual
+    ///   luminance — pure blue and pure white both report 1.0.
+    public var brightness: Float { hsbComponents.brightness }
+
+    /// Converts the RGB components into hue, saturation and brightness.
+    ///
+    /// The RGB components are clamped into 0.0...1.0 first, and non-finite components are read as
+    /// 0.0. This mirrors ``init(hue:saturation:brightness:alpha:)``, which clamps `saturation` and
+    /// `brightness` for the same reason: the conversion is only meaningful on a bounded cube, and
+    /// out-of-range components saturate at draw time anyway (see "Out-of-range components" in
+    /// ``Color``). Reading a color back therefore reports it **as it is drawn**.
+    private var hsbComponents: (hue: Float, saturation: Float, brightness: Float) {
+        // 読み出しアクセサは決して落ちない（ADR-0005 / #356）。NaN/∞ は 0 として読む。
+        func normalized(_ value: Float) -> Float {
+            value.isFinite ? max(0, min(1, value)) : 0
+        }
+        let r = normalized(self.r)
+        let g = normalized(self.g)
+        let b = normalized(self.b)
+
+        let maxC = max(r, max(g, b))
+        let minC = min(r, min(g, b))
+        let delta = maxC - minC
+
+        let brightness = maxC
+        let saturation = maxC == 0 ? 0 : delta / maxC
+
+        guard delta > 0 else {
+            // 無彩色。色相は数学的に未定義なので Processing と同じく 0 を返す。
+            return (0, saturation, brightness)
+        }
+
+        let sector: Float
+        if maxC == r {
+            sector = (g - b) / delta
+        } else if maxC == g {
+            sector = 2 + (b - r) / delta
+        } else {
+            sector = 4 + (r - g) / delta
+        }
+        // 6 セクタを 0.0..<1.0 へ畳む。赤より下側（負）は 1 周ぶん足して巻き戻す。
+        let hue = sector < 0 ? sector / 6 + 1 : sector / 6
+
+        return (hue, saturation, brightness)
+    }
+
     // MARK: - Named Colors
 
     /// Pure black.
@@ -291,6 +368,126 @@ public struct Color: Sendable, Equatable {
 /// - Returns: The interpolated color.
 public func lerpColor(_ c1: Color, _ c2: Color, _ t: Float) -> Color {
     c1.lerp(to: c2, t: t)
+}
+
+// MARK: - Component Extraction
+
+/// Extracts the hue of a color (compatible with Processing's `hue()`).
+///
+/// ```swift
+/// let c = Color(hue: 0.55, saturation: 0.8, brightness: 1.0)
+/// let shifted = Color(hue: hue(c) + 0.1, saturation: saturation(c), brightness: brightness(c))
+/// ```
+///
+/// - Important: The result is **on a 0.0 to 1.0 scale and ignores `colorMode()`**, unlike
+///   Processing, where `hue()` follows the current color mode. metaphor draws the line between the
+///   two scales at the type: the numeric `fill` / `stroke` / `background` / `tint` overloads follow
+///   `colorMode()`, while ``Color`` values are always normalized. These extractors take a ``Color``
+///   and are the exact inverse of ``Color/init(hue:saturation:brightness:alpha:)``, so they stay on
+///   the normalized side. Porting `colorMode(HSB, 360, 100, 100)` code means scaling by hand:
+///   `hue(c) * 360`.
+///
+/// - Note: One full turn is 0.0 to 1.0 and the value never reaches 1.0 — pure red is 0.0. A gray
+///   color returns 0.0, as in Processing.
+///
+/// - Note: Swift does not keep functions and variables in separate namespaces, so a local named
+///   `hue` shadows this function inside its scope. Use the ``Color/hue`` property instead there.
+///
+/// - Parameter c: The color to read.
+/// - Returns: The hue, from 0.0 up to (but not including) 1.0.
+public func hue(_ c: Color) -> Float {
+    c.hue
+}
+
+/// Extracts the saturation of a color (compatible with Processing's `saturation()`).
+///
+/// - Important: The result is **on a 0.0 to 1.0 scale and ignores `colorMode()`**, unlike
+///   Processing. See ``hue(_:)`` for why, and scale by hand when porting:
+///   `saturation(c) * 100` under `colorMode(HSB, 360, 100, 100)`.
+///
+/// - Note: A local named `saturation` shadows this function inside its scope; use the
+///   ``Color/saturation`` property there.
+///
+/// - Parameter c: The color to read.
+/// - Returns: The saturation, from 0.0 to 1.0.
+public func saturation(_ c: Color) -> Float {
+    c.saturation
+}
+
+/// Extracts the brightness of a color (compatible with Processing's `brightness()`).
+///
+/// - Important: The result is **on a 0.0 to 1.0 scale and ignores `colorMode()`**, unlike
+///   Processing. See ``hue(_:)`` for why, and scale by hand when porting:
+///   `brightness(c) * 100` under `colorMode(HSB, 360, 100, 100)`.
+///
+/// - Note: This is the largest of the three RGB components (the HSB "value"), not a perceptual
+///   luminance. A local named `brightness` shadows this function inside its scope; use the
+///   ``Color/brightness`` property there.
+///
+/// - Parameter c: The color to read.
+/// - Returns: The brightness, from 0.0 to 1.0.
+public func brightness(_ c: Color) -> Float {
+    c.brightness
+}
+
+/// Extracts the red component of a color (compatible with Processing's `red()`).
+///
+/// - Important: The result is **on a 0.0 to 1.0 scale and ignores `colorMode()`**, unlike
+///   Processing. Ported code such as `fill(red(c), green(c), blue(c))` therefore compiles but draws
+///   almost black under the default `colorMode(.rgb, 255)` — pass the ``Color`` straight to
+///   `fill(_:)` instead, or scale by hand with `red(c) * 255`. See ``hue(_:)`` for the reasoning.
+///
+/// - Note: This returns ``Color/r`` unchanged, including components outside 0.0...1.0 (see
+///   "Out-of-range components" in ``Color``). A local named `red` shadows this function inside its
+///   scope; use the ``Color/r`` property there.
+///
+/// - Parameter c: The color to read.
+/// - Returns: The red component.
+public func red(_ c: Color) -> Float {
+    c.r
+}
+
+/// Extracts the green component of a color (compatible with Processing's `green()`).
+///
+/// - Important: The result is **on a 0.0 to 1.0 scale and ignores `colorMode()`**, unlike
+///   Processing. See ``red(_:)`` for the porting trap and ``hue(_:)`` for the reasoning.
+///
+/// - Note: This returns ``Color/g`` unchanged, including out-of-range components. A local named
+///   `green` shadows this function inside its scope; use the ``Color/g`` property there.
+///
+/// - Parameter c: The color to read.
+/// - Returns: The green component.
+public func green(_ c: Color) -> Float {
+    c.g
+}
+
+/// Extracts the blue component of a color (compatible with Processing's `blue()`).
+///
+/// - Important: The result is **on a 0.0 to 1.0 scale and ignores `colorMode()`**, unlike
+///   Processing. See ``red(_:)`` for the porting trap and ``hue(_:)`` for the reasoning.
+///
+/// - Note: This returns ``Color/b`` unchanged, including out-of-range components. A local named
+///   `blue` shadows this function inside its scope; use the ``Color/b`` property there.
+///
+/// - Parameter c: The color to read.
+/// - Returns: The blue component.
+public func blue(_ c: Color) -> Float {
+    c.b
+}
+
+/// Extracts the alpha component of a color (compatible with Processing's `alpha()`).
+///
+/// - Important: The result is **on a 0.0 to 1.0 scale and ignores `colorMode()`**, unlike
+///   Processing, where `alpha()` follows `maxAlpha`. It is straight (non-premultiplied) alpha,
+///   as everywhere in the public API (ADR-0012). See ``hue(_:)`` for the reasoning.
+///
+/// - Note: This returns ``Color/a`` unchanged, including out-of-range components. A local named
+///   `alpha` shadows this function inside its scope; use the ``Color/a`` property there.
+///
+/// - Parameter c: The color to read.
+/// - Returns: The alpha component, where 0.0 is fully transparent and 1.0 fully opaque.
+public func alpha(_ c: Color) -> Float {
+    c.a
 }
 
 // MARK: - Color Space
