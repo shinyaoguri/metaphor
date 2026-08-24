@@ -193,7 +193,7 @@ pass. Consequences and rationale:
 Pre-release tags (anything containing `-`) are automatically marked as
 Pre-release on GitHub. The `from:` install snippet is bumped only for stable
 releases, across every file that carries it: `README.md`, `README.en.md`,
-`Sources/metaphor/metaphor.docc/GettingStarted.md`, `llms.txt`,
+`Sources/metaphor/metaphor.docc/metaphor.md`, `llms.txt`,
 `website/src/components/Hero.astro`.
 
 That file set lives in two places that must always change together — the sed in

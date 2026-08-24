@@ -163,10 +163,11 @@ jobs:
           # Only stable versions appear in `from:` install snippets. Keep every
           # file that carries the snippet in sync — CI on this release branch
           # enforces agreement (validate-ai-docs.sh check #6 compares
-          # README.en.md, GettingStarted.md, llms.txt and the landing page's
-          # Hero.astro against README.md, and
-          # the llms.txt staleness check regenerates with the README version
-          # embedded), so updating README.md alone deadlocks the release.
+          # README.en.md, the DocC landing page (metaphor.docc/metaphor.md),
+          # llms.txt and the website landing page's Hero.astro against
+          # README.md, and the llms.txt staleness check regenerates with the
+          # README version embedded), so updating README.md alone deadlocks the
+          # release.
           # NOTE: this list and validate-ai-docs.sh's `version_docs` are two
           # halves of one contract — always change them together. Adding a file
           # to only one side deadlocks releases in either direction (validate
@@ -183,7 +184,7 @@ jobs:
             sed -i '' "s|metaphor\.git\", from: \"[0-9][^\"]*\"|metaphor.git\", from: \"${VERSION_NUM}\"|g" \
               README.md \
               README.en.md \
-              Sources/metaphor/metaphor.docc/GettingStarted.md \
+              Sources/metaphor/metaphor.docc/metaphor.md \
               llms.txt \
               website/src/components/Hero.astro
             # Fold `changelog.d/*.md` into `## [Unreleased]`, then promote it
@@ -202,7 +203,7 @@ jobs:
             Sources/MetaphorCore/Core/MetaphorVersion.swift
             README.md
             README.en.md
-            Sources/metaphor/metaphor.docc/GettingStarted.md
+            Sources/metaphor/metaphor.docc/metaphor.md
             llms.txt
             website/src/components/Hero.astro
             CHANGELOG.md
@@ -270,7 +271,7 @@ jobs:
             --base main \
             --head "$RELEASE_BRANCH" \
             --title "Release ${TAG_NAME}" \
-            --body "Automated release commit for ${TAG_NAME}. Bumps Package.swift binary target${{ env.IS_PRERELEASE == 'false' && ' and the install snippets (README.md, README.en.md, GettingStarted.md, llms.txt, Hero.astro)' || '' }}.")
+            --body "Automated release commit for ${TAG_NAME}. Bumps Package.swift binary target${{ env.IS_PRERELEASE == 'false' && ' and the install snippets (README.md, README.en.md, metaphor.docc/metaphor.md, llms.txt, Hero.astro)' || '' }}.")
           echo "PR_NUMBER=${PR_URL##*/}" >> "$GITHUB_ENV"
 
       - name: Trigger CI on release branch

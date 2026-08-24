@@ -67,6 +67,7 @@ effort (Epic I), English documentation is maintained within this scope:
 | If you want to know | Source of truth |
 |---|---|
 | Public API signatures | [`llms.txt`](../llms.txt) (generated) |
+| What belongs in the DocC catalog | **API reference only.** Prose meant to be read start to finish belongs in [tutorial/](tutorial/) ([#533](https://github.com/shinyaoguri/metaphor/issues/533)). The only `.md` files allowed under `.docc` are the landing page `metaphor.md` and the per-module landings `<Module>.md`; `scripts/validate-ai-docs.sh` enforces this |
 | The tutorial's outline and writing conventions | [tutorial/README.md](tutorial/README.md) (Japanese) |
 | Rationale for a design decision | [adr/](adr/) |
 | What is public API, and what may break | [api-stability-policy.md](api-stability-policy.md) |

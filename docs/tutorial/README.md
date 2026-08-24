@@ -483,7 +483,7 @@ Examples の本数やバージョン番号のような、増減する数値を�
 | ドキュメント | 再配置後の役割 | いつ |
 |---|---|---|
 | [README.md](../../README.md) / [README.en.md](../../README.en.md) の「はじめてのスケッチ」 | 60 秒スタートと最小のコード例は残し、詳細（ライフサイクル表・よく使う関数一覧）はチュートリアル第 1 部・第 2 部へ委譲してリンクする | 完了（[#510](https://github.com/shinyaoguri/metaphor/issues/510)）。`## チュートリアル` 節から公開中の各部へ張る |
-| DocC [GettingStarted.md](../../Sources/metaphor/metaphor.docc/GettingStarted.md) | API リファレンス側の最小導入に絞る（インストール + 最小のスケッチ + `Sketch` へのリンク）。ライフサイクル・設定・入力の詳細はチュートリアルへ送り出す | 完了（入力は [#509](https://github.com/shinyaoguri/metaphor/issues/509)、残りは [#510](https://github.com/shinyaoguri/metaphor/issues/510)） |
+| DocC の読み物（`GettingStarted.md` / `Architecture.md`） | **削除**。DocC は API リファレンス専用にし、読み物は本チュートリアルが引き受ける。最小導入（動作環境 + インストール + 最小のスケッチ + `Sketch` へのリンク）だけをランディング [metaphor.md](../../Sources/metaphor/metaphor.docc/metaphor.md) に畳む | 完了（[#509](https://github.com/shinyaoguri/metaphor/issues/509) → [#510](https://github.com/shinyaoguri/metaphor/issues/510) → [#533](https://github.com/shinyaoguri/metaphor/issues/533)） |
 | [processing-migration-guide.md](../processing-migration-guide.md) | そのまま維持。読者が違う（既習者向け）ことを冒頭で相互に明記する | 完了（冒頭の "Never used Processing?" から本チュートリアルへ送り出している） |
 | [Examples/LEARNING_PATH.md](../../Examples/LEARNING_PATH.md) | **統合せず残す**。「チュートリアルを読み終えた人が Examples を掘るための地図」に位置づけ直し、冒頭でチュートリアルへ送り出す | 完了（[#484](https://github.com/shinyaoguri/metaphor/issues/484) の本文と同時） |
 
