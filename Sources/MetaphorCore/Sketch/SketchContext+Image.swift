@@ -296,6 +296,10 @@ extension SketchContext {
     /// image(pg, 300, 100)   // 緑（100,100 は青のまま）
     /// ```
     ///
+    /// The buffer starts out **transparent** (alpha 0): layering is the main use, so placing it
+    /// over the main canvas with `image()` leaves what is underneath visible. Call `background()`
+    /// between `beginDraw()` and `endDraw()` for an opaque backdrop (#914).
+    ///
     /// - Parameters:
     ///   - w: バッファの幅（ピクセル単位）。1 以上。
     ///   - h: バッファの高さ（ピクセル単位）。1 以上。
@@ -323,6 +327,10 @@ extension SketchContext {
     }
 
     /// オフスクリーン 3D 描画バッファを作成します。
+    ///
+    /// As with `createGraphics(_:_:)`, the buffer starts out **transparent** (alpha 0). Call
+    /// `background()` for an opaque backdrop (#914).
+    ///
     /// - Parameters:
     ///   - w: バッファの幅（ピクセル単位）。1 以上。
     ///   - h: バッファの高さ（ピクセル単位）。1 以上。

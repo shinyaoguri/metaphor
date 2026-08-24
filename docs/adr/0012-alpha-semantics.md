@@ -177,6 +177,46 @@ darkest     rgba( 64, 77, 38,  0) rgba( 64, 77, 38,128) rgba( 64, 77, 38,255)
 - **PBR / IBL の透過**。`MetaphorPBR.h` / `MetaphorLighting.h` は `float3` の世界で、透過は設計に入っていない
 - `blendMode()` を 3D へ広げること。ADR-0005 Amendment で却下済み
 
+## Amendment（2026-08-24, Issue #914）— オフスクリーンの既定の下地は透明とする
+
+本 ADR の Decision は「内部は premultiplied」という表現形式を定めたが、**オフスクリーンが
+どの色で始まるか**は決めていなかった。実装は `TextureManager` の既定引数（不透明な黒）を
+そのまま使っていて、`createGraphics()` / `createGraphics3D()` は `background()` を呼ばない限り
+黒い下地で始まっていた。#830（`Graphics3D` に `background()` を足す）で論点になり、
+「2D・3D をまとめて決める話」として #914 へ切り出していたもの。
+
+**決定: `Graphics` / `Graphics3D` の既定クリア色を透明（α = 0）とする。メインキャンバス
+（`MetaphorRenderer`）と `TextureManager` の既定引数は不透明な黒のまま据え置く。**
+
+理由は 3 つ。
+
+1. オフスクリーンは「層」として使うのが主用途で、`image()` の前景や `MergePass(.alpha)` に
+   置くとき不透明な黒は常に邪魔になる。規範 1（オフスクリーンを透明で始められる）を
+   既定でも成り立たせる
+2. p5.js / Processing の `createGraphics()` も透明で始まる。Processing 由来の発想という
+   前提（CLAUDE.md）に沿う
+3. メインキャンバスを変えないのは、画面ではドローアブルへ不透明合成されて α が使われない
+   一方、PNG / Probe / Syphon には α がそのまま出るため（「外部出力での扱い」の表）。
+   ここを透明にすると「背景を描かないスケッチの保存画像が透明」という別の破壊になる
+
+### 帰結
+
+- 既存の作品で、オフスクリーンの黒い下地に依存していたものは絵が変わる。移行は
+  `beginDraw()` の直後に `background(0)` を 1 行足すだけ。0.x なので minor で発車する（ADR-0009）
+- オプトアウト API（`createGraphics(w, h, opaque:)` のような引数）は足さない。1 行で戻せるものに
+  API 表面を増やさない
+- 実装ノート: `Canvas2D` は「いまレンダーパスに載っているクリア色」（`appliedClearColor`）と同じ色の
+  `background()` をクワッド描画ごと省く。既定値はメインキャンバス向けの不透明な黒なので、
+  オフスクリーン側は生成時に透明へ揃える必要がある（揃えないと初回パスの `background(0)` が
+  「同じ色だから省略」と誤判定され、透明のまま残る）
+
+### 検査
+
+`Tests/metaphorTests/OffscreenTransparentDefaultTests.swift` が 2D・3D を並べて見張る
+（既定が透明であること・描いた領域だけが不透明になること・`background(0)` で従来へ戻せること・
+空の層がメインキャンバスを覆わないこと・**メインキャンバスの既定は不透明のまま**であること）。
+2 面の既定が揃っていることは #830 から引き継いだ要件で、片方だけ変えるとここが赤くなる。
+
 ## References
 
 - `Sources/MetaphorCore/Core/PipelineFactory.swift:104-210` — `BlendMode` とブレンド係数
@@ -188,5 +228,5 @@ darkest     rgba( 64, 77, 38,  0) rgba( 64, 77, 38,128) rgba( 64, 77, 38,255)
 - [ADR-0003](0003-unified-command-stream.md) — 3D 半透明の描画順を別 Issue とした判断
 - [ADR-0005](0005-sketch-api-consistency.md) — `blendMode()` を 2D のみとした判断（Amendment）
 - [ADR-0009](0009-unfreeze-api-until-1-0.md) — 1.0 まで破壊的変更を許容する
-- Issue [#801](https://github.com/shinyaoguri/metaphor/issues/801) / [#829](https://github.com/shinyaoguri/metaphor/issues/829) / [#830](https://github.com/shinyaoguri/metaphor/issues/830) / [#831](https://github.com/shinyaoguri/metaphor/issues/831)、Epic [#854](https://github.com/shinyaoguri/metaphor/issues/854)
+- Issue [#801](https://github.com/shinyaoguri/metaphor/issues/801) / [#829](https://github.com/shinyaoguri/metaphor/issues/829) / [#830](https://github.com/shinyaoguri/metaphor/issues/830) / [#831](https://github.com/shinyaoguri/metaphor/issues/831) / [#914](https://github.com/shinyaoguri/metaphor/issues/914)、Epic [#854](https://github.com/shinyaoguri/metaphor/issues/854)
 - Issue [#800](https://github.com/shinyaoguri/metaphor/issues/800) / PR [#823](https://github.com/shinyaoguri/metaphor/pull/823) — `.subtract` の α（本 ADR で扱いを改める）

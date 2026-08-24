@@ -6,6 +6,10 @@ import simd
 /// It owns an independent Canvas3D, so it draws 3D content separately from the main canvas.
 /// The result is obtained as an MImage and can be drawn to the main canvas with `image()`.
 ///
+/// The buffer **starts out transparent** (alpha 0), like ``Graphics`` (the 2D offscreen buffer),
+/// so a 3D layer can sit over the main canvas without covering what is underneath.
+/// Call ``background(_:)-(Color)`` for an opaque backdrop (#914).
+///
 /// ```swift
 /// let pg3d = createGraphics3D(800, 600)
 /// pg3d.beginDraw()
@@ -69,8 +73,11 @@ public final class Graphics3D {
         // renderer の commandQueue を共有することで、メインキャンバスから
         // pg3d.texture を読む際に commit-order 保証で自動同期される。
         self.commandQueue = commandQueue
+        // 下地は透明で始める（#914）。理由は Graphics（2D）と同じで、
+        // オフスクリーンは層として重ねるのが主用途のため。
         self.textureManager = try TextureManager(
-            device: device, width: width, height: height, sampleCount: 1
+            device: device, width: width, height: height,
+            clearColor: .clear, sampleCount: 1
         )
         self.canvas3D = try Canvas3D(
             device: device,
@@ -177,9 +184,10 @@ public final class Graphics3D {
     /// `background(0, 0, 0, 0)` returns the backdrop to transparent. This is what lets a
     /// `Graphics3D` layer sit in the foreground of a `MergePass(.alpha)` (#830).
     ///
-    /// The default backdrop is **opaque black**, matching ``Graphics`` (the 2D offscreen
-    /// buffer). For a layer that should start out transparent, call
-    /// `background(0, 0, 0, 0)` explicitly.
+    /// The default backdrop is **transparent**, matching ``Graphics`` (the 2D offscreen
+    /// buffer), so a fresh buffer layers without covering what is underneath (#914). Call this
+    /// with an opaque color when the layer needs a solid backdrop; `background(0, 0, 0, 0)`
+    /// returns it to transparent.
     ///
     /// Calling it between ``beginDraw(time:)`` and ``endDraw(wait:)`` **takes effect on
     /// that frame**. Calling it outside them takes effect from the next

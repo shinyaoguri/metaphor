@@ -7,6 +7,10 @@ import simd
 /// It owns an independent Canvas2D, so it draws separately from the main canvas.
 /// The result is obtained as an MImage and can be drawn to the main canvas with `image()`.
 ///
+/// The buffer **starts out transparent** (alpha 0), so it can be layered over the main canvas
+/// or placed in the foreground of a `MergePass(.alpha)` without covering what is underneath.
+/// Call ``background(_:)-(Color)`` for an opaque backdrop (#914).
+///
 /// ```swift
 /// let pg = createGraphics(400, 400)
 /// pg.beginDraw()
@@ -72,8 +76,12 @@ public final class Graphics {
         // pg.texture を読む際に Metal の同一キュー内 commit-order 保証で
         // 自動的に順序付けされ、明示的な GPU 待機が不要になる。
         self.commandQueue = commandQueue
+        // オフスクリーンは「層」として使うのが主用途なので、下地は透明で始める（#914）。
+        // 不透明な黒で始めると image() や MergePass(.alpha) の前景に置いたときに
+        // 下のものを覆ってしまう。従来の黒い下地が要るときは background(0) を呼ぶ。
         self.textureManager = try TextureManager(
-            device: device, width: width, height: height, sampleCount: 1)
+            device: device, width: width, height: height,
+            clearColor: .clear, sampleCount: 1)
         self.canvas = try Canvas2D(
             device: device,
             shaderLibrary: shaderLibrary,
@@ -83,6 +91,12 @@ public final class Graphics {
             sampleCount: 1
         )
         self.targetRotator = OffscreenTargetRotator(textureManager: textureManager)
+        // Canvas2D は「いまレンダーパスに載っているクリア色」を覚えていて、それと同じ色の
+        // background() はクリアに任せてクワッドを省く（Canvas2D+Background）。既定値は
+        // メインキャンバス向けの不透明な黒なので、オフスクリーンの実際のクリア色（透明）へ
+        // 揃えないと、初回パスの background(0) が「同じ色だから省略」と誤判定されて
+        // 透明のまま残る（#914）。
+        self.canvas.appliedClearColor = SIMD4<Float>(0, 0, 0, 0)
         self.canvas.onSetClearColor = { [weak textureManager] r, g, b, a in
             textureManager?.setClearColor(TextureManager.premultipliedClearColor(r, g, b, a))
         }
@@ -173,8 +187,13 @@ public final class Graphics {
 
     // MARK: - Drawing Methods (forwarded to Canvas2D)
 
-    /// Sets the background color.
-    /// - Parameter color: The background color.
+    /// Repaints the backdrop with a solid color.
+    ///
+    /// The backdrop of a fresh buffer is **transparent** (#914), so this is what makes it opaque.
+    /// **The background replaces rather than composites** (ADR-0012 / #829): an alpha below 1 goes
+    /// in as it is, and `background(0, 0, 0, 0)` returns the backdrop to transparent.
+    ///
+    /// - Parameter color: The background color (straight alpha).
     public func background(_ color: Color) { canvas.background(color) }
 
     /// Sets the background from a grayscale value.
