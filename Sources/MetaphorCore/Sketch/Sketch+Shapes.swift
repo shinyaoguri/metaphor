@@ -685,6 +685,13 @@ extension Sketch {
     /// - Note: Affects **2D only** (the 3D batch draw is ``drawInstanced(_:transforms:)``.
     ///   ADR-0005).
     ///
+    /// - Important: The buffer is drawn byte for byte, so a compute kernel that fills it has to
+    ///   declare the struct in ``CircleInstance``'s memory order — `position` at 0, `diameter`
+    ///   at 8, padding at 12, `color` at 16, stride 32 — not in the alphabetical order the
+    ///   properties are documented in. The wrong order compiles without a warning and draws
+    ///   nothing at all; the MSL definition to paste is in the documentation for
+    ///   ``CircleInstance``.
+    ///
     /// - Parameters:
     ///   - instances: The GPU buffer holding the ``CircleInstance`` values.
     ///   - count: The number of instances to draw. The whole buffer when omitted.
