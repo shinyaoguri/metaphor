@@ -656,8 +656,9 @@ def probe_capture(
 
 GYAZO_UPLOAD_URL = "https://upload.gyazo.com/api/upload"
 GYAZO_HOST = "i.gyazo.com"
-# トークンは都度読む（平文の環境変数として常駐させない）。環境変数に持たせてよいのは
-# 参照文字列だけで、値ではない。
+# トークンは都度読む（平文の環境変数として常駐させない）。**手元では**環境変数に
+# 持たせてよいのは参照文字列だけで、値ではない。CI だけが例外で、そこでは GitHub
+# Secrets が正本になる（`gyazo_token` を参照）。
 GYAZO_TOKEN_REF = os.environ.get(
     "GYAZO_TOKEN_REF", "op://Automation/Gyazo API/credential"
 )
@@ -675,10 +676,27 @@ def gyazo_token() -> str:
     `secret-read` が無い環境では `op read` に落ちる。そちらはロック中に承認待ちで
     返らない（実測で 2 分以上ハングした）ので、落ちたことは黙らず 1 度だけ知らせる。
 
-    `--check` / `--compile-only` からは決して呼ばない（CI にトークンは無い）。
+    **CI では 1Password に届かない**ので、そこだけ GitHub Secrets を正本にする。
+    ログは自動マスキングされ、ランナーはジョブごとに破棄され、fork からの PR には
+    渡らない。`GITHUB_ACTIONS` が立っているときに限るのは、手元で誤って平文を
+    export したまま常駐する事故を防ぐため（上の `GYAZO_TOKEN_REF` の規律は手元では
+    そのまま生きている）。
+
+    撮らない経路（`--check` / `--compile-only` / `--verify-bytes`）からは呼ばない。
     """
     if _GYAZO_TOKEN:
         return _GYAZO_TOKEN[0]
+
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        token = os.environ.get("GYAZO_TOKEN", "").strip()
+        if not token:
+            raise ShotError(
+                "CI で Gyazo のトークンが読めない（環境変数 GYAZO_TOKEN が空）。"
+                "リポジトリの Actions secrets に GYAZO_TOKEN を登録し、"
+                "ワークフローの env で渡してください"
+            )
+        _GYAZO_TOKEN.append(token)
+        return token
 
     reader = shutil.which("secret-read")
     if reader is not None:

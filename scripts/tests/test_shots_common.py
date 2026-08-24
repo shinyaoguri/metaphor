@@ -720,6 +720,12 @@ class TestGyazoToken(CommonTestCase):
         self._path = os.environ.get("PATH", "")
         os.environ["PATH"] = f"{self.bin}:/usr/bin:/bin"
         self.addCleanup(os.environ.__setitem__, "PATH", self._path)
+        # このクラスが見るのは**手元の**読み口。CI で走ると GITHUB_ACTIONS が
+        # 立っていて GitHub Secrets の分岐へ逸れるので、剥がしてから測る
+        # （CI 側の経路は TestGyazoTokenOnCI が見る）。
+        gha = os.environ.pop("GITHUB_ACTIONS", None)
+        if gha is not None:
+            self.addCleanup(os.environ.__setitem__, "GITHUB_ACTIONS", gha)
 
     def install(self, name: str, body: str) -> None:
         path = self.bin / name
@@ -772,6 +778,63 @@ class TestGyazoToken(CommonTestCase):
         with self.assertRaises(common.ShotError) as caught:
             common.gyazo_token()
         self.assertNotIn("super-secret-token", str(caught.exception))
+
+
+class TestGyazoTokenOnCI(CommonTestCase):
+    """CI では GitHub Secrets が正本。
+
+    1Password は CI から届かない。届かないだけでなく、**探しに行くこと自体が害**に
+    なる — `op read` はロック中に承認待ちで返らず、無人のジョブがタイムアウトまで
+    ぶら下がる（手元で 2 分ハングした実測が `gyazo_token` のコメントにある）。
+    だからここは「値が読めるか」だけでなく**手元の読み口へ落ちないこと**を見る。
+    """
+
+    def setUp(self) -> None:
+        super().setUp()
+        common._GYAZO_TOKEN.clear()
+        self.addCleanup(common._GYAZO_TOKEN.clear)
+        # 呼ばれたら分かるよう、手元の読み口を「必ず落ちる」偽物で塞ぐ。
+        self.bin = self.root / "bin"
+        self.bin.mkdir()
+        for name in ("secret-read", "op"):
+            path = self.bin / name
+            path.write_text("#!/bin/sh\necho 'must not be called' >&2\nexit 1\n")
+            path.chmod(0o755)
+        path_before = os.environ.get("PATH", "")
+        os.environ["PATH"] = f"{self.bin}:/usr/bin:/bin"
+        self.addCleanup(os.environ.__setitem__, "PATH", path_before)
+        gha_before = os.environ.get("GITHUB_ACTIONS")
+        os.environ["GITHUB_ACTIONS"] = "true"
+        if gha_before is None:
+            self.addCleanup(os.environ.pop, "GITHUB_ACTIONS", None)
+        else:
+            self.addCleanup(os.environ.__setitem__, "GITHUB_ACTIONS", gha_before)
+
+    def set_secret(self, value: str) -> None:
+        os.environ["GYAZO_TOKEN"] = value
+        self.addCleanup(os.environ.pop, "GYAZO_TOKEN", None)
+
+    def test_the_secret_comes_from_the_environment(self) -> None:
+        self.set_secret("from-actions-secret")
+        self.assertEqual(common.gyazo_token(), "from-actions-secret")
+
+    def test_a_missing_secret_says_how_to_fix_it(self) -> None:
+        os.environ.pop("GYAZO_TOKEN", None)
+        with self.assertRaises(common.ShotError) as caught:
+            common.gyazo_token()
+        self.assertIn("GYAZO_TOKEN", str(caught.exception))
+
+    def test_an_empty_secret_is_not_used(self) -> None:
+        """空を掴んだまま進むと、curl が意味の分からない失敗をする。"""
+        self.set_secret("   ")
+        with self.assertRaises(common.ShotError):
+            common.gyazo_token()
+
+    def test_the_value_is_read_only_once(self) -> None:
+        self.set_secret("from-actions-secret")
+        common.gyazo_token()
+        os.environ["GYAZO_TOKEN"] = "changed-underneath"
+        self.assertEqual(common.gyazo_token(), "from-actions-secret")
 
 
 class TestUploadCommand(CommonTestCase):

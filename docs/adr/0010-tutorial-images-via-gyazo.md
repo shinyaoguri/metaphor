@@ -283,6 +283,59 @@ Gyazo は同じバイト列に同じ URL を返すので、この範囲の中で
 前に撮られたのか後に撮られたのかを判定できない。来歴の拡張は方式本体である #781 の受け入れ
 条件へ送る（本 Amendment のスコープは規範であって機構ではない）。
 
+## Amendment 2026-08-24 — 別マシン・別 GPU・別 Xcode でも一致した
+
+上の Amendment 2026-08-23 が「保証しない（未測定）」に並べた 3 項目のうち、**別のマシン /
+別の GPU** と **Xcode ツールチェーンの更新** を実測した。結論は**一致する**。
+
+測れるようになったのは、`--verify-bytes`（[#1105](https://github.com/shinyaoguri/metaphor/pull/1105)）を
+足したため。撮り直して台帳の `sha256` と突き合わせ、**Gyazo へは上げない**ので
+トークンが要らない。GitHub-hosted の `macos-26` ランナーには GPU があるので、同じ検査を
+手元と CI の両方で走らせて突き合わせられる（`.github/workflows/shot-reproducibility.yml`）。
+
+### 測った差
+
+| | 手元 | GitHub-hosted |
+|---|---|---|
+| GPU | Apple M3 Max | `macos-26-arm64` ランナー（イメージ 20260728.0273） |
+| macOS | 26.6.2 | 26 |
+| Xcode | 26.6 | 26.4 |
+| ffmpeg | 9.0.1 | 8.1.2 |
+
+この差の上で、静止画も動きの GIF も**同じバイト列**が出た（run
+[32681341740](https://github.com/shinyaoguri/metaphor/actions/runs/32681341740) /
+[32681886696](https://github.com/shinyaoguri/metaphor/actions/runs/32681886696)）:
+
+```
+rotateY(_:)           b73bdf09…
+rotateY(_:) (motion)  c8054a00…
+rotate(_:)            10b6d7a0…
+rotate(_:) (motion)   c29268e9…
+```
+
+**ffmpeg の版が違っても GIF が一致した**のは予想外だったので特記しておく。この 1 点から
+言えるのは「GIF のエンコードは決定的で、8.1 と 9.0 の間で出力が変わっていない」ことだけで、
+版が上がれば変わりうる。だから `shot-reproducibility.yml` は入れた版をログに残す。
+
+### まだ測っていない
+
+**macOS のメジャーアップデートを挟んだ場合**。上の比較は両方とも macOS 26 で、メジャー版を
+またいでいない。ここは依然として未測定で、「環境が変わった後の初回は基準の張り直し」の規則
+（Amendment 2026-08-23）はそのまま生きる。
+
+### 帰結
+
+**撮影そのものを CI で走らせられる。** 撮った絵が手元と同じバイト列になる以上、`upload()` の
+「中身が同じなら上げ直さない」が効き、CI で撮っても Gyazo に無駄な URL は積まれない。残る
+条件は Gyazo のトークンを CI に置くことだけになった。
+
+### 副産物: 台帳の陳腐化が見えるようになった
+
+`--verify-bytes` は「撮り直しても台帳と一致しない」＝**実装が変わって絵が変わったのに撮り
+直していない**エントリを拾う。#586 が指摘していた穴（`snippetHash` の材料はスニペットと
+撮影設定だけで `Sources/` の実装が入らない）を埋める検査として使える。実際 `rotateY(_:)` /
+`rotate(_:)` がそれで見つかった（[#1112](https://github.com/shinyaoguri/metaphor/issues/1112)）。
+
 ## References
 
 - [ADR-0008](0008-docc-reference-images-via-gyazo.md) — DocC の画像を Gyazo へ（本 ADR は
