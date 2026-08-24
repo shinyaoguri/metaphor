@@ -31,10 +31,10 @@ public final class OrbitCamera {
 
     // MARK: - Sensitivity
 
-    /// マウスドラッグ回転の感度（ラジアン / ピクセル）。
+    /// How far a drag rotates the camera, in radians per pixel.
     ///
-    /// ``damping`` とは独立です。ドラッグ 1 ピクセルあたりの回転量は
-    /// ダンピングの有無にかかわらずこの値になります。
+    /// Independent of ``damping``: one pixel of drag turns the camera by this
+    /// much whether or not damping is on.
     public var sensitivity: Float = 0.005
 
     /// スクロールホイールズームの感度
@@ -56,20 +56,24 @@ public final class OrbitCamera {
 
     // MARK: - Damping
 
-    /// ダンピング係数（0 = ダンピングなし、1に近いほど慣性が強い）。
+    /// Inertia: how long the camera keeps gliding after you let go.
     ///
-    /// 決めるのは**ドラッグを離したあとの余韻の長さだけ**です。ドラッグ中の回転量は
-    /// ``sensitivity`` だけで決まり、この値を上げても下げても変わりません（#1099）。
+    /// `0` stops it the moment you let go; values closer to `1` glide longer.
     ///
-    /// 有効範囲は 0 以上 1 未満です。1 以上を代入してもプロパティの値はそのまま保たれますが、
-    /// 内部では 1 未満に丸めて扱います（1 では余韻が永久に減衰しないため）。
+    /// This sets **only how long the glide lasts**. How far a drag rotates the
+    /// camera is decided by ``sensitivity`` alone and does not change when you
+    /// raise or lower this value (Issue #1099).
+    ///
+    /// The useful range is `0 ..< 1`. Reading the property gives back whatever
+    /// you assigned, but a value of `1` or more is treated as slightly less
+    /// than `1` internally, because a glide that never decays never stops.
     public var damping: Float = 0
 
-    /// 実際の計算に使うダンピング係数（`[0, 1)` に丸めたもの）。
+    /// ``damping`` clamped to `[0, 1)`, which is what the math actually uses.
     ///
-    /// 上限を 1 未満に留めるのは、`damping == 1` だと
-    /// ``handleMouseDrag(dx:dy:)`` の利得 `1 - damping` がゼロになり
-    /// カメラが一切動かなくなるためです。
+    /// The upper bound stays below `1` because at exactly `1` the
+    /// ``handleMouseDrag(dx:dy:)`` gain of `1 - damping` would be zero and no
+    /// input would ever reach the camera.
     private var effectiveDamping: Float {
         min(max(damping, 0), 0.999)
     }
@@ -110,18 +114,19 @@ public final class OrbitCamera {
 
     // MARK: - Input Handling
 
-    /// マウスドラッグの差分を適用してカメラを回転させます。
+    /// Rotates the camera by one drag delta.
     ///
-    /// ``damping`` が有効なときは角度ではなく速度へ積みますが、その際に
-    /// `1 - damping` を掛けて利得を打ち消します。速度は毎フレーム `damping` 倍に
-    /// 減衰しながら角度へ足されるので、1 回の入力が最終的に生む回転量は
-    /// `d * (1 - damping) * (1 + damping + damping² + …) = d` となり、
-    /// ダンピング無しの場合と一致します。補正を省くと総回転量が
-    /// `1 / (1 - damping)` 倍に膨らみます（#1099）。
+    /// With ``damping`` on, the delta goes into the velocity rather than
+    /// straight into the angles, scaled by `1 - damping` to cancel the gain of
+    /// the integration that follows. ``update()`` adds the velocity to the
+    /// angles every frame and then decays it, so one input eventually turns the
+    /// camera by `d * (1 - damping) * (1 + damping + damping^2 + ...) = d` —
+    /// the same amount as with no damping at all. Without the scaling the total
+    /// would grow by `1 / (1 - damping)` (Issue #1099).
     ///
     /// - Parameters:
-    ///   - dx: 水平ドラッグ量（ピクセル）。
-    ///   - dy: 垂直ドラッグ量（ピクセル）。
+    ///   - dx: Horizontal drag distance, in pixels.
+    ///   - dy: Vertical drag distance, in pixels.
     public func handleMouseDrag(dx: Float, dy: Float) {
         let dAzimuth = -dx * sensitivity
         let dElevation = -dy * sensitivity

@@ -1759,7 +1759,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 ### `final class OrbitCamera` -- マウスドラッグとスクロールで3Dカメラオービットをインタラクティブに制御します。
 
 - `var azimuth: Float` -- 水平方向の角度（ラジアン、Y軸周りの回転）
-- `var damping: Float` -- ダンピング係数（0 = ダンピングなし、1に近いほど慣性が強い）。
+- `var damping: Float` -- Inertia: how long the camera keeps gliding after you let go.
 - `var distance: Float` -- カメラからターゲットまでの距離
 - `var elevation: Float` -- 垂直方向の角度（ラジアン、水平面からの上下回転）
 - `var eye: SIMD3<Float> { get }` -- 球面座標をデカルト座標に変換してカメラ位置を計算します。
@@ -1767,13 +1767,13 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var maxElevation: Float` -- 最大仰角（ラジアン）
 - `var minDistance: Float` -- ターゲットからの最小許容距離
 - `var minElevation: Float` -- 最小仰角（ラジアン）
-- `var sensitivity: Float` -- マウスドラッグ回転の感度（ラジアン / ピクセル）。
+- `var sensitivity: Float` -- How far a drag rotates the camera, in radians per pixel.
 - `var target: SIMD3<Float>` -- カメラが注視する点
 - `var up: SIMD3<Float> { get }` -- カメラの上方向ベクトル
 - `var zoomSensitivity: Float` -- スクロールホイールズームの感度
 - `init()` -- デフォルトパラメータで新しい OrbitCamera を作成します。
 - `init(distance: Float, azimuth: Float = 0, elevation: Float = 0.3)` -- カスタム初期設定で新しい OrbitCamera を作成します。
-- `func handleMouseDrag(dx: Float, dy: Float)` -- マウスドラッグの差分を適用してカメラを回転させます。
+- `func handleMouseDrag(dx: Float, dy: Float)` -- Rotates the camera by one drag delta.
 - `func handleScroll(delta: Float)` -- スクロール入力を適用してズーム距離を調整します。
 - `func reset(distance: Float = 500, azimuth: Float = 0, elevation: Float = 0.3)` -- カメラを指定された状態にリセットします。
 - `func update()` -- 速度にダンピングを適用し角度を更新します（毎フレーム呼び出し）。
