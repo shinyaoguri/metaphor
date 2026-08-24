@@ -398,6 +398,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func noTint()` -- Clears the image tint.
   - Note: Affects **2D only** (the counterpart to `tint(_:)-(Color)`; ADR-0005).
 - `func orbitControl()` -- オービットカメラコントロールを有効にします（`draw()` 内で呼び出してください）。
+  - Note: The frame a button goes down in is measured from the press point, not from where the cursor was a frame earlier, so a click that lands far from the last known cursor position does not spin the camera (Issue #1100).
 - `func ortho(left: Float? = nil, right: Float? = nil, bottom: Float? = nil, top: Float? = nil, near: Float? = nil, far: Float? = nil)` -- Sets an orthographic projection.
   - Important: Following the convention of projection matrices, `bottom` is the side where y in view space is **smaller**. Because y in metaphor points down the screen just as it does in 2D, `bottom` corresponds to the **top** edge of the screen and `top` to the **bottom** edge. Passing the two the other way around flips the image vertically.
   - Note: Affects **3D only** (2D drawing is not affected by the projection. ADR-0005).

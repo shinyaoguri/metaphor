@@ -1081,14 +1081,22 @@ extension SketchContext {
     /// オービットカメラコントロールを有効にします（描画フェーズ中に呼び出してください）。
     ///
     /// マウスドラッグでカメラを回転し、スクロールでズームします。
+    ///
+    /// - Note: The frame a button goes down in is measured from the press point, not
+    ///   from where the cursor was a frame earlier, so a click that lands far from the
+    ///   last known cursor position does not spin the camera (Issue #1100).
     public func orbitControl() {
         let inp = input
 
         // マウスドラッグでカメラを回転
         if inp.isMouseDown {
-            let dx = inp.mouseX - inp.pmouseX
-            let dy = inp.mouseY - inp.pmouseY
-            orbitCamera.handleMouseDrag(dx: dx, dy: dy)
+            // 押下が届いたフレームは押下位置を起点に測る。押下は移動ではないので、
+            // カーソルが押下位置まで飛んだぶんを回してしまわない（#1100）。
+            // 起点を押下位置に取るので、押下とドラッグが同じフレームに来たとき
+            // （ライブビューアが溜めたイベントを一括で流す経路）はドラッグぶんだけ残る。
+            let originX = inp.isMousePressedThisFrame ? inp.mousePressX : inp.pmouseX
+            let originY = inp.isMousePressedThisFrame ? inp.mousePressY : inp.pmouseY
+            orbitCamera.handleMouseDrag(dx: inp.mouseX - originX, dy: inp.mouseY - originY)
         }
 
         // スクロールでズーム
