@@ -442,3 +442,113 @@ struct ShaderFileWatcherTests {
         #expect(inbox.paths.isEmpty)
     }
 }
+
+// MARK: - C-11: Shader Hot Reload
+
+@Suite("C-11 Shader Hot Reload", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
+@MainActor
+struct ShaderHotReloadTests {
+
+    @Test("ShaderLibrary reload replaces library and clears function cache")
+    func reloadClearsCacheAndReregisters() throws {
+        let device = MTLCreateSystemDefaultDevice()!
+        let library = try ShaderLibrary(device: device)
+
+        let source1 = """
+            #include <metal_stdlib>
+            using namespace metal;
+            kernel void myKernel(uint gid [[thread_position_in_grid]]) {}
+            """
+        let key = "test.hotreload"
+        try library.register(source: source1, as: key)
+
+        // 関数を取得してキャッシュに入れる
+        let fn1 = library.function(named: "myKernel", from: key)
+        #expect(fn1 != nil)
+
+        // reload で再登録
+        let source2 = """
+            #include <metal_stdlib>
+            using namespace metal;
+            kernel void myKernel(uint gid [[thread_position_in_grid]]) {}
+            kernel void myKernel2(uint gid [[thread_position_in_grid]]) {}
+            """
+        try library.reload(key: key, source: source2)
+
+        // 新しい関数が取得できる
+        let fn2 = library.function(named: "myKernel2", from: key)
+        #expect(fn2 != nil)
+
+        // 古い関数もまだ名前で取得可能（再登録されたソースに含まれるため）
+        let fn1Again = library.function(named: "myKernel", from: key)
+        #expect(fn1Again != nil)
+    }
+
+    @Test("invalidateFunctionCache clears cached functions")
+    func invalidateFunctionCache() throws {
+        let device = MTLCreateSystemDefaultDevice()!
+        let library = try ShaderLibrary(device: device)
+
+        let source = """
+            #include <metal_stdlib>
+            using namespace metal;
+            kernel void cacheTestKernel(uint gid [[thread_position_in_grid]]) {}
+            """
+        let key = "test.cache"
+        try library.register(source: source, as: key)
+
+        // キャッシュに入れる
+        _ = library.function(named: "cacheTestKernel", from: key)
+
+        // キャッシュクリア
+        library.invalidateFunctionCache(for: key)
+
+        // ライブラリは残っているので再取得可能
+        let fn = library.function(named: "cacheTestKernel", from: key)
+        #expect(fn != nil)
+    }
+
+    @Test("CustomMaterial reload updates fragment function")
+    func customMaterialReload() throws {
+        let device = MTLCreateSystemDefaultDevice()!
+        let library = try ShaderLibrary(device: device)
+
+        let source = """
+            #include <metal_stdlib>
+            using namespace metal;
+
+            \(BuiltinShaders.canvas3DStructs)
+
+            fragment float4 reloadTestFrag(
+                Canvas3DVertexOut in [[stage_in]],
+                constant Canvas3DUniforms &uniforms [[buffer(1)]],
+                constant Light3D *lights [[buffer(2)]],
+                constant Material3D &material [[buffer(3)]]
+            ) {
+                return in.color;
+            }
+            """
+
+        let key = "test.material.reloadTest"
+        try library.register(source: source, as: key)
+        let fn = library.function(named: "reloadTestFrag", from: key)!
+
+        let mat = CustomMaterial(
+            fragmentFunction: fn, functionName: "reloadTestFrag", libraryKey: key)
+
+        // reload（同じソース）
+        library.invalidateFunctionCache(for: key)
+        try mat.reload(shaderLibrary: library)
+
+        #expect(mat.fragmentFunctionName == "reloadTestFrag")
+    }
+
+    @Test("Canvas3D clearCustomPipelineCache preserves dimensions")
+    func canvas3DClearCache() throws {
+        let renderer = try MetaphorRenderer()
+        let canvas3D = try Canvas3D(renderer: renderer)
+        canvas3D.clearCustomPipelineCache()
+        #expect(canvas3D.width == 1920)
+        #expect(canvas3D.height == 1080)
+    }
+}
