@@ -390,9 +390,12 @@ jobs:
       # 戻さない。公開済みの部への導線の有無もここで見る。
       - name: Verify tutorial publication status is up to date
         run: python3 scripts/generate-tutorial-status.py --check
-      # 画像そのものは比較しない（GPU 出力はビット単位で再現しない）。
-      # manifest に記録した撮影時のソース指紋と現在のソースを突き合わせ、
+      # 画像そのものは比較しない（撮り直しには GPU と、スニペット 1 本ごとの起動
+      # 時間が要る）。manifest に記録した撮影時のソース指紋と現在のソースを突き合わせ、
       # 「スケッチを変えたのに撮り直していない」だけを捕まえる（#486）。
+      # なお「GPU 出力が非決定だからバイト比較できない」わけではない — 同じマシン・
+      # 同じ実装・同じ OS ならバイト単位で一致する（#586 / #784）。別マシン・別 GPU を
+      # またいだ再現性は shot-reproducibility.yml が実測する。
       - name: Verify tutorial result images are up to date
         run: python3 scripts/generate-tutorial-shots.py --check
       # リファレンス（DocC）の実行結果画像。台帳との突き合わせはチュートリアルと
