@@ -51,6 +51,14 @@ extension Sketch {
     /// - Note: It blocks the main thread to wait for the GPU to finish (the same as Processing).
     ///   Sketches that never call `loadPixels()` pay no cost at all.
     ///
+    /// - Note: Because it waits, it is currently also **the only public API that makes this
+    ///   frame's ``Sketch/compute()`` results readable from the CPU**: the command buffer it
+    ///   commits is the same one that carried the frame's dispatches, so a ``GPUBuffer`` read
+    ///   after it returns sees what the kernels wrote. That holds only on the same-frame path
+    ///   above — with shadows on, or outside `draw()`, it waits on a separate command buffer
+    ///   and this frame's compute is still in flight. A read back that does not go through the
+    ///   pixel path is tracked in Issue #1136.
+    ///
     /// - Note: Because the read back splits the render pass internally, 3D geometry drawn on
     ///   opposite sides of a `loadPixels()` is not depth compared (depth is cleared in the
     ///   continuation pass).

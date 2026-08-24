@@ -150,7 +150,9 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func colorMode(_ space: ColorSpace, _ max1: Float? = nil, _ max2: Float? = nil, _ max3: Float? = nil, _ maxA: Float? = nil)` -- Sets the color mode with a maximum value for each channel.
   - Note: Affects **both 2D and 3D** (channel interpretation for `fill(_:)-(Color)` and `stroke(_:)-(Color)` stays in step across both canvases; ADR-0005).
 - `func compute()` -- 各フレームの前に GPU コンピュート処理を実行します（オプション）。
-- `func computeBarrier()` -- Inserts a barrier to synchronize dispatches (only inside `Sketch/compute()`).
+- `func computeBarrier()` -- Inserts a barrier between compute dispatches (only inside `Sketch/compute()`).
+  - Note: **With the current encoder the call changes nothing.** Every dispatch of a frame is encoded into one compute pass created with `MTLDispatchType.serial`, where the dispatches run in encode order and each one already sees what the earlier ones wrote, including writes made by other threads. A dependent chain is therefore correct with or without the barrier today (measured in Issue #1093).
+  - Important: **It stops being a no-op the moment the pass becomes concurrent.** The same chain re-encoded with `MTLDispatchType.concurrent` reads stale values without the barrier and is correct with it. That is what this API exists for, so keep calling it wherever a dispatch genuinely depends on an earlier one: it costs nothing now, it states the dependency for the next reader, and it is what keeps the chain correct if the pass ever moves to concurrent dispatch.
   - Important: A call from `setup()` or `draw()` does nothing. Debug builds warn once (Issue #1092).
 - `func cone(radius: Float, height: Float, detail: Int = 24)` -- Draws a cone.
   - Note: Affects **3D only** (it is drawn on the 3D canvas. ADR-0005).
@@ -160,15 +162,17 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
   - Note: The mesh that is created can be drawn in **3D only** (`mesh(_:)` / `drawInstanced(_:transforms:)`. ADR-0005).
 - `func createBoxMesh(_ width: Float, _ height: Float, _ depth: Float) -> Mesh?` -- Creates a box mesh (without drawing it).
   - Note: The mesh that is created can be drawn in **3D only** (`mesh(_:)` / `drawInstanced(_:transforms:)`. ADR-0005).
-- `func createBuffer<T>(_ data: [T]) -> GPUBuffer<T>?` -- 指定したデータで初期化された GPU バッファを作成します。
-- `func createBuffer<T>(count: Int, type: T.Type) -> GPUBuffer<T>?` -- 指定した要素数と型の GPU バッファを作成します。
+- `func createBuffer<T>(_ data: [T]) -> GPUBuffer<T>?` -- Creates a GPU buffer initialized with the given data.
+  - Important: Reading the buffer back does **not** wait for the GPU. See `GPUBuffer` for when a kernel's writes actually become visible to the CPU.
+- `func createBuffer<T>(count: Int, type: T.Type) -> GPUBuffer<T>?` -- Creates a GPU buffer of the given element count and type.
+  - Important: Reading the buffer back does **not** wait for the GPU. See `GPUBuffer` for when a kernel's writes actually become visible to the CPU.
 - `func createCanvas(width: Int, height: Int)` -- キャンバスサイズを設定します（`setup()` 内で呼び出してください、p5.js スタイル）。
   - Important: `draw()` の中からの呼び出しは警告を出して無視されます（#856）。リサイズは全インフライトフレームの完了待ちを伴うため、フレームの中では成立しません。
 - `func createCapture(width: Int = 1280, height: Int = 720, device: CaptureDeviceInfo) -> CaptureDevice` -- Creates a capture device for the given camera and **starts capturing automatically**.
 - `func createCapture(width: Int = 1280, height: Int = 720, deviceName: String) -> CaptureDevice` -- Creates a capture device by selecting a camera by name and **starts capturing
 - `func createCapture(width: Int = 1280, height: Int = 720, position: CameraPosition? = nil) -> CaptureDevice` -- Creates a camera capture device and **starts capturing automatically**
   - Note: A device with `isAvailable == false` is returned when camera permission has been denied. Disconnection of the camera in use can be detected with `CaptureDevice/onDisconnect`.
-- `func createComputeKernel(source: String, function: String) throws -> ComputeKernel` -- MSL ソースコードから GPU コンピュートカーネルを作成します。
+- `func createComputeKernel(source: String, function: String) throws -> ComputeKernel` -- Creates a GPU compute kernel from Metal Shading Language source.
 - `func createConeMesh(radius: Float, height: Float, detail: Int = 24) -> Mesh?` -- Creates a cone mesh (without drawing it).
   - Note: The mesh that is created can be drawn in **3D only** (`mesh(_:)` / `drawInstanced(_:transforms:)`. ADR-0005).
 - `func createCylinderMesh(radius: Float, height: Float, detail: Int = 24) -> Mesh?` -- Creates a cylinder mesh (without drawing it).
@@ -228,8 +232,10 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func disableShadows()` -- Disables shadow mapping.
   - Note: Affects **3D only** (ADR-0005).
 - `func dispatch(_ kernel: ComputeKernel, threads: Int, configure: (any MTLComputeCommandEncoder) -> Void)` -- Dispatches a 1D compute kernel (only effective inside `Sketch/compute()`).
+  - Important: The call only **encodes** the kernel into the frame's command buffer. The GPU does not start it until the frame is committed, so an output `GPUBuffer` read later in the same `compute()` still holds the contents from before the dispatch. See `GPUBuffer` for when the writes become visible to the CPU.
   - Important: A call from `setup()` or `draw()` does nothing. Debug builds warn once (Issue #1092).
 - `func dispatch(_ kernel: ComputeKernel, width: Int, height: Int, configure: (any MTLComputeCommandEncoder) -> Void)` -- Dispatches a 2D compute kernel (only effective inside `Sketch/compute()`).
+  - Important: The call only **encodes** the kernel into the frame's command buffer. The GPU does not start it until the frame is committed, so an output `GPUBuffer` read later in the same `compute()` still holds the contents from before the dispatch. See `GPUBuffer` for when the writes become visible to the CPU.
   - Important: A call from `setup()` or `draw()` does nothing. Debug builds warn once (Issue #1092).
 - `func draw()` -- 1フレームを描画します（描画メソッドを直接呼び出します）。
 - `func drawInstanced(_ mesh: Mesh, transforms: [float4x4])` -- Draws the same mesh in one batch with multiple transforms (explicit instancing).
@@ -339,6 +345,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func loadPixels()` -- Reads the canvas contents **as of the moment of the call** back into the `pixels` array
   - Important: Reading back the same frame works on the **normal path with shadows off**. With shadows enabled (`enableShadows()`), `draw()` runs first as a recording pass and cannot be split, so what you read is **the contents of the most recently committed frame** (warned once). The same applies when it is called outside `draw()` (in `setup()` or between frames).
   - Note: It blocks the main thread to wait for the GPU to finish (the same as Processing). Sketches that never call `loadPixels()` pay no cost at all.
+  - Note: Because it waits, it is currently also **the only public API that makes this frame's `Sketch/compute()` results readable from the CPU**: the command buffer it commits is the same one that carried the frame's dispatches, so a `GPUBuffer` read after it returns sees what the kernels wrote. That holds only on the same-frame path above — with shadows on, or outside `draw()`, it waits on a separate command buffer and this frame's compute is still in flight. A read back that does not go through the pixel path is tracked in Issue #1136.
   - Note: Because the read back splits the render pass internally, 3D geometry drawn on opposite sides of a `loadPixels()` is not depth compared (depth is cleared in the continuation pass).
   - Note: `loadPixels()` is also a flush point for the 2D batch. On the immediate path with shadows off, stacking order is decided by **encode order** rather than call order, so 2D drawn **before** `loadPixels()` ends up behind 3D drawn **after** it. Draw the 2D you want in front of the 3D after `loadPixels()` (#832; the full list of triggers is in the 2026-08-16 addendum to [ADR-0003](https://github.com/shinyaoguri/metaphor/blob/main/docs/adr/0003-unified-command-stream.md)). Within each side of a `loadPixels()`, 2D still appears in front of 3D just as it does at the end of a frame.
 - `func loadShader(_ path: String, fragment: String) throws -> Shader2D` -- Loads a custom 2D fragment shader from an external MSL file.
@@ -1534,16 +1541,22 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func endRecord(to path: String) throws` -- 記録を停止し、キャプチャしたフレームをGIFファイルに書き出します。
 - `func endRecordAsync(to path: String) async throws` -- 記録を停止し、キャプチャしたフレームを非同期でGIFファイルに書き出します。
 
-### `final class GPUBuffer<T>` -- CPU と GPU の両方からアクセス可能な型付き GPU バッファを提供します。
+### `final class GPUBuffer<T>` -- A typed GPU buffer that both the CPU and the GPU can read and write.
+  - Important: **Reading this buffer never waits for the GPU.** `subscript(_:)`, `toArray()` and `contents` hand back the shared memory exactly as it stands at that instant. `Sketch/dispatch(_:threads:configure:)` only *encodes* the kernel into the frame's command buffer, and the GPU does not begin until that buffer is committed, so a value read later in the same `compute()` is the value from before the dispatch.
+  - Important: "Read it on the next frame" is not a guarantee either, because a command buffer completes asynchronously. The one public API that does wait is `Sketch/loadPixels()`: on the normal path (shadows off, called from `draw()`) it commits **the frame's command buffer, the same one that carried `compute()`**, and blocks until the GPU finishes, so this frame's kernel writes are readable once it returns. Being a pixel API it also brings its own render pass split (cleared depth, changed 2D/3D stacking order), and with `enableShadows()` on it cannot split the pass at all and so does **not** wait for this frame's compute.
+  - Note: Until a read back of its own exists (Issue #1136), the portable way to know that a result has landed is to have the kernel write a sentinel of its own — a frame counter, a "done" flag — and to read the payload only once the sentinel has changed. Comparing values that are "probably one frame behind" instead counts the lag itself as a disagreement.
 
-- `let buffer: any MTLBuffer` -- 基盤となる Metal バッファ
-- `var contents: UnsafeMutableBufferPointer<T> { get }` -- バッファ内容への直接アクセスを unsafe mutable buffer pointer として提供します。
-- `let count: Int` -- バッファ内の要素数
-- `init?(device: any MTLDevice, count: Int)` -- 指定された要素数でゼロ初期化された空のバッファを作成します。
-- `init?(device: any MTLDevice, data: [T])` -- 要素の配列で初期化されたバッファを作成します。
-- `func copyFrom(_ data: [T])` -- Swift 配列の要素をバッファにコピーします。
-- `func toArray() -> [T]` -- バッファの内容を Swift 配列にコピーします。
-- `subscript(index: Int) -> T { get set }` -- 指定されたインデックスの要素にアクセスします。
+- `let buffer: any MTLBuffer` -- The underlying Metal buffer.
+- `var contents: UnsafeMutableBufferPointer<T> { get }` -- Direct access to the buffer contents as an unsafe mutable buffer pointer.
+  - Important: Access through the pointer does **not** wait for the GPU, and the GPU may be writing the same bytes concurrently. See the discussion on `GPUBuffer`.
+- `let count: Int` -- The number of elements in the buffer.
+- `init?(device: any MTLDevice, count: Int)` -- Creates an empty buffer of the given element count, zero filled.
+- `init?(device: any MTLDevice, data: [T])` -- Creates a buffer initialized with an array of elements.
+- `func copyFrom(_ data: [T])` -- Copies the elements of a Swift array into the buffer.
+- `func toArray() -> [T]` -- Copies the buffer contents into a Swift array.
+  - Important: The copy does **not** wait for the GPU. It snapshots the shared memory as it stands, so a call made in the same `compute()` as the dispatch that fills the buffer returns the contents from before the kernel ran. See the discussion on `GPUBuffer`.
+- `subscript(index: Int) -> T { get set }` -- Accesses the element at the given index.
+  - Important: The read does **not** wait for the GPU. See the discussion on `GPUBuffer` for what is and is not guaranteed after a dispatch.
 
 ### `final class Graphics` -- Provides an offscreen 2D drawing buffer (the equivalent of Processing's
 
