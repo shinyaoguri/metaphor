@@ -46,6 +46,7 @@ metaphor のドキュメントは「誰が・何のために読むか」で分�
   - [design/roadmap-processing-unity.md](design/roadmap-processing-unity.md) — Processing / Unity ユーザー獲得ロードマップ（living document・Epic 一覧）
   - [design/live-tooling-params.md](design/live-tooling-params.md) — ライブツーリング基盤の設計。Parameter Store（A）と状態保持リロード（B）は producer / consumer とも実装済みで、インスペクタ（C）/ 往復レイテンシ（D）が叩き台（節ごとの状況は文書冒頭の表）
   - [design/v1-release-plan.md](design/v1-release-plan.md) — v1.0.0 リリース準備計画（readiness review・準備トラック・リリース条件）
+  - [design/app-bundle-distribution.md](design/app-bundle-distribution.md) — 完成作品を `.app` として配布する導線（段階・レイアウト・検査項目・クリーンルーム検証）。責務分担の判断は [ADR-0015](adr/0015-app-bundle-runtime-resolution-vs-assembly.md)
 - **[releasing.md](releasing.md)** — リリース手順（週次トレイン + `release:now` の express）+ CHANGELOG の昇格・リリースノート生成
 - **[release-pipeline.md](release-pipeline.md)** — 3 リポジトリ（metaphor / metaphor-cli / homebrew-tap）の依存関係とリリース自動連鎖の全体地図。詳細は releasing.md / metaphor-cli 側 docs へ委譲
 

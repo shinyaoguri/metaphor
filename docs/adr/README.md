@@ -53,6 +53,7 @@
 | [0012](0012-alpha-semantics.md) | Accepted | アルファは公開 API が straight、内部と出力が premultiplied と定める |
 | [0013](0013-companion-over-dedicated-editor.md) | Accepted | 専用エディタを作らず、既存エディタ + コンパニオンへ投資する（エディタ連携は in scope） |
 | [0014](0014-viewer-frame-ipc-and-syphon-plugin.md) | Accepted | ビューアのフレーム転送を専用 IPC（Unix socket + 匿名 POSIX shm）にし、Syphon を独立 Package の plugin へ分離する |
+| [0015](0015-app-bundle-runtime-resolution-vs-assembly.md) | Accepted | `.app` 配布は本体が実行時のファイル解決を、metaphor-cli が bundle の組み立てを担う |
 
 ## 参考
 
