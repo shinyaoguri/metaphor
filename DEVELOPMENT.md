@@ -42,7 +42,7 @@ make llms-txt   # AI-readable API reference を生成
 make ci-check   # per-PR CI（build-and-test）のうち、手元で走らせられる検査を全部
 ```
 
-**`make ci-check` は per-PR CI の `build-and-test` ジョブの鏡です**（#1020）。ビルドとテストだけでなく、lint 群（actionlint / ruff / swift-format）・クロスリポ契約・生成物の鮮度・DocC の警告 0・リファレンス URL・doc コメントのスニペットのコンパイルまで、**そのジョブが走らせるステップのうち手元で再現できるものを全部**走らせます（実測 約 115 秒 / warm な `.build`）。
+**`make ci-check` は per-PR CI の `build-and-test` ジョブの鏡です**（#1020）。ビルドとテストだけでなく、lint 群（actionlint / ruff / swift-format）・クロスリポ契約・生成物の鮮度・DocC の警告 0・リファレンス URL・doc コメントのスニペットのコンパイルまで、**そのジョブが走らせるステップのうち手元で再現できるものを全部**走らせます（実測 104 秒 / warm な `.build`・Apple Silicon）。
 
 以前はここに build + test + 整形検査しか無く、**「`make ci-check` が green なのに CI が赤い」が繰り返し起きていました**（起票時点の取りこぼしは 14 ステップ。DocC の警告検査はそのうちの 1 本でしかなく、[#334](https://github.com/shinyaoguri/metaphor/issues/334) の doc コメント言語ラチェットや `scripts/tests` のユニットテストも同じ穴に落ちていました）。
 
@@ -125,7 +125,7 @@ make lint-workflows   # .github/workflows/*.yml を actionlint にかける
 
 この仕掛けは**このリポジトリには同梱していません**。守る対象がリポジトリの構成ではなく Claude の振る舞いなので、開発者個人の Claude 環境（[shinyaoguri/claude-plugins](https://github.com/shinyaoguri/claude-plugins) の `repo-standards` プラグイン）が全プロジェクト向けに供給しています（経緯は同リポの [ADR 0016](https://github.com/shinyaoguri/claude-plugins/blob/main/docs/decisions/0016-agent-behavior-hooks-in-plugin.md)）。外部のコントリビュータの手元では動かないので、このリポジトリのセットアップとしては何も要りません。
 
-差し戻されたときの直し方は通常のローカル検証と同じで、`make ci-check` を CI と同条件で通してから追加コミットしてください。
+差し戻されたときの直し方は通常のローカル検証と同じで、`make ci-check` を通してから追加コミットしてください。
 
 カバレッジのモジュール別サマリは CI の artifact（`coverage-report`）とジョブ要約で確認できます。手元で見るには:
 
@@ -364,7 +364,7 @@ dependabot の PR は PR head だけで CI が回ります。ルールセット�
 |---|---|
 | `website/**` | `npm ci && npm run build`（CI の `website-build` ジョブと同じコマンド） |
 | `.github/workflows/**` | ローカル検証は無し（PR の checks が正）。runner 一覧だけ出して、Node 版縛りのある `actions/*` bump の判断材料にする |
-| `Sources/**` · `Package.swift` | `swift build` + `swift test`（`-warnings-as-errors` と `METAPHOR_REQUIRE_GPU=1` 付き = `make ci-check` 相当。CI の `build-and-test` ジョブと同じコマンド） |
+| `Sources/**` · `Package.swift` | `swift build` + `swift test`（`-warnings-as-errors` と `METAPHOR_REQUIRE_GPU=1` 付き = `make ci-check` のビルド / テスト部分と同条件。CI の `build-and-test` ジョブと同じコマンド） |
 
 領域を指定して回すこともできます（`--only website`）。PR 以外の ref も `--ref <git-ref> --only website` で同じ検証にかけられます。
 
