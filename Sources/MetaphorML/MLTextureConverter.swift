@@ -291,40 +291,26 @@ public final class MLTextureConverter {
         guard width > 0, height > 0 else { return nil }
 
         let count = width * height
-        var floatData = [Float](repeating: 0, count: count)
+        let rowStride = strides[rowDimension]
+        let columnStride = strides[columnDimension]
+        let layout = ElementLayout(
+            width: width, height: height, rowStride: rowStride, columnStride: columnStride)
 
-        func elementOffset(x: Int, y: Int) -> Int {
-            y * strides[rowDimension] + x * strides[columnDimension]
-        }
-        // deprecated な dataPointer の代わりに withUnsafeBytes を使う
-        // （型は dataType と一致させる必要があるため switch 側で分岐する。
-        // withUnsafeBufferPointer(ofType:) は Float16/Int8 の scalar conformance が
-        // macOS 15/26 以降のため、macOS 14 でも使える raw バイト API を採用）
-        func copyElements<T>(_ type: T.Type, _ convert: (T) -> Float) {
-            multiArray.withUnsafeBytes { raw in
-                let buf = raw.bindMemory(to: T.self)
-                for y in 0..<height {
-                    for x in 0..<width {
-                        floatData[y * width + x] = convert(buf[elementOffset(x: x, y: y)])
-                    }
-                }
-            }
-        }
-
+        var floatData: [Float]
         switch multiArray.dataType {
         case .float32:
-            copyElements(Float.self) { $0 }
+            floatData = Self.floats(Float.self, from: multiArray, layout: layout)
         case .double:
-            copyElements(Double.self) { Float($0) }
+            floatData = Self.floats(Double.self, from: multiArray, layout: layout)
         case .int32:
-            copyElements(Int32.self) { Float($0) }
+            floatData = Self.floats(Int32.self, from: multiArray, layout: layout)
         case .float16:
-            copyElements(Float16.self) { Float($0) }
+            floatData = Self.floats(Float16.self, from: multiArray, layout: layout)
         default:
             // MLMultiArrayDataType.int8 (rawValue 131080) は macOS 26.0+ SDK でのみ利用可能なため、
             // 古い SDK でのコンパイルエラーを避けるために rawValue で比較します。
             if multiArray.dataType.rawValue == 131080 {
-                copyElements(Int8.self) { Float($0) }
+                floatData = Self.floats(Int8.self, from: multiArray, layout: layout)
             } else {
                 metaphorWarning(
                     "Unsupported MLMultiArray dataType: \(multiArray.dataType.rawValue)")
@@ -367,5 +353,63 @@ public final class MLTextureConverter {
             bytesPerRow: width * 4
         )
         return tex
+    }
+
+    /// `MLMultiArray` の要素をどう並べて読むか（下の 2 本の引数を 1 つに畳む）。
+    private struct ElementLayout {
+        let width: Int
+        let height: Int
+        let rowStride: Int
+        let columnStride: Int
+    }
+
+    /// `MLMultiArray` の要素を row-major な `[Float]` へ写す（浮動小数点の要素）。
+    ///
+    /// **クロージャを引数に取らず、外側の変数も掴まない。** ここは元々
+    /// `copyElements<T>(_ type: T.Type, _ convert: (T) -> Float)` というジェネリックな
+    /// ローカル関数 1 本で 5 つの型を捌いていたが、その形が **Xcode 26.4.1 の SIL
+    /// 最適化パスを落とした**（#1102）。`-O` と `-enable-default-cmo` が揃ったときだけ
+    /// `signal 11` で死に、全数スイープ 343 本のうち 24 本がこれで落ちていた。
+    ///
+    /// 手元の Xcode 26.6 では再現せず、per-PR CI も debug ビルド（`-O` なし）なので
+    /// 捕まらない。**検証できるのは `examples-sweep.yml` の実行だけ**。だから
+    /// 「1 本にまとめ直すほうが短い」という理由でこの形を戻さないこと。
+    ///
+    /// `withUnsafeBufferPointer(ofType:)` を使わないのは別の理由で、Float16 / Int8 の
+    /// scalar conformance が macOS 15/26 以降のため。macOS 14 でも使える raw バイト
+    /// API を採っている。
+    private static func floats<T: BinaryFloatingPoint>(
+        _ type: T.Type, from multiArray: MLMultiArray, layout: ElementLayout
+    ) -> [Float] {
+        var out = [Float](repeating: 0, count: layout.width * layout.height)
+        multiArray.withUnsafeBytes { raw in
+            let buf = raw.bindMemory(to: T.self)
+            for y in 0..<layout.height {
+                for x in 0..<layout.width {
+                    out[y * layout.width + x] =
+                        Float(buf[y * layout.rowStride + x * layout.columnStride])
+                }
+            }
+        }
+        return out
+    }
+
+    /// 同上（整数の要素）。浮動小数点版と分けてあるのは、`Float` の初期化子が
+    /// `BinaryFloatingPoint` と `BinaryInteger` で別だから — ここを 1 本にするには
+    /// 変換をクロージャで渡すことになり、それが #1102 の形そのものになる。
+    private static func floats<T: BinaryInteger>(
+        _ type: T.Type, from multiArray: MLMultiArray, layout: ElementLayout
+    ) -> [Float] {
+        var out = [Float](repeating: 0, count: layout.width * layout.height)
+        multiArray.withUnsafeBytes { raw in
+            let buf = raw.bindMemory(to: T.self)
+            for y in 0..<layout.height {
+                for x in 0..<layout.width {
+                    out[y * layout.width + x] =
+                        Float(buf[y * layout.rowStride + x * layout.columnStride])
+                }
+            }
+        }
+        return out
     }
 }
