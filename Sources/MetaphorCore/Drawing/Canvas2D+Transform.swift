@@ -31,6 +31,7 @@ extension Canvas2D {
                 textAlignH: currentTextAlignH,
                 textAlignV: currentTextAlignV,
                 textLeading: currentTextLeading,
+                textWrap: currentTextWrap,
                 curveDetail: curveDetailCount,
                 bezierDetail: bezierDetailCount,
                 curveTightness: curveTightnessValue,
@@ -71,6 +72,7 @@ extension Canvas2D {
         currentTextAlignH = saved.textAlignH
         currentTextAlignV = saved.textAlignV
         currentTextLeading = saved.textLeading
+        currentTextWrap = saved.textWrap
         curveDetailCount = saved.curveDetail
         bezierDetailCount = saved.bezierDetail
         curveTightnessValue = saved.curveTightness
@@ -103,6 +105,7 @@ extension Canvas2D {
                 textAlignH: currentTextAlignH,
                 textAlignV: currentTextAlignV,
                 textLeading: currentTextLeading,
+                textWrap: currentTextWrap,
                 curveDetail: curveDetailCount,
                 bezierDetail: bezierDetailCount,
                 curveTightness: curveTightnessValue,
@@ -138,6 +141,7 @@ extension Canvas2D {
         currentTextAlignH = saved.textAlignH
         currentTextAlignV = saved.textAlignV
         currentTextLeading = saved.textLeading
+        currentTextWrap = saved.textWrap
         curveDetailCount = saved.curveDetail
         bezierDetailCount = saved.bezierDetail
         curveTightnessValue = saved.curveTightness

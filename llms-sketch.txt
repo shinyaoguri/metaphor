@@ -88,7 +88,7 @@ there is discarded before anything is drawn.
 | Fill and stroke | `fill`, `noFill`, `stroke`, `noStroke`, `strokeWeight`, `strokeCap`, `strokeJoin` |
 | Color and blending | `colorMode`, `blendMode`, `tint`, `noTint` |
 | Shape and image modes | `rectMode`, `ellipseMode`, `imageMode`, `curveDetail`, `curveTightness` |
-| Text | `textFont`, `textStyle`, `textSize`, `textAlign`, `textLeading` |
+| Text | `textFont`, `textStyle`, `textSize`, `textAlign`, `textLeading`, `textWrap` |
 | Shadows | `enableShadows`, `disableShadows`, `shadowBias` |
 | Environment (IBL / skybox) | `environment`, `noEnvironment` |
 | Tone mapping | `toneMapping`, `exposure` |

@@ -758,6 +758,13 @@ public final class Graphics {
     /// - Parameter leading: The line height in pixels.
     public func textLeading(_ leading: Float) { canvas.textLeading(leading) }
 
+    /// Chooses where the rectangle form of ``text(_:_:_:_:_:)`` may break a line.
+    ///
+    /// - Note: It has no effect on ``text(_:_:_:)``, which breaks only at newlines.
+    ///
+    /// - Parameter mode: The wrap rule.
+    public func textWrap(_ mode: TextWrap) { canvas.textWrap(mode) }
+
     /// Draws a text string at the given position.
     /// - Parameters:
     ///   - string: The text to draw.
@@ -788,6 +795,19 @@ public final class Graphics {
     /// - Parameter string: The text to measure.
     /// - Returns: The width in pixels.
     public func textWidth(_ string: String) -> Float { canvas.textWidth(string) }
+
+    /// Returns the rectangle ``text(_:_:_:)`` would fill for this string at `(x, y)`.
+    ///
+    /// - Note: The width is the advance sum ``textWidth(_:)`` reports, not the extent of the ink.
+    ///
+    /// - Parameters:
+    ///   - string: The text to measure.
+    ///   - x: The x coordinate the text would be drawn at.
+    ///   - y: The y coordinate the text would be drawn at.
+    /// - Returns: The box, with `x` / `y` at its top-left corner.
+    public func textBounds(_ string: String, _ x: Float, _ y: Float) -> TextBounds {
+        canvas.textBounds(string, x, y)
+    }
 
     /// Returns the ascent of the current font.
     /// - Returns: The font ascent in pixels.

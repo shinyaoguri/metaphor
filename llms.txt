@@ -589,6 +589,11 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func text(_ string: String, _ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- Draws a text string inside a bounding box.
 - `func textAlign(_ horizontal: TextAlignH, _ vertical: TextAlignV = .baseline)` -- Sets the text alignment.
 - `func textAscent() -> Float` -- Returns the ascent of the current font.
+- `func textBounds(_ string: String, _ x: Float, _ y: Float) -> TextBounds` -- Returns the rectangle `text(_:_:_:)` would fill for this string at `(x, y)`.
+  - Important: The width is the one `textWidth(_:)` reports — the sum of the per-character advances — so `textBounds(s, x, y).width == textWidth(s)`. That is the ruler `text(_:_:_:)` lays glyphs out with and `textAlign(_:_:)` aligns against, but it is **not** the extent of the ink: glyphs such as `f`, or an italic face, can paint a little past either edge. p5.js measures the ink instead, so its box is a touch tighter and does not agree with its own `textWidth()`.
+  - Note: The height is `textAscent()` + `textDescent()` — a property of the font, not of the string — plus one `textLeading(_:)` for every newline. `"x"` and `"X"` therefore get boxes of the same height.
+  - Note: The rectangle is in the coordinate space `x` and `y` are given in. The current `translate(_:_:)` / `rotate(_:)` / `scale(_:_:)` applies when the text is drawn, not to the numbers returned here.
+  - Note: An empty string returns a zero-sized box at `(x, y)`, matching `text(_:_:_:)` drawing nothing for it.
 - `func textDescent() -> Float` -- Returns the descent of the current font.
 - `func textFont(_ family: String)` -- Sets the font family for subsequent text drawing.
   - Note: A **style-qualified name** resolves too, as in Processing's `createFont()`: `textFont("Helvetica Neue Bold")` really does draw bold. Which qualified names exist depends on the font, though — `"Helvetica Neue Bold"` works while `"Papyrus Bold"` does not — and `textStyle(_:)` is the portable way to ask for bold or italic.
@@ -610,6 +615,10 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
   - Note: Affects **3D only** (to draw an image in 2D, use `image()`. ADR-0005).
   - Note: **Resets every frame.** The texture binding is cleared at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func textWidth(_ string: String) -> Float` -- Computes the width of a text string with the current font settings.
+- `func textWrap(_ mode: TextWrap)` -- Chooses where the rectangle form of `text(_:_:_:_:_:)` may break a line.
+  - Note: `TextWrap/word` prefers word boundaries rather than promising never to split a word. A word longer than the box is still broken between characters, because there is nowhere else to put it — both rules lay it out identically.
+  - Note: It has **no effect on `text(_:_:_:)`**, which breaks only at the newlines already in the string. Wrapping needs a width, and the three-argument form has none.
+  - Note: **Survives across frames.** Like the rest of the 2D style state it is **not** reset at the start of a frame, so a value set in `setup()` still applies in `draw()`. It is saved and restored by `push()` / `pop()`.
 - `func tint(_ color: Color)` -- Sets the tint color for images.
   - Note: Affects **2D only**. It applies to images drawn with `image()` and has no effect on 3D `texture(_:)` — a 3D texture is tinted by multiplying in the `fill(_:)-(Color)` color, so there is no dedicated tint slot to begin with (ADR-0005). Use `fill(_:)-(Color)` when you want to multiply a color into textured 3D.
 - `func tint(_ gray: Float)` -- Sets the image tint from a grayscale value.
@@ -892,6 +901,14 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var width: Int` -- オフスクリーンレンダーテクスチャの幅（ピクセル単位）。
 - `var windowScale: Float` -- ウィンドウのスケール係数（ウィンドウサイズ = テクスチャサイズ × scale）。
 - `init(width: Int = 800, height: Int = 600, title: String = "metaphor", fps: Int = 60, windowScale: Float = 1.0, renderLoopMode: RenderLoopMode = .displayLink, plugins: [PluginFactory] = [])` -- 新しいセカンダリウィンドウ設定を作成します。
+
+### `struct TextBounds` -- The rectangle a string occupies when `text()` draws it.
+
+- `var height: Float` -- The height of the box, in pixels.
+- `var width: Float` -- The width of the box, in pixels.
+- `var x: Float` -- The x coordinate of the left edge.
+- `var y: Float` -- The y coordinate of the top edge.
+- `init(x: Float, y: Float, width: Float, height: Float)` -- Creates a text bounding box.
 
 ### `struct VideoExportConfig` -- ビデオエクスポートのパラメータ設定
 
@@ -1390,6 +1407,11 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `case italic` -- Draw with the italic face of the current font.
 - `case normal` -- Draw with the face the font name itself selects (the default).
 
+### `enum TextWrap` -- Where the rectangle form of `text()` is allowed to break a line.
+
+- `case char` -- Break between characters, filling every line to the edge of the box.
+- `case word` -- Prefer word boundaries (the default).
+
 ### `enum ThermalState` -- システムの熱状態。負荷を自分で落とす（自己 degrade）ときの判断材料です。
 
 - `case critical` -- 危険。表示を維持することより発熱を下げることが優先される。
@@ -1472,7 +1494,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class Canvas2D` -- Metal を利用したイミディエイトモード 2D 描画コンテキストを提供します。
 
-- （ほか 94 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- （ほか 96 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `var colorModeConfig: ColorModeConfig`
 - `var currentEncoder: (any MTLRenderCommandEncoder)? { get }` -- 現在のレンダーコマンドエンコーダーにアクセスします。フレーム中のみ有効です。
 - `var fillColor: SIMD4<Float>`
@@ -1641,7 +1663,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class Graphics` -- Provides an offscreen 2D drawing buffer (the equivalent of Processing's
 
-- （ほか 87 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- （ほか 89 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `var height: Float { get }` -- The height in pixels.
 - `var width: Float { get }` -- The width in pixels.
 - `func beginDraw()` -- Begins drawing by creating a command buffer and a render command encoder.
@@ -2014,7 +2036,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class SketchContext` -- Sketch 内で使用される描画コンテキストを提供します。
 
-- （ほか 243 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- （ほか 245 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `let assetCache: AssetCache` -- `loadImage` / `loadModel` のパスキーアセットキャッシュ。
 - `var canvas: Canvas2D { get }` -- 2D キャンバス（上級者向け）。
 - `var canvas3D: Canvas3D { get }` -- 3D キャンバス（上級者向け）。

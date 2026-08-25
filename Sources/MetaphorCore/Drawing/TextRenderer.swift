@@ -28,6 +28,57 @@ public enum TextStyle: Sendable {
     case boldItalic
 }
 
+// MARK: - Text Wrap
+
+/// Where the rectangle form of `text()` is allowed to break a line.
+public enum TextWrap: Sendable {
+    /// Prefer word boundaries (the default).
+    ///
+    /// A word that does not fit on the current line moves to the next one. A word longer than the
+    /// box itself is still broken between characters — there is nowhere else to put it.
+    case word
+    /// Break between characters, filling every line to the edge of the box.
+    case char
+}
+
+extension TextWrap {
+    /// The Core Text line break mode this wrap rule maps to.
+    ///
+    /// `NSMutableParagraphStyle` already defaults to `.byWordWrapping`, so ``TextWrap/word``
+    /// reproduces the layout metaphor produced before ``TextWrap`` existed, byte for byte (#1165).
+    var lineBreakMode: NSLineBreakMode {
+        switch self {
+        case .word: return .byWordWrapping
+        case .char: return .byCharWrapping
+        }
+    }
+}
+
+// MARK: - Text Bounds
+
+/// The rectangle a string occupies when `text()` draws it.
+///
+/// Returned by ``Canvas2D/textBounds(_:_:_:)``. `x` / `y` are the top-left corner in the same
+/// coordinate space as the `x` / `y` handed to `text()`.
+public struct TextBounds: Sendable, Equatable {
+    /// The x coordinate of the left edge.
+    public var x: Float
+    /// The y coordinate of the top edge.
+    public var y: Float
+    /// The width of the box, in pixels.
+    public var width: Float
+    /// The height of the box, in pixels.
+    public var height: Float
+
+    /// Creates a text bounding box.
+    public init(x: Float, y: Float, width: Float, height: Float) {
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+    }
+}
+
 // MARK: - Text Font Resolution
 
 // ## なぜ名前を 1 本に畳むのか
@@ -467,6 +518,9 @@ final class TextRenderer {
         let maxWidth: Float
         let maxHeight: Float
         let leading: Float
+        // 折り返し規則。同じ文字列・同じ箱でも `.word` と `.char` で絵が違うので、
+        // キーに入れないと `textWrap()` を切り替えた瞬間に古いテクスチャが返る（#1165）。
+        let wrap: TextWrap
 
         /// 単一行テキスト用のキャッシュキーを初期化します。
         init(string: String, fontSize: Float, fontFamily: String) {
@@ -476,12 +530,13 @@ final class TextRenderer {
             self.maxWidth = 0
             self.maxHeight = 0
             self.leading = 0
+            self.wrap = .word
         }
 
         /// 複数行テキスト用のキャッシュキーを初期化します。
         init(
             string: String, fontSize: Float, fontFamily: String,
-            maxWidth: Float, maxHeight: Float, leading: Float
+            maxWidth: Float, maxHeight: Float, leading: Float, wrap: TextWrap
         ) {
             self.string = string
             self.fontSize = fontSize
@@ -489,6 +544,7 @@ final class TextRenderer {
             self.maxWidth = maxWidth
             self.maxHeight = maxHeight
             self.leading = leading
+            self.wrap = wrap
         }
     }
 
@@ -620,6 +676,7 @@ final class TextRenderer {
     ///   - maxWidth: 行折り返しの最大幅。
     ///   - maxHeight: 最大高さ。0で無制限。
     ///   - leading: 行の高さ（ピクセル単位）。
+    ///   - wrap: The wrap rule.
     ///   - frameCount: LRU トラッキング用の現在のフレーム番号。
     /// - Returns: キャッシュされたテキストエントリ。レンダリングに失敗した場合は nil。
     func textTextureMultiline(
@@ -629,11 +686,12 @@ final class TextRenderer {
         maxWidth: Float,
         maxHeight: Float,
         leading: Float,
+        wrap: TextWrap,
         frameCount: Int
     ) -> CachedText? {
         let key = TextCacheKey(
             string: string, fontSize: fontSize, fontFamily: fontFamily,
-            maxWidth: maxWidth, maxHeight: maxHeight, leading: leading
+            maxWidth: maxWidth, maxHeight: maxHeight, leading: leading, wrap: wrap
         )
 
         if var cached = cache[key] {
@@ -645,7 +703,7 @@ final class TextRenderer {
         guard
             var result = renderTextMultiline(
                 string: string, fontSize: fontSize, fontFamily: fontFamily,
-                maxWidth: maxWidth, maxHeight: maxHeight, leading: leading
+                maxWidth: maxWidth, maxHeight: maxHeight, leading: leading, wrap: wrap
             )
         else { return nil }
 
@@ -946,7 +1004,7 @@ final class TextRenderer {
 
     private func renderTextMultiline(
         string: String, fontSize: Float, fontFamily: String,
-        maxWidth: Float, maxHeight: Float, leading: Float
+        maxWidth: Float, maxHeight: Float, leading: Float, wrap: TextWrap
     ) -> CachedText? {
         let font = cachedFont(fontSize: fontSize, fontFamily: fontFamily)
 
@@ -956,6 +1014,9 @@ final class TextRenderer {
         let paragraphStyle = NSMutableParagraphStyle()
         paragraphStyle.minimumLineHeight = CGFloat(leading)
         paragraphStyle.maximumLineHeight = CGFloat(leading)
+        // 折り返し規則はここ 1 行だけ。既定は .byWordWrapping なので、`.word` を渡すのは
+        // #1165 より前と同じ指定になる（実測で行の割れ方まで一致）。
+        paragraphStyle.lineBreakMode = wrap.lineBreakMode
 
         let attributes: [NSAttributedString.Key: Any] = [
             .font: font,
