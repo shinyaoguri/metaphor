@@ -548,6 +548,15 @@ extension SketchContext {
         canvas.textFont(font)
     }
 
+    /// Sets the bold / italic style applied on top of the current font.
+    ///
+    /// - Note: A style the current font has no face for leaves the text unstyled and warns.
+    ///
+    /// - Parameter style: The style to apply.
+    public func textStyle(_ style: TextStyle) {
+        canvas.textStyle(style)
+    }
+
     /// テキストの配置を設定します。
     /// - Parameters:
     ///   - horizontal: 水平方向の配置。
@@ -565,11 +574,29 @@ extension SketchContext {
         canvas.textLeading(leading)
     }
 
+    /// Chooses where the rectangle form of ``text(_:_:_:_:_:)`` may break a line.
+    ///
+    /// - Note: It has no effect on ``text(_:_:_:)``, which only breaks at newlines.
+    ///
+    /// - Parameter mode: The wrap rule.
+    public func textWrap(_ mode: TextWrap) {
+        canvas.textWrap(mode)
+    }
+
     /// 文字列の幅（1 文字ずつの advance の合計）を計算します。
     /// - Parameter string: 計測するテキスト。
     /// - Returns: 幅（ピクセル単位）。
     public func textWidth(_ string: String) -> Float {
         canvas.textWidth(string)
+    }
+
+    /// Returns the rectangle ``text(_:_:_:)`` would fill for this string at `(x, y)`.
+    ///
+    /// - Note: The width is the advance sum ``textWidth(_:)`` reports, not the extent of the ink.
+    ///
+    /// - Returns: The box, with `x` / `y` at its top-left corner.
+    public func textBounds(_ string: String, _ x: Float, _ y: Float) -> TextBounds {
+        canvas.textBounds(string, x, y)
     }
 
     /// 現在のテキスト設定でのフォントアセントを返します。

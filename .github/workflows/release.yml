@@ -231,11 +231,22 @@ jobs:
           for bump_path in "${BUMP_PATHS[@]}"; do
             PATH_ARGS+=(--path "$bump_path")
           done
+          #
+          # --skip-freshness / --skip-ci-checks: signed-commit.py は既定で
+          # pre-push と同じ検査を走らせる（そうしないとこの経路だけ歯止めが
+          # 無くなる — #978 / #1155）。リリース経路だけが降りるのは、BUMP_PATHS に
+          # MetaphorVersion.swift = llms.txt の入力が入るため runner で
+          # `make llms-txt`（= `swift build`）が丸ごと乗るのと、リリースブランチの
+          # PR で CI が同じ検査を独立に回すため。加えて static-check-fast は
+          # ruff / actionlint / check-jsonschema の取得を伴う。ここを外すと
+          # リリースが数分と新しい失敗点を抱える。
           python3 scripts/signed-commit.py \
             --repo "$GITHUB_REPOSITORY" \
             --branch "$RELEASE_BRANCH" \
             --expected-head "$BASE_SHA" \
             --message "Release ${TAG_NAME}" \
+            --skip-freshness \
+            --skip-ci-checks \
             "${PATH_ARGS[@]}"
 
       # --- Human-readable release notes (Issue #335) ---
@@ -320,6 +331,11 @@ jobs:
       - name: Bridge CI to legacy Status for ruleset gate
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # ci.yml の PR ゲートより長く粘る（既定は 3 回）。ここで落ちると
+          # `ci-gate` の legacy Status が立たずリリース PR がマージ不能になり、
+          # しかも release ブランチ push と PR 作成が済んでいるので、単純な
+          # 再実行は `gh pr create` が二重になって通らない（Issue #1006）。
+          GH_RETRY_ATTEMPTS: '6'
         run: |
           # Repository rulesets on personal repos evaluate the
           # required_status_checks rule against the legacy Statuses API,
@@ -330,8 +346,15 @@ jobs:
           # The required context is the aggregate gate `ci-gate` (Issue #411).
           # ci.yml's own bridge step posts this too, but belt-and-suspenders:
           # this workflow must not depend on the dispatched run's bridging.
-          PR_SHA=$(gh pr view "$PR_NUMBER" --json headRefOid --jq '.headRefOid')
-          gh api -X POST "repos/${GITHUB_REPOSITORY}/statuses/${PR_SHA}" \
+          #
+          # 取得は scripts/gh-retry.sh 経由（Issue #1006）。`gh pr view --json`
+          # は GraphQL なので、2026-08-17 の GraphQL 503 障害にそのまま刺さる。
+          # 一過性の失敗だけをリトライし、403/404 のような定義的な失敗は即落とす。
+          PR_SHA=$(scripts/gh-retry.sh pr view "$PR_NUMBER" --json headRefOid --jq '.headRefOid')
+          # POST も同じ経路で包む（Issue #1132）。Statuses API は同じ context へ
+          # 何度 POST しても combined status が最後の 1 件になるだけなので、
+          # リトライで二重になる副作用が無い。
+          scripts/gh-retry.sh api -X POST "repos/${GITHUB_REPOSITORY}/statuses/${PR_SHA}" \
             -f state=success \
             -f context=ci-gate \
             -f description="CI passed via workflow_dispatch run"
@@ -339,18 +362,41 @@ jobs:
       - name: Squash-merge release PR
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh pr merge "$PR_NUMBER" --squash --delete-branch
+          # 前後のステップと同じ 6 回（Issue #1132）。ここから先はやり直しが
+          # 効かない: release ブランチ push と PR 作成が済んでいるので、単純な
+          # 再実行は `gh pr create` が二重になって通らず、人手でマージして
+          # `git tag` を打つしかない。
+          GH_RETRY_ATTEMPTS: '6'
+        # リトライで二重マージにはならない（Issue #1132 で gh 2.98 の実装を確認）。
+        # `gh pr merge` は PR を引いた時点で state==MERGED なら `merge()` を
+        # 早期 return し、`canMerge()` も `deleteRemoteBranch()` も同じ印で畳む
+        # ので、マージ済みの PR へ打ち直すと **API を叩かずに exit 0** になる。
+        # つまり「mutation は通ったが応答が落ちた」ときこそリトライが救う。
+        #
+        # 直前のステップで legacy Status を立てたばかりなので、GitHub 側の
+        # mergeStateStatus がまだ BLOCKED のことがある。これは HTTP ステータスの
+        # 付かない失敗として gh-retry.sh のリトライ側に落ちるので、伝播待ちも
+        # ここで吸収される。
+        run: scripts/gh-retry.sh pr merge "$PR_NUMBER" --squash --delete-branch
 
       # --- Tag the merged commit on main ---
       - name: Tag the merged commit
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # このワークフローで最もやり直しが効かない一点。直前で squash merge が
+          # 済んでいるので、ここで落ちると「main にはマージ済み・タグは無い」状態
+          # が残り、再実行では戻せない（人手で `git tag` を打つしかない）。
+          # ci.yml の既定 3 回より長く粘る（Issue #1006）。
+          GH_RETRY_ATTEMPTS: '6'
         run: |
           set -euo pipefail
           # Tag the squash commit this PR actually produced. Tagging the tip of
           # main after a pull races with anything merged in the meantime — an
           # unrelated commit could end up tagged as the release.
-          MERGE_SHA=$(gh pr view "$PR_NUMBER" --json mergeCommit --jq '.mergeCommit.oid')
+          #
+          # 取得は scripts/gh-retry.sh 経由（Issue #1006）。使い切ったら空では
+          # なく非ゼロで落ちるので、下の null ガードごと「黙って進まない」が保たれる。
+          MERGE_SHA=$(scripts/gh-retry.sh pr view "$PR_NUMBER" --json mergeCommit --jq '.mergeCommit.oid')
           if [ -z "$MERGE_SHA" ] || [ "$MERGE_SHA" = "null" ]; then
             echo "::error::Could not resolve the merge commit for PR #${PR_NUMBER}."
             exit 1

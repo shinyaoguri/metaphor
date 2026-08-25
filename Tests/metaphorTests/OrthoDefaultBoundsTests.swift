@@ -182,12 +182,12 @@ struct OrthoDefaultBoundsTests {
 
     @Test("Graphics3D 経由でも既定の ortho() で被写体が中央に写る (regression #777)")
     func graphics3DDefaultBoundsKeepSubjectCentered() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let pg3d = try Graphics3D(
             device: device,
-            commandQueue: MetalTestHelper.commandQueue()!,
+            commandQueue: try MetalTestHelper.commandQueue(),
             shaderLibrary: MetalTestHelper.shaderLibrary(),
-            depthStencilCache: MetalTestHelper.depthStencilCache(),
+            depthStencilCache: try MetalTestHelper.depthStencilCache(),
             width: 400,
             height: 300
         )

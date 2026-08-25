@@ -84,11 +84,23 @@ gh workflow run shots.yml -f target=tutorial -f only=01-GettingStarted/03-Sketch
 
 見張っている場所が用途で違う:
 
-| | pre-push | CI |
-|---|---|---|
-| reference | ✅ | ✅（`--check` と `--compile-only`） |
-| tutorial | ✅ | ✅ |
-| example | ❌ | ❌ |
+| | pre-push | per-PR CI | 週次 |
+|---|---|---|---|
+| reference | ✅ | ✅（`--check` と `--compile-only`） | — |
+| tutorial | ✅ | ✅ | — |
+| example | ❌ | ❌ | ✅ `asset-health.yml` |
+
+**example だけ per-PR に無いのは意図的**（#1161）。費用ではない — 検査は 0.08 秒・GPU 不要
+で、他の 2 本より軽い。分けているのは**落ちたときに人が取れる行動**が違うため:
+
+- reference / tutorial は、落ちても再生成 or 撮り直しの正解が 1 つに決まる
+- example の復旧は GPU での撮り直しで、対象はどれも動くスケッチなので**撮るたびに別の絵に
+  なる**。退行か意図した変更かは機械では判別できず（#586）、**人の目視レビューが要る**。
+  per-PR の必須ゲートにすると、`Examples/` に触れただけの PR へ溜まっている他人の
+  backlog を渡すことになる
+
+週次で鳴らすので「気付いた人が撮る」以外の検出機会はある（見張りが無いと溜まることは実測
+済み — #726 が 5 本 → #732 で解消 → 8 日後に 6 本へ再蓄積）。
 
 止まったら、**指摘された対象だけ**を `--only` で撮り直す。全部撮り直す必要はない。
 

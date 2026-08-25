@@ -110,6 +110,11 @@ extension Sketch {
     ///
     /// - Note: Affects **3D only** (2D drawing is not affected by the camera. ADR-0005).
     ///
+    /// - Note: **Resets every frame.** The camera returns to the default pixel-space view at the
+    ///   start of every frame, so call this from `draw()` — a call in `setup()` is discarded
+    ///   before the first frame is drawn. `llms-sketch.txt` lists every state that does and does
+    ///   not survive a frame boundary.
+    ///
     /// - Parameters:
     ///   - eye: The position of the camera.
     ///   - center: The point the camera looks at.
@@ -153,6 +158,11 @@ extension Sketch {
     /// Sets a perspective projection.
     ///
     /// - Note: Affects **3D only** (2D drawing is not affected by the projection. ADR-0005).
+    ///
+    /// - Note: **Resets every frame.** The projection returns to the default perspective (a 60°
+    ///   field of view) at the start of every frame, so call this from `draw()` — a call in
+    ///   `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every
+    ///   state that does and does not survive a frame boundary.
     ///
     /// - Parameters:
     ///   - fov: The field of view in radians.
@@ -215,6 +225,11 @@ extension Sketch {
     ///   flips the image vertically.
     ///
     /// - Note: Affects **3D only** (2D drawing is not affected by the projection. ADR-0005).
+    ///
+    /// - Note: **Resets every frame.** The projection returns to the default perspective at the
+    ///   start of every frame, so call this from `draw()` — a call in `setup()` is discarded
+    ///   before the first frame is drawn. `llms-sketch.txt` lists every state that does and does
+    ///   not survive a frame boundary.
     ///
     /// - Parameters:
     ///   - left: The left clipping plane (`-width / 2` when `nil`).
@@ -299,6 +314,11 @@ extension Sketch {
     ///
     /// - Note: Affects **3D only** (2D drawing is not affected by lighting. ADR-0005).
     ///
+    /// - Note: **Resets every frame.** The set of lights is emptied at the start of every frame,
+    ///   so call this from `draw()` — a call in `setup()` is discarded before the first frame is
+    ///   drawn. `llms-sketch.txt` lists every state that does and does not survive a frame
+    ///   boundary.
+    ///
     /// ### Result
     ///
     /// With no lights at all the shading computation itself is skipped and shapes are
@@ -338,6 +358,11 @@ extension Sketch {
     /// Disables all lights.
     ///
     /// - Note: Affects **3D only** (ADR-0005).
+    ///
+    /// - Note: **Resets every frame.** The set of lights is emptied at the start of every frame,
+    ///   so call this from `draw()` — a call in `setup()` is discarded before the first frame is
+    ///   drawn. `llms-sketch.txt` lists every state that does and does not survive a frame
+    ///   boundary.
     public func noLights() {
         context.noLights()
     }
@@ -360,6 +385,11 @@ extension Sketch {
     /// ```
     ///
     /// - Note: Affects **3D only** (2D drawing is not affected by lighting. ADR-0005).
+    ///
+    /// - Note: **Resets every frame.** The set of lights is emptied at the start of every frame,
+    ///   so call this from `draw()` — a call in `setup()` is discarded before the first frame is
+    ///   drawn. `llms-sketch.txt` lists every state that does and does not survive a frame
+    ///   boundary.
     ///
     /// - Parameters:
     ///   - x: The x component of the light direction.
@@ -412,6 +442,11 @@ extension Sketch {
     /// Adds a point light at the given position.
     ///
     /// - Note: Affects **3D only** (ADR-0005).
+    ///
+    /// - Note: **Resets every frame.** The set of lights is emptied at the start of every frame,
+    ///   so call this from `draw()` — a call in `setup()` is discarded before the first frame is
+    ///   drawn. `llms-sketch.txt` lists every state that does and does not survive a frame
+    ///   boundary.
     ///
     /// - Parameters:
     ///   - x: The x coordinate of the light position.
@@ -474,6 +509,11 @@ extension Sketch {
     /// Adds a spot light at the given position and direction.
     ///
     /// - Note: Affects **3D only** (ADR-0005).
+    ///
+    /// - Note: **Resets every frame.** The set of lights is emptied at the start of every frame,
+    ///   so call this from `draw()` — a call in `setup()` is discarded before the first frame is
+    ///   drawn. `llms-sketch.txt` lists every state that does and does not survive a frame
+    ///   boundary.
     ///
     /// - Parameters:
     ///   - x: The x coordinate of the light position.
@@ -552,6 +592,11 @@ extension Sketch {
     ///
     /// - Note: Affects **3D only** (2D drawing is not affected by lighting. ADR-0005).
     ///
+    /// - Note: **Resets every frame.** The ambient light returns to its default at the start of
+    ///   every frame, so call this from `draw()` — a call in `setup()` is discarded before the
+    ///   first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive
+    ///   a frame boundary.
+    ///
     /// - Parameter strength: The ambient light intensity (relative to the `colorMode` range).
     ///
     /// ### Result
@@ -597,6 +642,11 @@ extension Sketch {
     ///
     /// - Note: Affects **3D only** (ADR-0005).
     ///
+    /// - Note: **Resets every frame.** The ambient light returns to its default at the start of
+    ///   every frame, so call this from `draw()` — a call in `setup()` is discarded before the
+    ///   first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive
+    ///   a frame boundary.
+    ///
     /// - Parameters:
     ///   - r: The red component.
     ///   - g: The green component.
@@ -610,6 +660,10 @@ extension Sketch {
     /// Enables shadow mapping.
     ///
     /// - Note: Affects **3D only** (only 3D shapes cast shadows. ADR-0005).
+    ///
+    /// - Note: **Survives across frames.** Unlike the lights themselves, the shadow map is
+    ///   **not** reset at the start of a frame, so setting it once in `setup()` is enough.
+    ///   `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
     ///
     /// - Note: **Layering of 2D and 3D** (#832 / the Amendment section of ADR-0003). On
     ///   the default immediate path (shadows off), the layering is determined by **encode
@@ -632,6 +686,11 @@ extension Sketch {
     /// Disables shadow mapping.
     ///
     /// - Note: Affects **3D only** (ADR-0005).
+    ///
+    /// - Note: **Survives across frames.** Unlike the lights themselves, the shadow map is
+    ///   **not** reset at the start of a frame, so this stays in effect until you call
+    ///   `enableShadows()` again. `llms-sketch.txt` lists every state that does and does not
+    ///   survive a frame boundary.
     public func disableShadows() {
         context.disableShadows()
     }
@@ -639,6 +698,10 @@ extension Sketch {
     /// Sets the shadow depth bias used to reduce shadow acne.
     ///
     /// - Note: Affects **3D only** (ADR-0005).
+    ///
+    /// - Note: **Survives across frames.** The shadow bias is **not** reset at the start of a
+    ///   frame, so setting it once in `setup()` is enough. `llms-sketch.txt` lists every state
+    ///   that does and does not survive a frame boundary.
     ///
     /// - Parameter value: The bias value.
     public func shadowBias(_ value: Float) {
@@ -651,6 +714,11 @@ extension Sketch {
     ///
     /// - Note: Affects **3D only** (2D drawing is not affected by materials. ADR-0005).
     ///
+    /// - Note: **Resets every frame.** The material returns to its defaults at the start of every
+    ///   frame, so call this from `draw()` — a call in `setup()` is discarded before the first
+    ///   frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a
+    ///   frame boundary.
+    ///
     /// - Parameter color: The specular color.
     public func specular(_ color: Color) {
         context.specular(color)
@@ -662,6 +730,11 @@ extension Sketch {
     /// 255 by default).
     ///
     /// - Note: Affects **3D only** (2D drawing is not affected by materials. ADR-0005).
+    ///
+    /// - Note: **Resets every frame.** The material returns to its defaults at the start of every
+    ///   frame, so call this from `draw()` — a call in `setup()` is discarded before the first
+    ///   frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a
+    ///   frame boundary.
     ///
     /// - Parameters:
     ///   - v1: The first color channel value (red or hue).
@@ -715,6 +788,11 @@ extension Sketch {
     ///
     /// - Note: Affects **3D only** (ADR-0005).
     ///
+    /// - Note: **Resets every frame.** The material returns to its defaults at the start of every
+    ///   frame, so call this from `draw()` — a call in `setup()` is discarded before the first
+    ///   frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a
+    ///   frame boundary.
+    ///
     /// - Parameter gray: The grayscale brightness.
     public func specular(_ gray: Float) {
         context.specular(gray)
@@ -723,6 +801,11 @@ extension Sketch {
     /// Sets the specular shininess exponent.
     ///
     /// - Note: Affects **3D only** (ADR-0005).
+    ///
+    /// - Note: **Resets every frame.** The material returns to its defaults at the start of every
+    ///   frame, so call this from `draw()` — a call in `setup()` is discarded before the first
+    ///   frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a
+    ///   frame boundary.
     ///
     /// - Parameter value: The shininess (the larger the value, the smaller the highlight).
     ///
@@ -765,6 +848,11 @@ extension Sketch {
     ///
     /// - Note: Affects **3D only** (ADR-0005).
     ///
+    /// - Note: **Resets every frame.** The material returns to its defaults at the start of every
+    ///   frame, so call this from `draw()` — a call in `setup()` is discarded before the first
+    ///   frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a
+    ///   frame boundary.
+    ///
     /// - Parameter color: The emissive color.
     public func emissive(_ color: Color) {
         context.emissive(color)
@@ -776,6 +864,11 @@ extension Sketch {
     /// 255 by default).
     ///
     /// - Note: Affects **3D only** (2D drawing is not affected by materials. ADR-0005).
+    ///
+    /// - Note: **Resets every frame.** The material returns to its defaults at the start of every
+    ///   frame, so call this from `draw()` — a call in `setup()` is discarded before the first
+    ///   frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a
+    ///   frame boundary.
     ///
     /// - Parameters:
     ///   - v1: The first color channel value (red or hue).
@@ -792,6 +885,11 @@ extension Sketch {
     ///
     /// - Note: Affects **3D only** (ADR-0005).
     ///
+    /// - Note: **Resets every frame.** The material returns to its defaults at the start of every
+    ///   frame, so call this from `draw()` — a call in `setup()` is discarded before the first
+    ///   frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a
+    ///   frame boundary.
+    ///
     /// - Parameter gray: The grayscale brightness.
     public func emissive(_ gray: Float) {
         context.emissive(gray)
@@ -800,6 +898,11 @@ extension Sketch {
     /// Sets the metallic coefficient of the material.
     ///
     /// - Note: Affects **3D only** (ADR-0005).
+    ///
+    /// - Note: **Resets every frame.** The material returns to its defaults at the start of every
+    ///   frame, so call this from `draw()` — a call in `setup()` is discarded before the first
+    ///   frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a
+    ///   frame boundary.
     ///
     /// - Parameter value: The metallic value (0 = dielectric, 1 = metal).
     ///
@@ -850,6 +953,11 @@ extension Sketch {
     ///
     /// - Note: Affects **3D only** (ADR-0005).
     ///
+    /// - Note: **Resets every frame.** The material returns to its defaults (roughness 0.5, PBR
+    ///   off) at the start of every frame, so call this from `draw()` — a call in `setup()` is
+    ///   discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does
+    ///   and does not survive a frame boundary.
+    ///
     /// - Parameter value: The roughness value (0 = smooth, 1 = rough).
     ///
     /// ### Result
@@ -898,6 +1006,11 @@ extension Sketch {
     ///
     /// - Note: Affects **3D only** (ADR-0005).
     ///
+    /// - Note: **Resets every frame.** The material returns to its defaults at the start of every
+    ///   frame, so call this from `draw()` — a call in `setup()` is discarded before the first
+    ///   frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a
+    ///   frame boundary.
+    ///
     /// - Parameter value: The ambient occlusion value (0 = fully occluded, 1 = no occlusion).
     public func ambientOcclusion(_ value: Float) {
         context.ambientOcclusion(value)
@@ -930,6 +1043,11 @@ extension Sketch {
     /// - Note: It is **not restored** by `pushStyle()` / `popStyle()`. It is treated as a
     ///   property of the whole screen.
     ///
+    /// - Note: **Survives across frames.** Unlike the rest of the material state, tone mapping is
+    ///   a property of the whole screen and is **not** reset at the start of a frame, so setting
+    ///   it once in `setup()` is enough. `llms-sketch.txt` lists every state that does and does
+    ///   not survive a frame boundary.
+    ///
     /// - Parameter mode: The tone mapping method.
     public func toneMapping(_ mode: ToneMapMode) {
         context.toneMapping(mode)
@@ -942,6 +1060,11 @@ extension Sketch {
     ///
     /// - Note: Affects **3D only** (ADR-0005). It is not restored by `pushStyle()` /
     ///   `popStyle()`.
+    ///
+    /// - Note: **Survives across frames.** Unlike the rest of the material state, the exposure is
+    ///   a property of the whole screen and is **not** reset at the start of a frame, so setting
+    ///   it once in `setup()` is enough. `llms-sketch.txt` lists every state that does and does
+    ///   not survive a frame boundary.
     ///
     /// - Parameter value: The exposure multiplier (1.0 by default; larger is brighter).
     public func exposure(_ value: Float) {
@@ -981,6 +1104,10 @@ extension Sketch {
     /// - Note: Affects **3D only** (ADR-0005). It is not restored by `pushStyle()` /
     ///   `popStyle()`; it is treated as a property of the whole screen.
     ///
+    /// - Note: **Survives across frames.** Unlike the lights, the environment is **not** reset at
+    ///   the start of a frame, so setting it once in `setup()` is enough. `llms-sketch.txt` lists
+    ///   every state that does and does not survive a frame boundary.
+    ///
     /// - Note: IBL applies to **the PBR path only** (when you call ``roughness(_:)`` or
     ///   enable ``pbr(_:)``). The Blinn-Phong image does not change.
     ///
@@ -1012,6 +1139,10 @@ extension Sketch {
     /// Disables the environment (IBL and skybox).
     ///
     /// - Note: Affects **3D only** (ADR-0005).
+    ///
+    /// - Note: **Survives across frames.** Unlike the lights, the environment is **not** reset at
+    ///   the start of a frame, so this stays in effect until you call `environment(_:)` again.
+    ///   `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
     public func noEnvironment() {
         context.noEnvironment()
     }
@@ -1019,6 +1150,11 @@ extension Sketch {
     /// Switches the PBR rendering mode explicitly.
     ///
     /// - Note: Affects **3D only** (ADR-0005).
+    ///
+    /// - Note: **Resets every frame.** The material returns to its defaults (PBR off) at the
+    ///   start of every frame, so call this from `draw()` — a call in `setup()` is discarded
+    ///   before the first frame is drawn. `llms-sketch.txt` lists every state that does and does
+    ///   not survive a frame boundary.
     ///
     /// - Parameter enabled: Whether to enable PBR rendering.
     ///
@@ -1109,6 +1245,11 @@ extension Sketch {
     ///
     /// - Note: Affects **3D only** (ADR-0005).
     ///
+    /// - Note: **Resets every frame.** The custom material binding is cleared at the start of
+    ///   every frame, so call this from `draw()` — a call in `setup()` is discarded before the
+    ///   first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive
+    ///   a frame boundary.
+    ///
     /// - Parameter customMaterial: The custom material to apply.
     public func material(_ customMaterial: CustomMaterial) {
         context.material(customMaterial)
@@ -1117,6 +1258,11 @@ extension Sketch {
     /// Clears the active custom material and returns to the default shading.
     ///
     /// - Note: Affects **3D only** (ADR-0005).
+    ///
+    /// - Note: **Resets every frame.** The custom material binding is cleared at the start of
+    ///   every frame, so call this from `draw()` — a call in `setup()` is discarded before the
+    ///   first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive
+    ///   a frame boundary.
     public func noMaterial() {
         context.noMaterial()
     }
@@ -1127,6 +1273,11 @@ extension Sketch {
     ///
     /// - Note: Affects **3D only** (to draw an image in 2D, use `image()`. ADR-0005).
     ///
+    /// - Note: **Resets every frame.** The texture binding is cleared at the start of every
+    ///   frame, so call this from `draw()` — a call in `setup()` is discarded before the first
+    ///   frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a
+    ///   frame boundary.
+    ///
     /// - Parameter img: The texture image.
     public func texture(_ img: MImage) {
         context.texture(img)
@@ -1135,6 +1286,11 @@ extension Sketch {
     /// Clears the active texture.
     ///
     /// - Note: Affects **3D only** (ADR-0005).
+    ///
+    /// - Note: **Resets every frame.** The texture binding is cleared at the start of every
+    ///   frame, so call this from `draw()` — a call in `setup()` is discarded before the first
+    ///   frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a
+    ///   frame boundary.
     public func noTexture() {
         context.noTexture()
     }

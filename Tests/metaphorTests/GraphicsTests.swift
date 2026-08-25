@@ -12,12 +12,12 @@ import MetaphorTestSupport
 struct GraphicsTests {
 
     private func makeGraphics(width: Int = 64, height: Int = 64) throws -> Graphics {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let shaderLib = try MetalTestHelper.shaderLibrary()
-        let depthCache = MetalTestHelper.depthStencilCache()
+        let depthCache = try MetalTestHelper.depthStencilCache()
         return try Graphics(
             device: device,
-            commandQueue: MetalTestHelper.commandQueue()!,
+            commandQueue: try MetalTestHelper.commandQueue(),
             shaderLibrary: shaderLib,
             depthStencilCache: depthCache,
             width: width,
@@ -93,12 +93,12 @@ struct GraphicsCurveSettingsTests {
     private static let size = 64
 
     private func makeGraphics() throws -> Graphics {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         return try Graphics(
             device: device,
-            commandQueue: MetalTestHelper.commandQueue()!,
+            commandQueue: try MetalTestHelper.commandQueue(),
             shaderLibrary: try MetalTestHelper.shaderLibrary(),
-            depthStencilCache: MetalTestHelper.depthStencilCache(),
+            depthStencilCache: try MetalTestHelper.depthStencilCache(),
             width: Self.size,
             height: Self.size
         )
@@ -189,12 +189,12 @@ struct GraphicsCurveSettingsTests {
 struct GraphicsLoadPixelsFreshnessTests {
 
     private func makeGraphics(width: Int = 16, height: Int = 16) throws -> Graphics {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let shaderLib = try MetalTestHelper.shaderLibrary()
-        let depthCache = MetalTestHelper.depthStencilCache()
+        let depthCache = try MetalTestHelper.depthStencilCache()
         return try Graphics(
             device: device,
-            commandQueue: MetalTestHelper.commandQueue()!,
+            commandQueue: try MetalTestHelper.commandQueue(),
             shaderLibrary: shaderLib,
             depthStencilCache: depthCache,
             width: width,
@@ -237,12 +237,12 @@ struct GraphicsLoadPixelsFreshnessTests {
 struct GraphicsSameFrameRedrawTests {
 
     private func makeGraphics(width: Int = 16, height: Int = 16) throws -> Graphics {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         return try Graphics(
             device: device,
-            commandQueue: MetalTestHelper.commandQueue()!,
+            commandQueue: try MetalTestHelper.commandQueue(),
             shaderLibrary: try MetalTestHelper.shaderLibrary(),
-            depthStencilCache: MetalTestHelper.depthStencilCache(),
+            depthStencilCache: try MetalTestHelper.depthStencilCache(),
             width: width,
             height: height
         )
@@ -380,12 +380,12 @@ struct GraphicsSameFrameRedrawTests {
 struct GraphicsAPIParityTests {
 
     private func makeGraphics(width: Int = 32, height: Int = 32) throws -> Graphics {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         return try Graphics(
             device: device,
-            commandQueue: MetalTestHelper.commandQueue()!,
+            commandQueue: try MetalTestHelper.commandQueue(),
             shaderLibrary: try MetalTestHelper.shaderLibrary(),
-            depthStencilCache: MetalTestHelper.depthStencilCache(),
+            depthStencilCache: try MetalTestHelper.depthStencilCache(),
             width: width,
             height: height
         )

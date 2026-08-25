@@ -1,6 +1,31 @@
 #!/bin/sh
 #
-# pre-push: ensure generated AI-facing files track their inputs
+# pre-push: run the per-PR CI checks that are cheap enough to pay at push time
+#
+# ここが持つのは **「push する range を見て、どの検査を鳴らすか」だけ**。検査の実体と
+# 復旧手順のメッセージは scripts/check-generated-freshness.sh（生成物の鮮度）と
+# Makefile の static-check-fast / docs-check が正本で、pre-push を通らない経路
+# （scripts/signed-commit.py の GraphQL コミット）も同じものを呼ぶ（Issue #978 / #1155）。
+#
+# **なぜ CI の検査をここでも鳴らすのか**（Issue #1155）。ここが鳴らすのは
+# `build-and-test` が **required かつ無条件**に走らせるステップだけで、新しい規則は
+# 1 つも導入していない — 失敗を手元へ早めているだけ。これは #333（swift-format）と
+# #788（リファレンス画像）で 2 度下した判断と同じ基準で、「push 前に make ci-check」
+# という**文書ルールは実測で守られなかった**（#1020 の取りこぼし 14 ステップ、#978 の
+# 検査ゼロで入った 22 コミット）。
+#
+# 払うコストの上限も既に決まっている: ここは `Sources/**/*.swift` を触った push で
+# `make llms-txt`（= `swift build` + symbol graph 抽出）を丸ごと走らせる。今回足した
+# 2 本はその下に収まる（実測 static-check-fast 5 秒強 / docs-check 3 秒強）。
+# `scripts/tests`（実測 35 秒）だけは載せていない — 理由は Makefile の static-check 側。
+#
+# 降りたいときは `git push --no-verify`。CI が同じ検査を独立に走らせるので、
+# 降りても歯止めが消えるわけではない（早く気付けなくなるだけ）。
+#
+# トリガーを分けているのは、経路ごとに「何を見られるか」が違うため。ここは range
+# （`base..local_sha`）を見られるので、マージで陳腐化した生成物も拾える。作業ツリー
+# しか見られない signed-commit.py 側は代わりに全部を走らせる。理由の全文は
+# check-generated-freshness.sh の冒頭。
 #
 # llms.txt is regenerated and verified when the push touches its inputs.
 # そのリストは scripts/changed-llms-inputs.sh が正本で、per-PR CI も同じものを
@@ -33,6 +58,14 @@
 #   - README.md / README.en.md / docs/README.md / docs/README.en.md / Examples/README.md
 #   - scripts/generate-tutorial-status.py
 #
+# DocC の警告 0（`make docs-check`）は、次に触れたときに検証される。判定は
+# scripts/changed-llms-inputs.sh --docc が正本で、ci.yml も同じ入口を呼ぶ:
+#   - llms.txt の入力（上の 3 つ）
+#   - Sources/**/*.docc/**（カタログ）
+#
+# ビルド不要な検査（`make static-check-fast`）だけはトリガーを持たず、削除だけの
+# push を除いて毎回走る。CI が無条件に走らせている集合と一致させるため。
+#
 # If a regenerated file differs from the checked-in version, the hook aborts
 # the push so the contributor can `git add` and amend.
 #
@@ -45,6 +78,7 @@ set -e
 # generated artifacts. Format: <local_ref> <local_sha> <remote_ref> <remote_sha>
 # When pushing a brand-new branch, remote_sha is 40 zeros — fall back to the
 # merge-base with origin/main.
+needs_static=0
 needs_llms=0
 needs_index=0
 needs_shaders=0
@@ -52,11 +86,18 @@ needs_tutorial=0
 needs_reference=0
 needs_status=0
 needs_format=0
+needs_docc=0
 zero=0000000000000000000000000000000000000000
 
 while read -r _ local_sha _ remote_sha; do
     # Skip deletes (local_sha == zero)
     [ "$local_sha" = "$zero" ] && continue
+
+    # ビルド不要な検査（static-check-fast）だけは range を見ない。CI が無条件に
+    # 走らせているものと**同じ集合**に保つためで、パスで絞ると 2 つの向きに壊れる:
+    # 絞りすぎれば取りこぼし、広げすぎれば「自分が入れていない指摘」で止まる。
+    # 12 本ぶんのトリガーリストを保守する費用も、5 秒を払う費用を上回る（#1155）。
+    needs_static=1
 
     if [ "$remote_sha" = "$zero" ]; then
         # New branch: compare against origin/main if available
@@ -69,6 +110,10 @@ while read -r _ local_sha _ remote_sha; do
             needs_tutorial=1
             needs_reference=1
             needs_status=1
+            # 「全部」と書いてあるのに needs_format だけ抜けていた（#1155 で気付いた
+            # 取りこぼし）。落ちるのは baseline を辿れない push だけなので目立たない。
+            needs_format=1
+            needs_docc=1
             break
         fi
     else
@@ -138,137 +183,68 @@ while read -r _ local_sha _ remote_sha; do
         | grep -q .; then
         needs_format=1
     fi
+    # DocC の警告検査。入力は llms.txt のそれ + カタログ（*.docc/**）で、判定は
+    # scripts/changed-llms-inputs.sh --docc が正本（ci.yml も同じ入口を呼ぶ — 以前
+    # カタログの分だけ ci.yml が自前で足していて、pre-push が同じものを別に持つと
+    # #995 のドリフトを再生産するため #1155 で寄せた）。
+    if scripts/changed-llms-inputs.sh --docc "$base" "$local_sha" | grep -q .; then
+        needs_docc=1
+    fi
 done
 
-# --- llms.txt staleness check -------------------------------------------------
-if [ "$needs_llms" -eq 1 ]; then
-    echo "[pre-push] llms.txt inputs changed — verifying it is up to date..."
-    llms_log="$(mktemp)"
-    if ! make llms-txt >"$llms_log" 2>&1; then
-        echo "[pre-push] ❌ make llms-txt failed. Fix the build and re-push." >&2
-        echo "[pre-push] --- make llms-txt output (tail) ---" >&2
-        tail -40 "$llms_log" >&2
-        rm -f "$llms_log"
-        exit 1
-    fi
-    rm -f "$llms_log"
-    if ! git diff --quiet llms.txt 2>/dev/null; then
-        echo "[pre-push] ❌ llms.txt is stale. Regenerated for you — review and commit:" >&2
+# --- ビルド不要な検査 ---------------------------------------------------------
+#
+# 先頭に置くのは ci.yml と同じ理由。あちらも「ビルド不要なので手前に置く」で
+# lint 群を Build の前に並べてある。5 秒で分かる失敗を、下の `make llms-txt`
+# （= swift build）を待ってから見るのは無駄。
+if [ "$needs_static" -eq 1 ]; then
+    if ! make static-check-fast; then
         echo "" >&2
-        echo "    git add llms.txt && git commit --amend --no-edit  # or a new commit" >&2
-        echo "    git push" >&2
+        echo "[pre-push] ❌ CI と同じ検査が落ちた（理由は上の出力）。直してから push してください:" >&2
         echo "" >&2
-        exit 1
-    fi
-    echo "[pre-push] ✅ llms.txt is up to date."
-fi
-
-# --- examples index staleness check ------------------------------------------
-if [ "$needs_index" -eq 1 ]; then
-    echo "[pre-push] Examples/ or generator changed — verifying examples index is up to date..."
-    if ! python3 scripts/generate-examples-index.py >/dev/null 2>&1; then
-        echo "[pre-push] ❌ generate-examples-index.py failed." >&2
-        exit 1
-    fi
-    if ! git diff --quiet docs/ai/examples-index.md docs/ai/examples-index.json 2>/dev/null; then
-        echo "[pre-push] ❌ examples index is stale. Regenerated for you — review and commit:" >&2
+        echo "    make static-check-fast   # ここだけをもう一度" >&2
+        echo "    make ci-check            # CI と同条件で全部" >&2
         echo "" >&2
-        echo "    git add docs/ai/examples-index.md docs/ai/examples-index.json" >&2
-        echo "    git commit --amend --no-edit  # or a new commit" >&2
-        echo "    git push" >&2
-        echo "" >&2
-        exit 1
-    fi
-    echo "[pre-push] ✅ examples index is up to date."
-fi
-
-# --- shader sources staleness check -------------------------------------------
-if [ "$needs_shaders" -eq 1 ]; then
-    echo "[pre-push] Shaders changed — verifying generated shader sources are up to date..."
-    if ! python3 scripts/generate-shader-sources.py --check; then
-        echo "[pre-push] ❌ Generated shader sources are stale (canonical is Metal/*.metal and Metal/*.h)." >&2
-        echo "[pre-push] Regenerate and commit:" >&2
-        echo "" >&2
-        echo "    python3 scripts/generate-shader-sources.py" >&2
-        echo "    git add Sources/MetaphorCore/Shaders/ShaderSources Sources/MetaphorCore/Shaders/BuiltinShaders+Generated.swift" >&2
-        echo "    git commit --amend --no-edit  # or a new commit" >&2
-        echo "" >&2
-        exit 1
-    fi
-    echo "[pre-push] ✅ shader sources are up to date."
-fi
-
-# --- tutorial snippets staleness check ----------------------------------------
-if [ "$needs_tutorial" -eq 1 ]; then
-    echo "[pre-push] Tutorial code or prose changed — verifying embedded snippets..."
-    if ! python3 scripts/generate-tutorial-snippets.py --check; then
-        echo "[pre-push] ❌ docs/tutorial の埋め込みが古い（正典は Examples/Tutorial/**）。" >&2
-        echo "[pre-push] 再生成してコミットしてください:" >&2
-        echo "" >&2
-        echo "    python3 scripts/generate-tutorial-snippets.py" >&2
-        echo "    git add docs/tutorial" >&2
-        echo "    git commit --amend --no-edit  # or a new commit" >&2
-        echo "" >&2
-        exit 1
-    fi
-    echo "[pre-push] ✅ tutorial snippets are up to date."
-
-    echo "[pre-push] Verifying tutorial result images are up to date..."
-    if ! python3 scripts/generate-tutorial-shots.py --check; then
-        echo "[pre-push] ❌ docs/tutorial/images が古い。撮り直してコミットしてください:" >&2
-        echo "" >&2
-        echo "    make tutorial-shots" >&2
-        echo "    git add docs/tutorial/images" >&2
-        echo "" >&2
+        echo "[pre-push] どうしても今 push するなら git push --no-verify（CI が同じ検査を独立に走らせます）。" >&2
         exit 1
     fi
 fi
 
-# --- reference result images staleness check ----------------------------------
-if [ "$needs_reference" -eq 1 ]; then
-    echo "[pre-push] Sources or reference config changed — verifying reference result images..."
-    if ! python3 scripts/generate-reference-shots.py --check; then
-        echo "[pre-push] ❌ doc コメントの実行結果画像が古い（正典はスニペット）。" >&2
-        echo "[pre-push] 撮り直してコミットしてください（GPU と Gyazo トークンが要ります）:" >&2
-        echo "" >&2
-        echo "    make reference-shots" >&2
-        echo "    git add Sources docs/reference/images/manifest.json" >&2
-        echo "" >&2
-        echo "[pre-push] （CI の必須ゲートと同じ検査です。ここで止めるのは早く気付くため）" >&2
-        exit 1
-    fi
-    echo "[pre-push] ✅ reference result images are up to date."
+# --- 生成物の鮮度 -------------------------------------------------------------
+#
+# 鳴らす検査を集めて、実体へ一度で渡す（順序は実体側の並びが決める）。
+checks=""
+[ "$needs_llms" -eq 1 ] && checks="$checks llms"
+[ "$needs_index" -eq 1 ] && checks="$checks index"
+[ "$needs_shaders" -eq 1 ] && checks="$checks shaders"
+[ "$needs_tutorial" -eq 1 ] && checks="$checks tutorial"
+[ "$needs_reference" -eq 1 ] && checks="$checks reference"
+[ "$needs_status" -eq 1 ] && checks="$checks status"
+[ "$needs_format" -eq 1 ] && checks="$checks format"
+
+if [ -n "$checks" ]; then
+    # shellcheck disable=SC2086  # 検査名の並びは意図的に単語分割させる
+    scripts/check-generated-freshness.sh --label '[pre-push]' $checks
 fi
 
-# --- tutorial publication status check ----------------------------------------
-if [ "$needs_status" -eq 1 ]; then
-    echo "[pre-push] Tutorial prose or an entry doc changed — verifying publication status..."
-    if ! python3 scripts/generate-tutorial-status.py --check; then
-        echo "[pre-push] ❌ 公開状況の案内が古い（正典は docs/tutorial/*.md の frontmatter）。" >&2
-        echo "[pre-push] 再生成してコミットしてください:" >&2
+# --- DocC の警告 0 ------------------------------------------------------------
+#
+# 最後に置くのはビルドを要求するため。上の llms 検査が鳴った push では `make llms-txt`
+# が既にビルドを済ませているので、ここで増えるのは symbol graph の再抽出 + docc convert
+# だけ（実測 3.2 秒）。カタログだけを直した push では llms 検査が鳴らないので、ここが
+# 素の `swift build` を一度通る — CI の `Verify DocC builds without warnings` と同じ形。
+if [ "$needs_docc" -eq 1 ]; then
+    if ! make docs-check; then
         echo "" >&2
-        echo "    python3 scripts/generate-tutorial-status.py" >&2
-        echo "    git add README.md README.en.md docs/README.md docs/README.en.md Examples/README.md" >&2
-        echo "    git commit --amend --no-edit  # or a new commit" >&2
+        echo "[pre-push] ❌ DocC の警告が 0 件ではない（CI の必須ステップと同じ検査）。" >&2
+        echo "[pre-push] ほとんどは解決できないシンボルリンク。シグネチャは llms.txt が正本です:" >&2
         echo "" >&2
+        echo "    grep -nE 'func <名前>\\(' llms.txt" >&2
+        echo "    make docs-check          # 直したらもう一度" >&2
+        echo "" >&2
+        echo "[pre-push] どうしても今 push するなら git push --no-verify。" >&2
         exit 1
     fi
-    echo "[pre-push] ✅ tutorial publication status is up to date."
-fi
-
-# --- swift-format check -------------------------------------------------------
-if [ "$needs_format" -eq 1 ]; then
-    echo "[pre-push] Swift sources or .swift-format changed — verifying formatting..."
-    if ! ./scripts/lint-swift.sh > /dev/null; then
-        echo "[pre-push] ❌ .swift-format どおりに整形されていないファイルがある。" >&2
-        echo "[pre-push] 整形してコミットしてください:" >&2
-        echo "" >&2
-        echo "    make format" >&2
-        echo "" >&2
-        echo "[pre-push] 対象の一覧は make lint-swift で出ます。" >&2
-        exit 1
-    fi
-    echo "[pre-push] ✅ Swift sources are formatted."
 fi
 
 exit 0

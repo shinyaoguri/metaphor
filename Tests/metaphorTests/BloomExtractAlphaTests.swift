@@ -79,7 +79,7 @@ struct BloomExtractAlphaTests {
     private func extract(
         r: Double, g: Double, b: Double, a: Double, threshold: Float = 0.2
     ) throws -> [UInt8] {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let commandQueue = device.makeCommandQueue()!
         let shaderLibrary = try ShaderLibrary(device: device)
         let pipeline = try PostProcessPipeline(

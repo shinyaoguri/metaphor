@@ -8,32 +8,32 @@
     @TopicsVisualStyle(compactGrid)
 }
 
-Metal Performance Shaders によるハードウェアアクセラレーション画像処理とレイトレーシング。
+Hardware-accelerated image processing and ray tracing through Metal Performance Shaders.
 
 ## Overview
 
-MetaphorMPS は Apple の Metal Performance Shaders フレームワークを通じて、
-GPU 最適化された画像フィルタとレイトレーシングを提供します。
-``MetaphorMPS/MPSImageFilterWrapper`` はガウシアンブラー、Sobel エッジ検出、モルフォロジー演算などを提供し、
-``MetaphorMPS/MPSRayTracer`` はメッシュベースのレイトレーシングで、アンビエントオクルージョン、
-ソフトシャドウ、ディフューズシェーディングモードに対応します。
+MetaphorMPS exposes GPU-optimized image filters and ray tracing through Apple's
+Metal Performance Shaders framework.
+``MetaphorMPS/MPSImageFilterWrapper`` covers Gaussian blur, Sobel edge detection,
+and morphological operations, while ``MetaphorMPS/MPSRayTracer`` performs mesh-based ray tracing
+with ambient occlusion, soft shadow, and diffuse shading modes.
 
-``MetaphorCore/PostEffect`` 実装（``MetaphorMPS/MPSBlurEffect``、``MetaphorMPS/MPSSobelEffect`` 等）も含まれており、
-ポストプロセスパイプラインで直接使用できます。
+It also ships ``MetaphorCore/PostEffect`` implementations (``MetaphorMPS/MPSBlurEffect``,
+``MetaphorMPS/MPSSobelEffect``, and others) that drop straight into the post-processing pipeline.
 
-このモジュールは MetaphorCore に依存します。
-アンブレラモジュール（`import metaphor`）使用時は、`createMPSFilter()` などの
-便利なメソッドからアクセスできます。
+This module depends on MetaphorCore.
+With the umbrella module (`import metaphor`), reach it through convenience methods
+such as `createMPSFilter()`.
 
-### クイックスタート
+### Quick Start
 
 ```swift
 let filter = MPSImageFilterWrapper(device: device, commandQueue: queue)
 
-// 画像にガウシアンブラーを適用
+// Apply a Gaussian blur to an image
 filter.gaussianBlur(image, sigma: 5.0)
 
-// ポストプロセスエフェクトとして使用
+// Use it as a post-processing effect
 let blur = MPSBlurEffect(sigma: 3.0)
 postProcess(blur)
 ```

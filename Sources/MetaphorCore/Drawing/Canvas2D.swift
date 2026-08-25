@@ -145,6 +145,7 @@ public final class Canvas2D: CanvasStyle {
     var currentRectMode: RectMode = .corner
     var currentEllipseMode: EllipseMode = .center
     var currentImageMode: ImageMode = .corner
+    var currentShapePositionMode: ShapePositionMode = .corner
     public var colorModeConfig: ColorModeConfig = ColorModeConfig()
     var tintColor: SIMD4<Float> = SIMD4<Float>(1, 1, 1, 1)
     var hasTint: Bool = false
@@ -173,12 +174,23 @@ public final class Canvas2D: CanvasStyle {
     // MARK: - テキスト状態
 
     var currentTextSize: Float = 32
+    // ユーザーが `textFont()` に渡した名前そのもの。`textStyle()` の解決はここから毎回やり直す
+    // ので、スタイルを当てたあとにフォントを変えてもスタイルは維持される。
     var currentFontFamily: String = "Helvetica"
+    var currentTextStyle: TextStyle = .normal
+    // `currentFontFamily` × `currentTextStyle` を畳んだ結果で、描画・計測はすべてこちらを見る。
+    // `TextFontResolver` の解説どおり、ここまで解決しておくとキャッシュキーを広げずに済む。
+    var resolvedFontName: String = "Helvetica"
+    // 同じ (family, style) で警告を出したか。`draw()` の中で毎フレーム `textStyle()` を
+    // 呼ぶ書き方でも、警告が 60 回/秒 出ないようにする。
+    var warnedMissingTextStyles: Set<String> = []
     var currentTextAlignH: TextAlignH = .left
     var currentTextAlignV: TextAlignV = .baseline
     /// 明示された行の高さ（ピクセル単位）。nil ならフォントから導出します
     /// （``Canvas2D/effectiveTextLeading``）。`textSize()` / `textFont()` で nil に戻ります。
     var currentTextLeading: Float?
+    // 矩形版 `text()` の折り返し規則。既定の `.word` は #1165 より前の挙動そのもの。
+    var currentTextWrap: TextWrap = .word
     let textRenderer: TextRenderer
     var frameCounter: Int = 0
 
@@ -190,6 +202,10 @@ public final class Canvas2D: CanvasStyle {
     // MARK: - 曲線状態
 
     var curveDetailCount: Int = 20
+    /// Segments used to approximate a cubic Bezier (``bezier(_:_:_:_:_:_:_:_:)`` and
+    /// ``bezierVertex(_:_:_:_:_:_:)``). 20 is Processing's default and matches
+    /// ``curveDetailCount``; see `bezierDetail(_:)`.
+    var bezierDetailCount: Int = 20
     var curveTightnessValue: Float = 0.0
 
     // MARK: - シェイプ構築状態
@@ -203,7 +219,7 @@ public final class Canvas2D: CanvasStyle {
     }
 
     var isRecordingShape: Bool = false
-    var shapeMode: ShapeMode = .polygon
+    var currentShapeMode: ShapeMode = .polygon
     var shapeVertexList: [ShapeVertexType] = {
         var arr: [ShapeVertexType] = []
         arr.reserveCapacity(64)
@@ -261,15 +277,21 @@ public final class Canvas2D: CanvasStyle {
         var rectMode: RectMode
         var ellipseMode: EllipseMode
         var imageMode: ImageMode
+        var shapePositionMode: ShapePositionMode
         var colorModeConfig: ColorModeConfig
         var tintColor: SIMD4<Float>
         var hasTint: Bool
         var textSize: Float
         var fontFamily: String
+        var textStyle: TextStyle
+        // 派生値だが保存する。pop() のたびに Core Text で解決し直すのは無駄なので。
+        var resolvedFontName: String
         var textAlignH: TextAlignH
         var textAlignV: TextAlignV
         var textLeading: Float?
+        var textWrap: TextWrap
         var curveDetail: Int
+        var bezierDetail: Int
         var curveTightness: Float
         var strokeCap: StrokeCap
         var strokeJoin: StrokeJoin
@@ -747,6 +769,13 @@ public final class Canvas2D: CanvasStyle {
     /// - Parameter mode: 画像モード（例: `.corner`、`.center`）。
     public func imageMode(_ mode: ImageMode) {
         currentImageMode = mode
+    }
+
+    /// Sets how ``SketchContext/shape(_:_:_:_:_:)`` interprets its coordinates.
+    ///
+    /// - Parameter mode: The shape position mode (`.corner`, `.corners`, or `.center`).
+    public func shapeMode(_ mode: ShapePositionMode) {
+        currentShapePositionMode = mode
     }
 
     // MARK: - カラーモード

@@ -10,7 +10,7 @@ struct GrowableGPUBufferTests {
 
     @Test("init creates triple-buffered storage")
     func tripleBuffered() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let buf = try GrowableGPUBuffer<SIMD4<Float>>(device: device, initialCapacity: 128)
         #expect(buf.buffers.count == 3)
         #expect(buf.pointers.count == 3)
@@ -18,14 +18,14 @@ struct GrowableGPUBufferTests {
 
     @Test("initial capacity matches parameter")
     func initialCapacity() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let buf = try GrowableGPUBuffer<Float>(device: device, initialCapacity: 256)
         #expect(buf.capacity == 256)
     }
 
     @Test("buffer(for:) wraps with modular index")
     func bufferModularIndex() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let buf = try GrowableGPUBuffer<Float>(device: device, initialCapacity: 64)
         // Index 0, 1, 2 should all return different buffers
         let b0 = buf.buffer(for: 0)
@@ -40,7 +40,7 @@ struct GrowableGPUBufferTests {
 
     @Test("pointer(for:) wraps with modular index")
     func pointerModularIndex() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let buf = try GrowableGPUBuffer<Float>(device: device, initialCapacity: 64)
         let p0 = buf.pointer(for: 0)
         let p3 = buf.pointer(for: 3)
@@ -49,7 +49,7 @@ struct GrowableGPUBufferTests {
 
     @Test("ensureCapacity returns true when sufficient")
     func ensureCapacitySufficient() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let buf = try GrowableGPUBuffer<Float>(device: device, initialCapacity: 1024)
         let result = buf.ensureCapacity(512, activeIndex: 0, usedCount: 0)
         #expect(result == true)
@@ -58,7 +58,7 @@ struct GrowableGPUBufferTests {
 
     @Test("ensureCapacity grows when needed")
     func ensureCapacityGrows() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let buf = try GrowableGPUBuffer<Float>(
             device: device, initialCapacity: 128, maxCapacity: 10000)
         let result = buf.ensureCapacity(200, activeIndex: 0, usedCount: 0)
@@ -68,7 +68,7 @@ struct GrowableGPUBufferTests {
 
     @Test("growth doubles capacity")
     func growthDoubles() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let buf = try GrowableGPUBuffer<Float>(
             device: device, initialCapacity: 128, maxCapacity: 10000)
         _ = buf.ensureCapacity(129, activeIndex: 0, usedCount: 0)
@@ -77,7 +77,7 @@ struct GrowableGPUBufferTests {
 
     @Test("maxCapacity blocks further growth")
     func maxCapacityBlock() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let buf = try GrowableGPUBuffer<Float>(
             device: device, initialCapacity: 128, maxCapacity: 200)
         let result = buf.ensureCapacity(300, activeIndex: 0, usedCount: 0)
@@ -86,7 +86,7 @@ struct GrowableGPUBufferTests {
 
     @Test("data preserved after growth")
     func dataPreserved() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let buf = try GrowableGPUBuffer<Float>(
             device: device, initialCapacity: 64, maxCapacity: 10000)
 
@@ -110,7 +110,7 @@ struct GrowableGPUBufferTests {
 
     @Test("buffer labels are set")
     func bufferLabels() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let buf = try GrowableGPUBuffer<Float>(
             device: device, initialCapacity: 64, label: "test.buf")
         #expect(buf.buffer(for: 0).label == "test.buf.0")

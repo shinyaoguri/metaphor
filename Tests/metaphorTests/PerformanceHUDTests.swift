@@ -172,14 +172,78 @@ struct PerformanceHUDMetricsTests {
     }
 
     @Test("GPU 時間はトラッカーではなくコマンドバッファの実測から出す")
-    func gpuTimeStaysIndependent() {
+    func gpuTimeStaysIndependent() throws {
         let hud = PerformanceHUD()
-        hud.updateGPUTime(start: 10.0, end: 10.004)
-        #expect(abs(hud.gpuTime - 4) < 0.001)
+        hud.updateGPUTime(4.0)
+        #expect(abs(try #require(hud.gpuTime) - 4) < 0.001)
         #expect(hud.gpuTimeText == "GPU: 4.00 ms")
 
         // fps が算出不能でも GPU 時間は保持される
         hud.update(stats: nil)
         #expect(hud.gpuTimeText == "GPU: 4.00 ms")
+    }
+}
+
+// MARK: - GPU 時間の表明（Issue #1016）
+
+/// GPU 時間も「測れないときは `--`」で表明すること（Issue #1016）。
+///
+/// GPU 実測時刻はコマンドバッファの完了ハンドラから届くので、**そのフレームを
+/// 描き終えたあと**にしか入らない。`noLoop()` のスケッチには次のフレームが無く、
+/// 唯一のフレームの HUD は必ず未受信のまま描かれる。そこで `0.00` と出すと
+/// 「測れている」という誤情報になり、同じパネルの中で fps / フレーム時間
+/// （#698 で `--` に揃えた）と表明の仕方が食い違う。
+@Suite("PerformanceHUD GPU Time")
+@MainActor
+struct PerformanceHUDGPUTimeTests {
+
+    @Test("実測が届くまでは 0.00 ではなく -- を表示する")
+    func showsDashesUntilMeasured() {
+        let hud = PerformanceHUD()
+
+        // 作った直後（= 完了ハンドラが一度も走っていない）
+        #expect(hud.gpuTime == nil)
+        #expect(hud.gpuTimeText == "GPU: -- ms")
+
+        // noLoop() の唯一のフレーム: 描く時点でレンダラーはまだ実測を持たない
+        hud.updateGPUTime(nil)
+        #expect(hud.gpuTime == nil)
+        #expect(hud.gpuTimeText == "GPU: -- ms")
+
+        // 届いたら実測を出す
+        hud.updateGPUTime(0.09)
+        #expect(hud.gpuTimeText == "GPU: 0.09 ms")
+    }
+
+    @Test("一度届いた実測は次のフレームまで保持する")
+    func keepsLastMeasurement() {
+        let hud = PerformanceHUD()
+        hud.updateGPUTime(2.5)
+        #expect(hud.gpuTimeText == "GPU: 2.50 ms")
+        hud.updateGPUTime(3.5)
+        #expect(hud.gpuTimeText == "GPU: 3.50 ms")
+    }
+
+    @Test("期間として成立しない実測は名乗らない")
+    func rejectsNonPositiveDurations() throws {
+        // タイムスタンプが取れない環境の完了ハンドラは 0 を返すことがある。
+        // そのまま通すと未受信と区別のつかない 0.00 ms になる。
+        #expect(MetaphorRenderer.gpuDurationMs(start: 0, end: 0) == nil)
+        #expect(MetaphorRenderer.gpuDurationMs(start: 10, end: 10) == nil)
+        #expect(MetaphorRenderer.gpuDurationMs(start: 10, end: 9.999) == nil)
+
+        let duration = try #require(MetaphorRenderer.gpuDurationMs(start: 10.0, end: 10.004))
+        #expect(abs(duration - 4) < 0.001)
+    }
+
+    @Test(
+        "フレームが 1 度も完了していないレンダラーの GPU 時間は nil",
+        .enabled(if: MTLCreateSystemDefaultDevice() != nil))
+    func rendererReportsNilBeforeAnyFrameCompletes() throws {
+        let renderer = try MetaphorRenderer(width: 32, height: 32)
+        #expect(renderer.lastGPUDurationMs == nil)
+        // 互換のために残している 2 つのタイムスタンプは従来どおり 0 を返す
+        #expect(renderer.lastGPUStartTime == 0)
+        #expect(renderer.lastGPUEndTime == 0)
     }
 }

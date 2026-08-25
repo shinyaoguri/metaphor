@@ -331,6 +331,10 @@ public final class Graphics {
     /// - Parameter mode: The image mode.
     public func imageMode(_ mode: ImageMode) { canvas.imageMode(mode) }
 
+    /// Sets how a retained shape drawn with a position and a size reads its coordinates.
+    /// - Parameter mode: The shape position mode.
+    public func shapeMode(_ mode: ShapePositionMode) { canvas.shapeMode(mode) }
+
     /// Sets the tint color for images.
     /// - Parameter color: The tint color.
     public func tint(_ color: Color) { canvas.tint(color) }
@@ -651,6 +655,16 @@ public final class Graphics {
         _ cx1: Float, _ cy1: Float, _ cx2: Float, _ cy2: Float, _ x: Float, _ y: Float
     ) { canvas.bezierVertex(cx1, cy1, cx2, cy2, x, y) }
 
+    /// Adds a quadratic Bezier vertex to the current shape.
+    /// - Parameters:
+    ///   - cx: The control point x.
+    ///   - cy: The control point y.
+    ///   - x: The end x.
+    ///   - y: The end y.
+    public func quadraticVertex(_ cx: Float, _ cy: Float, _ x: Float, _ y: Float) {
+        canvas.quadraticVertex(cx, cy, x, y)
+    }
+
     /// Adds a Catmull-Rom spline vertex to the current shape.
     /// - Parameters:
     ///   - x: The x coordinate.
@@ -662,6 +676,12 @@ public final class Graphics {
     /// It affects both ``curve(_:_:_:_:_:_:_:_:)`` and ``curveVertex(_:_:)``.
     /// - Parameter n: The number of segments (values below 1 are rounded up to 1).
     public func curveDetail(_ n: Int) { canvas.curveDetail(n) }
+
+    /// Sets the number of segments used to approximate a cubic Bezier.
+    ///
+    /// It affects both ``bezier(_:_:_:_:_:_:_:_:)`` and ``bezierVertex(_:_:_:_:_:_:)``.
+    /// - Parameter n: The number of segments (values below 1 are rounded up to 1).
+    public func bezierDetail(_ n: Int) { canvas.bezierDetail(n) }
 
     /// Sets the tightness of Catmull-Rom spline curves.
     ///
@@ -707,8 +727,20 @@ public final class Graphics {
     public func textSize(_ size: Float) { canvas.textSize(size) }
 
     /// Sets the font family.
+    ///
+    /// - Note: A style-qualified name such as `"Helvetica Neue Bold"` also resolves, but which
+    ///   ones exist depends on the font. Prefer ``textStyle(_:)``, which warns when the style is
+    ///   unavailable instead of falling back to a different font.
+    ///
     /// - Parameter family: The font family name.
     public func textFont(_ family: String) { canvas.textFont(family) }
+
+    /// Sets the bold / italic style applied on top of the current font.
+    ///
+    /// - Note: A style the current font has no face for leaves the text unstyled and warns.
+    ///
+    /// - Parameter style: The style to apply.
+    public func textStyle(_ style: TextStyle) { canvas.textStyle(style) }
 
     /// Sets the text alignment.
     /// - Parameters:
@@ -725,6 +757,13 @@ public final class Graphics {
     ///
     /// - Parameter leading: The line height in pixels.
     public func textLeading(_ leading: Float) { canvas.textLeading(leading) }
+
+    /// Chooses where the rectangle form of ``text(_:_:_:_:_:)`` may break a line.
+    ///
+    /// - Note: It has no effect on ``text(_:_:_:)``, which breaks only at newlines.
+    ///
+    /// - Parameter mode: The wrap rule.
+    public func textWrap(_ mode: TextWrap) { canvas.textWrap(mode) }
 
     /// Draws a text string at the given position.
     /// - Parameters:
@@ -756,6 +795,19 @@ public final class Graphics {
     /// - Parameter string: The text to measure.
     /// - Returns: The width in pixels.
     public func textWidth(_ string: String) -> Float { canvas.textWidth(string) }
+
+    /// Returns the rectangle ``text(_:_:_:)`` would fill for this string at `(x, y)`.
+    ///
+    /// - Note: The width is the advance sum ``textWidth(_:)`` reports, not the extent of the ink.
+    ///
+    /// - Parameters:
+    ///   - string: The text to measure.
+    ///   - x: The x coordinate the text would be drawn at.
+    ///   - y: The y coordinate the text would be drawn at.
+    /// - Returns: The box, with `x` / `y` at its top-left corner.
+    public func textBounds(_ string: String, _ x: Float, _ y: Float) -> TextBounds {
+        canvas.textBounds(string, x, y)
+    }
 
     /// Returns the ascent of the current font.
     /// - Returns: The font ascent in pixels.

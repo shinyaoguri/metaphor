@@ -164,6 +164,10 @@ struct SoundFilePlaybackTests {
 
 /// `SoundFile` / `AudioAnalyzer` の throwing API が AVFoundation の生 `NSError` を
 /// 素通りさせず、モジュールのエラー型へ包んでいることを凍結する。
+///
+/// `SoundFile` のエラー契約はこの suite が一手に見る。「`SoundFileError` のどれかが
+/// 投げられる」までしか見ない弱い検査を別に置くと、ここの検査に完全に含まれる重複に
+/// なるため足さない（#1139）。
 @Suite("MetaphorAudio error contract")
 @MainActor
 struct AudioErrorContractTests {
@@ -212,6 +216,12 @@ struct AudioErrorContractTests {
 
     @Test("error descriptions are non-empty and mention the cause")
     func errorDescriptions() {
+        #expect(
+            SoundFileError.fileNotFound("/test/path.mp3")
+                .errorDescription?.contains("Audio file not found") == true)
+        #expect(
+            SoundFileError.fileNotFound("/test/path.mp3")
+                .errorDescription?.contains("/test/path.mp3") == true)
         #expect(
             SoundFileError.loadFailed(path: "/a.wav", detail: "boom")
                 .errorDescription?.contains("/a.wav") == true)

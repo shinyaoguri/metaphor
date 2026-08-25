@@ -31,10 +31,13 @@ metaphor は Processing 由来の発想を持つクリエイティブコーデ�
 make setup    # 初回: ツールの確認 + git hooks の導入
 make build    # swift build
 make test     # swift test
-make ci-check # CI と同条件（-Xswiftc -warnings-as-errors）で整形検査 + build + test — push 前に通す
+make ci-check # per-PR CI のうち手元で走らせられる検査を全部 — push 前に通す
+make static-check # うちビルド不要な半分だけ（Swift を触らない PR はこれで足りる）
 make check    # セットアップ状態を確認（git hooks / ツールチェーン）
 make llms-txt # llms.txt（AI 向け API リファレンス）を生成
 ```
+
+**`make ci-check` は per-PR CI の `build-and-test` ジョブの鏡**です（#1020）。build + test + 整形検査だけでなく、lint 群・クロスリポ契約・生成物の鮮度・DocC の警告 0・リファレンス URL・doc コメントのスニペットのコンパイルまで走ります。対応づけは `scripts/check-ci-parity.py` の台帳が正本で、`ci.yml` にステップを足して台帳を直さないと CI が落ちます。**通しても残る乖離**（PR メタデータ検査 / クロスリポ identity / Swift 5.10 ビルド / website / example ビルド）は [DEVELOPMENT.md](DEVELOPMENT.md) に一覧があります。
 
 example の実行（各 example は独立した SwiftPM パッケージ）:
 

@@ -88,6 +88,67 @@ extension Sketch {
         context.imageMode(mode)
     }
 
+    /// Sets how ``shape(_:_:_:_:_:)`` interprets the position and size it is given.
+    ///
+    /// The counterpart of ``rectMode(_:)`` / ``ellipseMode(_:)`` / ``imageMode(_:)`` for retained
+    /// shapes. The type is named ``ShapePositionMode`` rather than `ShapeMode`, which already names
+    /// the primitive kind passed to ``beginShape(_:)``.
+    ///
+    /// - Note: Affects **2D only** (it is for ``shape(_:_:_:_:_:)`` on a 2D shape and does not
+    ///   change how the position of a 3D shape is interpreted; ADR-0005).
+    ///
+    /// - Note: With ``ShapePositionMode/corner`` (the default) x, y is the upper-left corner and
+    ///   w, h are the width and height. With ``ShapePositionMode/corners`` w, h are the
+    ///   coordinates of the lower-right corner instead. With ``ShapePositionMode/center`` x, y is
+    ///   the center of the shape.
+    ///
+    /// - Note: **Survives across frames.** Like the rest of the 2D style state it is **not** reset
+    ///   at the start of a frame, so a value set in `setup()` still applies in `draw()`. It is
+    ///   saved and restored by ``push()`` / ``pop()``.
+    ///
+    /// - Parameter mode: The interpretation mode for retained shapes.
+    ///
+    /// ### Result
+    ///
+    /// The same ``shape(_:_:_:_:_:)`` arguments land at a different position depending on the mode
+    /// (``ShapePositionMode/corner``, the default, on the left and ``ShapePositionMode/center`` on
+    /// the right).
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![shapeMode(_:) の実行結果](https://i.gyazo.com/65003aea88d92dfc66636d80a5fb0341.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(24)
+    ///       noStroke()
+    ///       let s = createShape(
+    ///           .rect(
+    ///               x: 0, y: 0,
+    ///               width: 150, height: 110
+    ///           )
+    ///       )
+    ///       // follow fill(), not its own style
+    ///       s.disableStyle()
+    ///
+    ///       // x, y is the upper-left corner
+    ///       shapeMode(.corner)
+    ///       fill(255, 190, 60)
+    ///       shape(s, 40, 40, 150, 110)
+    ///
+    ///       // x, y is the center
+    ///       shapeMode(.center)
+    ///       fill(80, 170, 255)
+    ///       shape(s, 320, 250, 150, 110)
+    ///       ```
+    ///    }
+    /// }
+    public func shapeMode(_ mode: ShapePositionMode) {
+        context.shapeMode(mode)
+    }
+
     // MARK: Color Mode
 
     /// Sets the color mode with a maximum value for each channel.

@@ -124,8 +124,12 @@ Shadow DOM に入った script はコードがテキストとして見えてし�
 
 ### Follow-ups / 残課題
 
-- #334 の残り（MetaphorCore 8,454 行 / umbrella / `.docc` 記事 14 本）。ここが英語化される
-  ほど日本語版の網羅が広がる
+- #334 の残りは **MetaphorCore の doc コメントだけ**になった。ここが英語化されるほど
+  日本語版の網羅が広がる。umbrella は PR #1084 で、`.docc` 記事は
+  [#1115](https://github.com/shinyaoguri/metaphor/issues/1115) で英語化済み（14 本のうち
+  読み物 2 本は [#533](https://github.com/shinyaoguri/metaphor/issues/533) が削除し、
+  残るランディング 12 本を台帳へ載せた）。`.docc` が日本語へ戻らないことは
+  `scripts/check-doc-comment-language.py` が機械で守る
 - `theme-settings.json` に書かれている `features.docs.i18n.enable` は DocC の公式
   ドキュメントに無いフラグで、効いていない（[#529](https://github.com/shinyaoguri/metaphor/issues/529) と同じ「書いてあるが無言で効かない」状態）。
   DocC の UI 改善とあわせて別 Issue

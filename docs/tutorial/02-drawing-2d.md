@@ -322,7 +322,7 @@ final class Stroke: Sketch {
 
 ## 2.4 自分で形を作る
 
-![頂点を並べて作った形が 8 つ。上 2 段はオレンジの星、水色の閉じた曲線、桃色のベジェ曲線、穴の空いた緑の矩形、黄色い斜めの線の列、水色のジグザグ。下段は同じ 4 つの白い点を通る形で、左は灰色の四角と外へふくらんだ橙の曲線が重なり、右は張りを変えた黄色い四角・水色の丸・ひとまわり大きい桃色の丸](https://i.gyazo.com/04da23c3a3a263bd6f5f288219f8fba1.png)
+![頂点を並べて作った形が 8 つ。上 2 段はオレンジの星、水色の閉じた曲線、桃色のベジェ曲線、穴の空いた緑の矩形、黄色い斜めの線の列、水色のジグザグ。下段は同じ 4 つの白い点を通る形で、左は灰色の四角と外へふくらんだ橙の曲線が重なり、右は張りを変えた黄色い四角・水色の丸・ひとまわり大きい桃色の丸](https://i.gyazo.com/87d0e790301826de265948a7f154edc2.png)
 
 組み込みの図形に無い形は、頂点を並べて作ります。`beginShape()` と `endShape()` で挟み、その間に `vertex(x, y)` を並べます。
 
@@ -881,6 +881,15 @@ let f = try loadFont("assets/Inter.ttf")  // .ttf / .otf を読む
 textFont(f)
 ```
 
+太字・斜体は `textStyle(_:)` でも切り替えられます。`.normal` / `.bold` / `.italic` / `.boldItalic` の 4 つで、**書体はそのままに**その書体の太字面・斜体面を要求します。
+
+```swift
+textFont("Helvetica Neue")
+textStyle(.bold)
+```
+
+上の `textFont("Helvetica Neue Bold")` のように名前へ含める書き方も効きますが、どの名前が使えるかはフォントごとに違い、外した名前は**無警告で Helvetica に化けます**（`"Papyrus Bold"` は太字の Papyrus ではなく Helvetica になります）。`textStyle(_:)` なら、その書体に字面が無いときは**スタイルを当てずに警告を出す**ので、黙って別のフォントで描かれることがありません。Monaco や Papyrus のように太字面も斜体面も持たない書体があります。
+
 字形そのものを素材にしたいときは、輪郭を取り出せます。`textToPoints(_:_:_:)` は輪郭上の点を、`textToShape(_:_:_:)` は穴のあいた形をそのまま塗れる図形を返します。
 
 ```swift
@@ -889,10 +898,11 @@ for p in textToPoints("metaphor", 40, 200) {
 }
 ```
 
-まだできないのは次の 2 つです。
+折り返し規則は `textWrap(.word)` / `textWrap(.char)` で選べ、描かれる矩形は
+`textBounds(文字列, x, y)` で測れます（`textAlign()` を織り込んだ箱が返ります）。
 
-- 書体を変えずに太さだけ切り替える（p5 の `textStyle(BOLD)` にあたるもの。上のように名前へ含める形になり、どの名前が使えるかはフォントによります — [#816](https://github.com/shinyaoguri/metaphor/issues/816)）
-- パスに沿って文字を並べる（[#651](https://github.com/shinyaoguri/metaphor/issues/651)）
+まだできないのは、パスに沿って文字を並べることだけです
+（[#651](https://github.com/shinyaoguri/metaphor/issues/651)）。
 
 ### 試してみる
 

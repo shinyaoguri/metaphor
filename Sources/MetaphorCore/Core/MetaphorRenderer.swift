@@ -212,11 +212,48 @@ public final class MetaphorRenderer: NSObject {
 
     // MARK: - GPU 時間
 
-    /// 最後に完了したフレームの GPU 開始タイムスタンプ（秒）
-    public private(set) var lastGPUStartTime: Double = 0
+    /// The measured GPU timestamps of the last completed frame (seconds), or `nil`
+    /// while no completion handler has run yet.
+    ///
+    /// The pair is held as one optional so that "not measured yet" can never be
+    /// mistaken for "took zero time" (#1016).
+    private var lastGPUTimestamps: (start: Double, end: Double)?
 
-    /// 最後に完了したフレームの GPU 終了タイムスタンプ（秒）
-    public private(set) var lastGPUEndTime: Double = 0
+    /// The last completed frame's GPU start timestamp, or `0` if unmeasured (seconds).
+    public var lastGPUStartTime: Double { lastGPUTimestamps?.start ?? 0 }
+
+    /// The last completed frame's GPU end timestamp, or `0` if unmeasured (seconds).
+    public var lastGPUEndTime: Double { lastGPUTimestamps?.end ?? 0 }
+
+    /// The last completed frame's GPU execution time in milliseconds, or `nil`.
+    ///
+    /// It is `nil` when no measurement has arrived yet, and when the measured pair is
+    /// not a duration (`end <= start`).
+    ///
+    /// GPU timestamps come back through the command buffer's completion handler, so
+    /// they only land *after* the frame that produced them was drawn. A `noLoop()`
+    /// sketch never draws a second frame, so its only frame is always read before any
+    /// measurement exists. Returning `0` there would let ``PerformanceHUD`` claim a
+    /// measurement it does not have, which is why this is optional (#1016 — the same
+    /// treatment fps and frame time get when they cannot be computed).
+    public var lastGPUDurationMs: Double? {
+        lastGPUTimestamps.flatMap { Self.gpuDurationMs(start: $0.start, end: $0.end) }
+    }
+
+    /// Folds a pair of measured timestamps into a duration that may be reported
+    /// (milliseconds).
+    ///
+    /// Where GPU timestamps are unavailable the completion handler can hand back `0`,
+    /// which would be indistinguishable from "not measured yet". Anything that is not
+    /// a duration (`end <= start`) is refused rather than reported.
+    /// - Parameters:
+    ///   - start: The GPU start timestamp (seconds).
+    ///   - end: The GPU end timestamp (seconds).
+    /// - Returns: The duration in milliseconds, or `nil` when it cannot be reported.
+    nonisolated static func gpuDurationMs(start: Double, end: Double) -> Double? {
+        guard end > start else { return nil }
+        return (end - start) * 1000
+    }
 
     // MARK: - フレームエクスポート
 
@@ -1243,8 +1280,7 @@ public final class MetaphorRenderer: NSObject {
             // main.async へ渡す前に let へ束ね直す（延命は dispatch の間だけ）。
             let renderer = self
             DispatchQueue.main.async {
-                renderer?.lastGPUStartTime = start
-                renderer?.lastGPUEndTime = end
+                renderer?.lastGPUTimestamps = (start: start, end: end)
             }
         }
         let attachFrameCompletion: (MTLCommandBuffer) -> Void = { buffer in

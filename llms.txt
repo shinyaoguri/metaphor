@@ -89,10 +89,13 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func addPostEffect(_ effect: any PostEffect)` -- ポストプロセスエフェクトをパイプラインに追加します。
 - `func ambientLight(_ strength: Float)` -- Sets the intensity of the ambient light from a grayscale value.
   - Note: Affects **3D only** (2D drawing is not affected by lighting. ADR-0005).
+  - Note: **Resets every frame.** The ambient light returns to its default at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func ambientLight(_ r: Float, _ g: Float, _ b: Float)` -- Sets the color of the ambient light from RGB values.
   - Note: Affects **3D only** (ADR-0005).
+  - Note: **Resets every frame.** The ambient light returns to its default at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func ambientOcclusion(_ value: Float)` -- Sets the PBR ambient occlusion coefficient.
   - Note: Affects **3D only** (ADR-0005).
+  - Note: **Resets every frame.** The material returns to its defaults at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func applyMatrix(_ matrix: float3x3)` -- Multiplies the current 2D transform by a 3x3 matrix.
   - Note: Affects **2D only**. For 3D, use `applyMatrix(_:)` (the `float4x4` version). The unification with P3D semantics is limited to `translate(_:_:)` / `rotate(_:)` / `scale(_:_:)`, and applying a matrix directly is out of scope (ADR-0005 Amendment 2026-08-02).
 - `func applyMatrix(_ matrix: float4x4)` -- Multiplies the current 3D transform by a 4x4 matrix.
@@ -122,6 +125,11 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func beginVideoRecord(_ path: String? = nil, config: VideoExportConfig = VideoExportConfig())` -- Starts recording the video output.
 - `func bezier(_ x1: Float, _ y1: Float, _ cx1: Float, _ cy1: Float, _ cx2: Float, _ cy2: Float, _ x2: Float, _ y2: Float)` -- Draws a cubic Bézier curve.
   - Note: Affects **2D only** (there is no 3D Bézier curve; ADR-0005).
+- `func bezierDetail(_ n: Int)` -- Sets the number of segments used to approximate a cubic Bézier.
+  - Note: Affects **2D only** (it is for `bezier(_:_:_:_:_:_:_:_:)` / `bezierVertex(_:_:_:_:_:_:)` / `quadraticVertex(_:_:_:_:)` and has no effect on 3D. ADR-0005).
+  - Note: The default is **20 segments**, the same as `curveDetail(_:)` and Processing. Until Issue #813 the one-shot `bezier(_:_:_:_:_:_:_:_:)` was fixed at 24 segments while `bezierVertex(_:_:_:_:_:_:)` followed `curveDetail(_:)`, so the same curve came out at two different resolutions depending on how it was drawn. Both now follow this setting, and `curveDetail(_:)` is left to `curve(_:_:_:_:_:_:_:_:)` / `curveVertex(_:_:)` as in Processing.
+  - Note: **Survives across frames.** Like the rest of the 2D style state it is **not** reset at the start of a frame, so a value set in `setup()` still applies in `draw()`. It is saved and restored by `push()` / `pop()`.
+  - Important: Values below 1 are rounded up to 1, as in `curveDetail(_:)`.
 - `func bezierVertex(_ cx1: Float, _ cy1: Float, _ cx2: Float, _ cy2: Float, _ x: Float, _ y: Float)` -- Adds a cubic Bézier vertex to the current shape.
   - Note: Affects **2D only** (a 3D shape has no Bézier vertices; ADR-0005).
 - `func blendMode(_ mode: BlendMode)` -- Sets the blend mode for subsequent drawing operations.
@@ -133,6 +141,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
   - Note: Affects **3D only** (it is drawn on the 3D canvas. ADR-0005).
 - `func camera(eye: SIMD3<Float>, center: SIMD3<Float>, up: SIMD3<Float> = SIMD3(0, 1, 0))` -- Sets the 3D camera from eye, center, and up vectors.
   - Note: Affects **3D only** (2D drawing is not affected by the camera. ADR-0005).
+  - Note: **Resets every frame.** The camera returns to the default pixel-space view at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func ciFilter(_ image: MImage, _ preset: CIFilterPreset)` -- Applies a CoreImage filter preset to an image.
 - `func ciFilter(_ image: MImage, name: String, parameters: [String : Any] = [:])` -- Applies a CoreImage filter to an image by name, with custom parameters.
 - `func ciGenerate(_ preset: CIFilterPreset, width: Int, height: Int) -> MImage?` -- Generates an image using a CoreImage generator filter.
@@ -142,6 +151,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
   - Note: Affects **2D only** (the 3D batch draw is `drawInstanced(_:transforms:)`. ADR-0005).
 - `func circles(_ instances: GPUBuffer<CircleInstance>, count: Int? = nil)` -- Draws circle instances held in a GPU buffer in a single batch.
   - Note: Affects **2D only** (the 3D batch draw is `drawInstanced(_:transforms:)`. ADR-0005).
+  - Important: The buffer is drawn byte for byte, so a compute kernel that fills it has to declare the struct in `CircleInstance`'s memory order — `position` at 0, `diameter` at 8, padding at 12, `color` at 16, stride 32 — not in the alphabetical order the properties are documented in. The wrong order compiles without a warning and draws nothing at all; the MSL definition to paste is in the documentation for `CircleInstance`.
 - `func clearCaches()` -- GPU メモリを解放するためにすべての内部キャッシュをクリアします。
 - `func clearPostEffects()` -- パイプラインからすべてのポストプロセスエフェクトを削除します。
 - `func closeAllWindows()` -- このスケッチから作成されたすべてのセカンダリウィンドウを閉じます。
@@ -150,7 +160,9 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func colorMode(_ space: ColorSpace, _ max1: Float? = nil, _ max2: Float? = nil, _ max3: Float? = nil, _ maxA: Float? = nil)` -- Sets the color mode with a maximum value for each channel.
   - Note: Affects **both 2D and 3D** (channel interpretation for `fill(_:)-(Color)` and `stroke(_:)-(Color)` stays in step across both canvases; ADR-0005).
 - `func compute()` -- 各フレームの前に GPU コンピュート処理を実行します（オプション）。
-- `func computeBarrier()` -- Inserts a barrier to synchronize dispatches (only inside `Sketch/compute()`).
+- `func computeBarrier()` -- Inserts a barrier between compute dispatches (only inside `Sketch/compute()`).
+  - Note: **With the current encoder the call changes nothing.** Every dispatch of a frame is encoded into one compute pass created with `MTLDispatchType.serial`, where the dispatches run in encode order and each one already sees what the earlier ones wrote, including writes made by other threads. A dependent chain is therefore correct with or without the barrier today (measured in Issue #1093).
+  - Important: **It stops being a no-op the moment the pass becomes concurrent.** The same chain re-encoded with `MTLDispatchType.concurrent` reads stale values without the barrier and is correct with it. That is what this API exists for, so keep calling it wherever a dispatch genuinely depends on an earlier one: it costs nothing now, it states the dependency for the next reader, and it is what keeps the chain correct if the pass ever moves to concurrent dispatch.
   - Important: A call from `setup()` or `draw()` does nothing. Debug builds warn once (Issue #1092).
 - `func cone(radius: Float, height: Float, detail: Int = 24)` -- Draws a cone.
   - Note: Affects **3D only** (it is drawn on the 3D canvas. ADR-0005).
@@ -160,15 +172,17 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
   - Note: The mesh that is created can be drawn in **3D only** (`mesh(_:)` / `drawInstanced(_:transforms:)`. ADR-0005).
 - `func createBoxMesh(_ width: Float, _ height: Float, _ depth: Float) -> Mesh?` -- Creates a box mesh (without drawing it).
   - Note: The mesh that is created can be drawn in **3D only** (`mesh(_:)` / `drawInstanced(_:transforms:)`. ADR-0005).
-- `func createBuffer<T>(_ data: [T]) -> GPUBuffer<T>?` -- 指定したデータで初期化された GPU バッファを作成します。
-- `func createBuffer<T>(count: Int, type: T.Type) -> GPUBuffer<T>?` -- 指定した要素数と型の GPU バッファを作成します。
+- `func createBuffer<T>(_ data: [T]) -> GPUBuffer<T>?` -- Creates a GPU buffer initialized with the given data.
+  - Important: Reading the buffer back does **not** wait for the GPU. See `GPUBuffer` for when a kernel's writes actually become visible to the CPU.
+- `func createBuffer<T>(count: Int, type: T.Type) -> GPUBuffer<T>?` -- Creates a GPU buffer of the given element count and type.
+  - Important: Reading the buffer back does **not** wait for the GPU. See `GPUBuffer` for when a kernel's writes actually become visible to the CPU.
 - `func createCanvas(width: Int, height: Int)` -- キャンバスサイズを設定します（`setup()` 内で呼び出してください、p5.js スタイル）。
   - Important: `draw()` の中からの呼び出しは警告を出して無視されます（#856）。リサイズは全インフライトフレームの完了待ちを伴うため、フレームの中では成立しません。
 - `func createCapture(width: Int = 1280, height: Int = 720, device: CaptureDeviceInfo) -> CaptureDevice` -- Creates a capture device for the given camera and **starts capturing automatically**.
 - `func createCapture(width: Int = 1280, height: Int = 720, deviceName: String) -> CaptureDevice` -- Creates a capture device by selecting a camera by name and **starts capturing
 - `func createCapture(width: Int = 1280, height: Int = 720, position: CameraPosition? = nil) -> CaptureDevice` -- Creates a camera capture device and **starts capturing automatically**
   - Note: A device with `isAvailable == false` is returned when camera permission has been denied. Disconnection of the camera in use can be detected with `CaptureDevice/onDisconnect`.
-- `func createComputeKernel(source: String, function: String) throws -> ComputeKernel` -- MSL ソースコードから GPU コンピュートカーネルを作成します。
+- `func createComputeKernel(source: String, function: String) throws -> ComputeKernel` -- Creates a GPU compute kernel from Metal Shading Language source.
 - `func createConeMesh(radius: Float, height: Float, detail: Int = 24) -> Mesh?` -- Creates a cone mesh (without drawing it).
   - Note: The mesh that is created can be drawn in **3D only** (`mesh(_:)` / `drawInstanced(_:transforms:)`. ADR-0005).
 - `func createCylinderMesh(radius: Float, height: Float, detail: Int = 24) -> Mesh?` -- Creates a cylinder mesh (without drawing it).
@@ -223,13 +237,17 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func decodeState<T>(_ data: Data, as type: T.Type = T.self) -> T? where T : Decodable` -- `restoreState(_:)` で受け取ったデータをデコードします。失敗したら `nil`。
 - `func directionalLight(_ x: Float, _ y: Float, _ z: Float, color: Color = .white, intensity: Float = 1.0)` -- Adds a directional light.
   - Note: Affects **3D only** (2D drawing is not affected by lighting. ADR-0005).
+  - Note: **Resets every frame.** The set of lights is emptied at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func disableFeedback()` -- Disables framebuffer feedback.
 - `func disablePerformanceHUD()` -- パフォーマンスヘッドアップディスプレイオーバーレイを無効にします。
 - `func disableShadows()` -- Disables shadow mapping.
   - Note: Affects **3D only** (ADR-0005).
+  - Note: **Survives across frames.** Unlike the lights themselves, the shadow map is **not** reset at the start of a frame, so this stays in effect until you call `enableShadows()` again. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func dispatch(_ kernel: ComputeKernel, threads: Int, configure: (any MTLComputeCommandEncoder) -> Void)` -- Dispatches a 1D compute kernel (only effective inside `Sketch/compute()`).
+  - Important: The call only **encodes** the kernel into the frame's command buffer. The GPU does not start it until the frame is committed, so an output `GPUBuffer` read later in the same `compute()` still holds the contents from before the dispatch. See `GPUBuffer` for when the writes become visible to the CPU.
   - Important: A call from `setup()` or `draw()` does nothing. Debug builds warn once (Issue #1092).
 - `func dispatch(_ kernel: ComputeKernel, width: Int, height: Int, configure: (any MTLComputeCommandEncoder) -> Void)` -- Dispatches a 2D compute kernel (only effective inside `Sketch/compute()`).
+  - Important: The call only **encodes** the kernel into the frame's command buffer. The GPU does not start it until the frame is committed, so an output `GPUBuffer` read later in the same `compute()` still holds the contents from before the dispatch. See `GPUBuffer` for when the writes become visible to the CPU.
   - Important: A call from `setup()` or `draw()` does nothing. Debug builds warn once (Issue #1092).
 - `func draw()` -- 1フレームを描画します（描画メソッドを直接呼び出します）。
 - `func drawInstanced(_ mesh: Mesh, transforms: [float4x4])` -- Draws the same mesh in one batch with multiple transforms (explicit instancing).
@@ -246,14 +264,18 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
   - Note: Affects **2D only** (it is for `ellipse(_:_:_:_:)` and does not change how the position of 3D primitives is interpreted; ADR-0005).
 - `func emissive(_ color: Color)` -- Sets the emissive (self-illumination) color.
   - Note: Affects **3D only** (ADR-0005).
+  - Note: **Resets every frame.** The material returns to its defaults at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func emissive(_ gray: Float)` -- Sets the emissive color from a grayscale value.
   - Note: Affects **3D only** (ADR-0005).
+  - Note: **Resets every frame.** The material returns to its defaults at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func emissive(_ v1: Float, _ v2: Float, _ v3: Float)` -- Sets the emissive color from channel values.
   - Note: Affects **3D only** (2D drawing is not affected by materials. ADR-0005).
+  - Note: **Resets every frame.** The material returns to its defaults at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func enableFeedback()` -- Enables framebuffer feedback, giving access to the previous frame.
 - `func enablePerformanceHUD()` -- パフォーマンスヘッドアップディスプレイオーバーレイを有効にします。
 - `func enableShadows(resolution: Int = 2048)` -- Enables shadow mapping.
   - Note: Affects **3D only** (only 3D shapes cast shadows. ADR-0005).
+  - Note: **Survives across frames.** Unlike the lights themselves, the shadow map is **not** reset at the start of a frame, so setting it once in `setup()` is enough. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
   - Note: **Layering of 2D and 3D** (#832 / the Amendment section of ADR-0003). On the default immediate path (shadows off), the layering is determined by **encode order, not call order**. 2D is collected into a batch and flushed at the end of the frame, so **2D comes in front of 3D by default** (2D drawn before `box()` still ends up in front). If the 2D batch is flushed partway through, however, it falls behind any 3D encoded after that — the triggers are a change of `blendMode()`, alternating with `image()` or `text()`, alternating with instanced drawing such as `circles()`, `beginClip()` / `endClip()`, `loadPixels()`, and the vertex buffer limit. **To layer in call order**, either enable this `enableShadows()` or take the recording path with the environment variable `METAPHOR_COMMAND_RECORD=1` (in both cases `Canvas3D` finalizes the 2D right before it records the 3D, so the call order is restored as is).
 - `func encodeState<T>(_ value: T) -> Data? where T : Encodable` -- 状態を JSON へエンコードします。失敗したら `nil`（= 状態を保存しない）。
 - `func endClip()` -- Ends the current clip region and restores the previous state.
@@ -274,12 +296,14 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func endVideoRecordAsync() async` -- Stops the video recording asynchronously and finalizes the file.
 - `func environment(_ preset: EnvironmentPreset, intensity: Float = 1.0, background: Bool = true)` -- Sets the environment (IBL and the background skybox).
   - Note: Affects **3D only** (ADR-0005). It is not restored by `pushStyle()` / `popStyle()`; it is treated as a property of the whole screen.
+  - Note: **Survives across frames.** Unlike the lights, the environment is **not** reset at the start of a frame, so setting it once in `setup()` is enough. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
   - Note: IBL applies to **the PBR path only** (when you call `roughness(_:)` or enable `pbr(_:)`). The Blinn-Phong image does not change.
   - Note: If tone mapping has not been specified, it is promoted automatically to `ToneMapMode/acesFilmic` (because adding an environment pushes the luminance above 1.0). If you specified `toneMapping(_:)` explicitly, that wins.
   - Note: When `background: true`, the skybox is drawn exactly once, **right before the first 3D drawing**. Therefore 2D drawn before that is covered by the skybox, while 2D drawn after it (a HUD or other foreground) stays on top. On a frame that draws no 3D at all, the skybox is not drawn either.
   - Note: If `ambientLight(_:)` has not been specified explicitly, the default ambient becomes 0 (so that it is not added twice with the diffuse term of the IBL).
 - `func exposure(_ value: Float)` -- Sets the exposure multiplier applied before tone mapping.
   - Note: Affects **3D only** (ADR-0005). It is not restored by `pushStyle()` / `popStyle()`.
+  - Note: **Survives across frames.** Unlike the rest of the material state, the exposure is a property of the whole screen and is **not** reset at the start of a frame, so setting it once in `setup()` is enough. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func fileDropped(_ paths: [String])` -- ファイルがウィンドウへドラッグ＆ドロップされた時に呼ばれます。
 - `func fill(_ color: Color)` -- Sets the fill color.
   - Note: Affects **both 2D and 3D**. In 3D it becomes the color of primitives and meshes, and when a `texture(_:)` is applied it is multiplied into the texture color (ADR-0005).
@@ -319,6 +343,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func keyTyped()` -- 文字入力を生成するキー押下時に呼ばれます（Processing の `keyTyped()` 互換）。
 - `func lights()` -- Enables the default lighting (a directional light and an ambient light).
   - Note: Affects **3D only** (2D drawing is not affected by lighting. ADR-0005).
+  - Note: **Resets every frame.** The set of lights is emptied at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func line(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float)` -- Draws a line between two points.
   - Note: Affects **2D only** (for a 3D line, pass `ShapeMode/lines` to `beginShape3D(_:)`. ADR-0005).
 - `func linearGradient(_ x: Float, _ y: Float, _ w: Float, _ h: Float, _ c1: Color, _ c2: Color, axis: GradientAxis = .vertical)` -- Draws a rectangle filled with a linear gradient.
@@ -339,6 +364,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func loadPixels()` -- Reads the canvas contents **as of the moment of the call** back into the `pixels` array
   - Important: Reading back the same frame works on the **normal path with shadows off**. With shadows enabled (`enableShadows()`), `draw()` runs first as a recording pass and cannot be split, so what you read is **the contents of the most recently committed frame** (warned once). The same applies when it is called outside `draw()` (in `setup()` or between frames).
   - Note: It blocks the main thread to wait for the GPU to finish (the same as Processing). Sketches that never call `loadPixels()` pay no cost at all.
+  - Note: Because it waits, it is currently also **the only public API that makes this frame's `Sketch/compute()` results readable from the CPU**: the command buffer it commits is the same one that carried the frame's dispatches, so a `GPUBuffer` read after it returns sees what the kernels wrote. That holds only on the same-frame path above — with shadows on, or outside `draw()`, it waits on a separate command buffer and this frame's compute is still in flight. A read back that does not go through the pixel path is tracked in Issue #1136.
   - Note: Because the read back splits the render pass internally, 3D geometry drawn on opposite sides of a `loadPixels()` is not depth compared (depth is cleared in the continuation pass).
   - Note: `loadPixels()` is also a flush point for the 2D batch. On the immediate path with shadows off, stacking order is decided by **encode order** rather than call order, so 2D drawn **before** `loadPixels()` ends up behind 3D drawn **after** it. Draw the 2D you want in front of the 3D after `loadPixels()` (#832; the full list of triggers is in the 2026-08-16 addendum to [ADR-0003](https://github.com/shinyaoguri/metaphor/blob/main/docs/adr/0003-unified-command-stream.md)). Within each side of a `loadPixels()`, 2D still appears in front of 3D just as it does at the end of a frame.
 - `func loadShader(_ path: String, fragment: String) throws -> Shader2D` -- Loads a custom 2D fragment shader from an external MSL file.
@@ -352,10 +378,12 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `static func main()` -- スケッチアプリケーションを起動します（`@main` 属性から呼ばれます）。
 - `func material(_ customMaterial: CustomMaterial)` -- Applies a custom material to subsequent 3D drawing.
   - Note: Affects **3D only** (ADR-0005).
+  - Note: **Resets every frame.** The custom material binding is cleared at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func mesh(_ mesh: Mesh)` -- Draws a prebuilt mesh.
   - Note: Affects **3D only** (it is drawn on the 3D canvas. ADR-0005).
 - `func metallic(_ value: Float)` -- Sets the metallic coefficient of the material.
   - Note: Affects **3D only** (ADR-0005).
+  - Note: **Resets every frame.** The material returns to its defaults at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func modelX(_ x: Float, _ y: Float, _ z: Float) -> Float` -- Returns the world x coordinate of a 3D model coordinate taken through the current transform.
   - Note: **3D only**. Use `screenX(_:_:_:)` when you want screen coordinates in pixels.
   - Important: What comes back is a **world coordinate**, independent of the camera. Changing `camera(eye:center:up:)` or `perspective(fov:near:far:)` does not change the value (the same semantics as Processing's `modelX()`).
@@ -374,30 +402,38 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func noCursor()` -- カーソルを非表示にします。
 - `func noEnvironment()` -- Disables the environment (IBL and skybox).
   - Note: Affects **3D only** (ADR-0005).
+  - Note: **Survives across frames.** Unlike the lights, the environment is **not** reset at the start of a frame, so this stays in effect until you call `environment(_:)` again. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func noFill()` -- Disables filling shapes.
   - Note: Affects **both 2D and 3D**. In 3D the faces stop being drawn, and calling `noStroke()` as well leaves that shape drawing nothing at all (ADR-0005).
 - `func noiseTexture(_ type: NoiseType, width: Int, height: Int, config: NoiseConfig = NoiseConfig()) -> MImage?` -- Generates a noise texture as an image (a convenience method).
 - `func noLights()` -- Disables all lights.
   - Note: Affects **3D only** (ADR-0005).
+  - Note: **Resets every frame.** The set of lights is emptied at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func noLoop()` -- アニメーションループを停止します。
 - `func noMaterial()` -- Clears the active custom material and returns to the default shading.
   - Note: Affects **3D only** (ADR-0005).
+  - Note: **Resets every frame.** The custom material binding is cleared at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func normal(_ nx: Float, _ ny: Float, _ nz: Float)` -- Sets the normal vector for subsequent 3D vertices.
   - Note: Affects **3D only** (2D shapes have no normals. ADR-0005).
 - `func noStroke()` -- Disables stroking shapes.
   - Note: Affects **both 2D and 3D**. 3D has no stroke by default to begin with, so the appearance does not change unless `stroke(_:)-(Color)` has been called (ADR-0005).
 - `func noTexture()` -- Clears the active texture.
   - Note: Affects **3D only** (ADR-0005).
+  - Note: **Resets every frame.** The texture binding is cleared at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func noTint()` -- Clears the image tint.
   - Note: Affects **2D only** (the counterpart to `tint(_:)-(Color)`; ADR-0005).
 - `func orbitControl()` -- オービットカメラコントロールを有効にします（`draw()` 内で呼び出してください）。
+  - Note: The frame a button goes down in is measured from the press point, not from where the cursor was a frame earlier, so a click that lands far from the last known cursor position does not spin the camera (Issue #1100).
 - `func ortho(left: Float? = nil, right: Float? = nil, bottom: Float? = nil, top: Float? = nil, near: Float? = nil, far: Float? = nil)` -- Sets an orthographic projection.
   - Important: Following the convention of projection matrices, `bottom` is the side where y in view space is **smaller**. Because y in metaphor points down the screen just as it does in 2D, `bottom` corresponds to the **top** edge of the screen and `top` to the **bottom** edge. Passing the two the other way around flips the image vertically.
   - Note: Affects **3D only** (2D drawing is not affected by the projection. ADR-0005).
+  - Note: **Resets every frame.** The projection returns to the default perspective at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func pbr(_ enabled: Bool)` -- Switches the PBR rendering mode explicitly.
   - Note: Affects **3D only** (ADR-0005).
+  - Note: **Resets every frame.** The material returns to its defaults (PBR off) at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func perspective(fov: Float = Float.pi / 3, near: Float = 0.1, far: Float = 10000)` -- Sets a perspective projection.
   - Note: Affects **3D only** (2D drawing is not affected by the projection. ADR-0005).
+  - Note: **Resets every frame.** The projection returns to the default perspective (a 60° field of view) at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func plane(_ width: Float, _ height: Float)` -- Draws a plane.
   - Note: Affects **3D only** (it is drawn on the 3D canvas. ADR-0005).
 - `func plugin(id: String) -> (any MetaphorPlugin)?` -- 識別子を指定して登録済みプラグインを検索します。
@@ -405,6 +441,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
   - Note: Affects **2D only** (for a 3D point, pass `ShapeMode/points` to `beginShape3D(_:)`. ADR-0005).
 - `func pointLight(_ x: Float, _ y: Float, _ z: Float, color: Color = .white, falloff: Float = 0.1, intensity: Float = 1.0)` -- Adds a point light at the given position.
   - Note: Affects **3D only** (ADR-0005).
+  - Note: **Resets every frame.** The set of lights is emptied at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func polygon(_ points: [(Float, Float)])` -- Draws a polygon from an array of coordinate tuples.
   - Note: Affects **2D only** (3D is built with `beginShape3D(_:)`. ADR-0005).
 - `func polygon(_ points: [Vec2])` -- Draws a polygon from an array of `Vec2` values.
@@ -432,6 +469,10 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
   - Note: Affects **both 2D and 3D**. What separates it from `push()` is that it does not include the transform: this one saves the style only (ADR-0005 Amendment 2026-08-02).
 - `func quad(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float, _ x3: Float, _ y3: Float, _ x4: Float, _ y4: Float)` -- Draws a quadrilateral defined by four vertices.
   - Note: Affects **2D only** (to build an arbitrary quadrilateral in 3D, use `beginShape3D(_:)`. ADR-0005).
+- `func quadraticVertex(_ cx: Float, _ cy: Float, _ x: Float, _ y: Float)` -- Adds a quadratic Bézier vertex to the current shape.
+  - Note: Affects **2D only** (a 3D shape has no Bézier vertices; ADR-0005).
+  - Note: A quadratic is the cubic whose control points are `P0 + 2/3 (Q - P0)` and `P2 + 2/3 (Q - P2)`, so this is promoted and drawn through `bezierVertex(_:_:_:_:_:_:)`. Processing and p5.js do the same, and the number of segments therefore follows `bezierDetail(_:)`.
+  - Important: The preceding vertex is the start point, so place one `vertex(_:_:)` before calling it. With no preceding vertex the origin `(0, 0)` is used, the same as `bezierVertex(_:_:_:_:_:_:)`.
 - `func radialGradient(_ cx: Float, _ cy: Float, _ radius: Float, _ innerColor: Color, _ outerColor: Color, segments: Int = 36)` -- Draws a circle filled with a radial gradient.
   - Note: Affects **2D only** (a 3D gradient is built with a shader or with vertex colors. ADR-0005).
 - `func rect(_ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- Draws a rectangle.
@@ -462,6 +503,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
   - Note: Affects **3D only**. The one-argument `rotate(_:)` affects both 2D and 3D, and on the 3D side it is the same rotation around the z axis as this method (ADR-0005 Amendment 2026-08-02).
 - `func roughness(_ value: Float)` -- Sets the PBR roughness (this switches to PBR mode automatically).
   - Note: Affects **3D only** (ADR-0005).
+  - Note: **Resets every frame.** The material returns to its defaults (roughness 0.5, PBR off) at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func save()` -- Saves the current frame to `output/metaphor_<timestamp>.png`.
 - `func save(_ path: String)` -- Saves the current frame to the given file path.
 - `func saveFrame(_ filename: String? = nil)` -- Saves a single frame to an image file.
@@ -498,25 +540,35 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func shader(_ shader: Shader2D)` -- Applies a custom fragment shader to subsequent 2D drawing.
 - `func shadowBias(_ value: Float)` -- Sets the shadow depth bias used to reduce shadow acne.
   - Note: Affects **3D only** (ADR-0005).
+  - Note: **Survives across frames.** The shadow bias is **not** reset at the start of a frame, so setting it once in `setup()` is enough. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func shape(_ s: MShape)` -- Draws a retained shape at the origin.
 - `func shape(_ s: MShape, _ x: Float, _ y: Float)` -- Draws a retained shape at the given position.
 - `func shape(_ s: MShape, _ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- Draws a retained shape at the given position and size.
+- `func shapeMode(_ mode: ShapePositionMode)` -- Sets how `shape(_:_:_:_:_:)` interprets the position and size it is given.
+  - Note: Affects **2D only** (it is for `shape(_:_:_:_:_:)` on a 2D shape and does not change how the position of a 3D shape is interpreted; ADR-0005).
+  - Note: With `ShapePositionMode/corner` (the default) x, y is the upper-left corner and w, h are the width and height. With `ShapePositionMode/corners` w, h are the coordinates of the lower-right corner instead. With `ShapePositionMode/center` x, y is the center of the shape.
+  - Note: **Survives across frames.** Like the rest of the 2D style state it is **not** reset at the start of a frame, so a value set in `setup()` still applies in `draw()`. It is saved and restored by `push()` / `pop()`.
 - `func shearX(_ angle: Float)` -- Applies a shear along the x axis to the current transform.
   - Note: Affects **2D only**. The unification with P3D semantics is limited to `translate(_:_:)` / `rotate(_:)` / `scale(_:_:)`, and shear is out of scope (ADR-0005 Amendment 2026-08-02).
 - `func shearY(_ angle: Float)` -- Applies a shear along the y axis to the current transform.
   - Note: Affects **2D only**. The unification with P3D semantics is limited to `translate(_:_:)` / `rotate(_:)` / `scale(_:_:)`, and shear is out of scope (ADR-0005 Amendment 2026-08-02).
 - `func shininess(_ value: Float)` -- Sets the specular shininess exponent.
   - Note: Affects **3D only** (ADR-0005).
+  - Note: **Resets every frame.** The material returns to its defaults at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func specular(_ color: Color)` -- Sets the color of specular highlights.
   - Note: Affects **3D only** (2D drawing is not affected by materials. ADR-0005).
+  - Note: **Resets every frame.** The material returns to its defaults at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func specular(_ gray: Float)` -- Sets the color of specular highlights from a grayscale value.
   - Note: Affects **3D only** (ADR-0005).
+  - Note: **Resets every frame.** The material returns to its defaults at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func specular(_ v1: Float, _ v2: Float, _ v3: Float)` -- Sets the color of specular highlights from channel values.
   - Note: Affects **3D only** (2D drawing is not affected by materials. ADR-0005).
+  - Note: **Resets every frame.** The material returns to its defaults at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func sphere(_ radius: Float, detail: Int = 24)` -- Draws a sphere.
   - Note: Affects **3D only** (it is drawn on the 3D canvas. ADR-0005).
 - `func spotLight(_ x: Float, _ y: Float, _ z: Float, _ dirX: Float, _ dirY: Float, _ dirZ: Float, angle: Float = Float.pi / 6, falloff: Float = 0.01, color: Color = .white, intensity: Float = 1.0)` -- Adds a spot light at the given position and direction.
   - Note: Affects **3D only** (ADR-0005).
+  - Note: **Resets every frame.** The set of lights is emptied at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func square(_ x: Float, _ y: Float, _ size: Float)` -- Draws a square.
   - Note: Affects **2D only** (the 3D cube is `box(_:)`. ADR-0005).
 - `func stroke(_ color: Color)` -- Sets the stroke color.
@@ -537,17 +589,36 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func text(_ string: String, _ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- Draws a text string inside a bounding box.
 - `func textAlign(_ horizontal: TextAlignH, _ vertical: TextAlignV = .baseline)` -- Sets the text alignment.
 - `func textAscent() -> Float` -- Returns the ascent of the current font.
+- `func textBounds(_ string: String, _ x: Float, _ y: Float) -> TextBounds` -- Returns the rectangle `text(_:_:_:)` would fill for this string at `(x, y)`.
+  - Important: The width is the one `textWidth(_:)` reports — the sum of the per-character advances — so `textBounds(s, x, y).width == textWidth(s)`. That is the ruler `text(_:_:_:)` lays glyphs out with and `textAlign(_:_:)` aligns against, but it is **not** the extent of the ink: glyphs such as `f`, or an italic face, can paint a little past either edge. p5.js measures the ink instead, so its box is a touch tighter and does not agree with its own `textWidth()`.
+  - Note: The height is `textAscent()` + `textDescent()` — a property of the font, not of the string — plus one `textLeading(_:)` for every newline. `"x"` and `"X"` therefore get boxes of the same height.
+  - Note: The rectangle is in the coordinate space `x` and `y` are given in. The current `translate(_:_:)` / `rotate(_:)` / `scale(_:_:)` applies when the text is drawn, not to the numbers returned here.
+  - Note: An empty string returns a zero-sized box at `(x, y)`, matching `text(_:_:_:)` drawing nothing for it.
 - `func textDescent() -> Float` -- Returns the descent of the current font.
 - `func textFont(_ family: String)` -- Sets the font family for subsequent text drawing.
+  - Note: A **style-qualified name** resolves too, as in Processing's `createFont()`: `textFont("Helvetica Neue Bold")` really does draw bold. Which qualified names exist depends on the font, though — `"Helvetica Neue Bold"` works while `"Papyrus Bold"` does not — and `textStyle(_:)` is the portable way to ask for bold or italic.
+  - Important: An unresolvable name falls back to the system default **without any warning**, and that loses the family as well as the style: `textFont("Papyrus Bold")` draws in Helvetica, not in an unbolded Papyrus. Core Text does the substituting, so metaphor cannot tell it apart from a name that resolved. `textStyle(_:)` does report the miss.
+  - Note: **Survives across frames.** Like the rest of the 2D style state it is **not** reset at the start of a frame, so a value set in `setup()` still applies in `draw()`. It is saved and restored by `push()` / `pop()`.
 - `func textFont(_ font: MFont)` -- Sets the font used for subsequent text drawing from the result of `loadFont(_:cache:)`.
+  - Note: **Survives across frames.** Like the rest of the 2D style state it is **not** reset at the start of a frame, so a value set in `setup()` still applies in `draw()`. It is saved and restored by `push()` / `pop()`.
 - `func textLeading(_ leading: Float)` -- Sets the leading (line height) for multi-line text.
 - `func textSize(_ size: Float)` -- Sets the text size for subsequent text drawing.
+- `func textStyle(_ style: TextStyle)` -- Sets the bold / italic style applied on top of the current font.
+  - Important: A font with no face for the style requested is drawn **unstyled**, with a warning naming the font. metaphor never substitutes a different font to satisfy the style, because silently drawing in some other typeface is worse than drawing unstyled. Fonts such as Monaco, Geneva and Papyrus have no bold or italic face at all.
+  - Note: `TextStyle/normal` means "use the face the font name selects", not "strip bold". It therefore leaves a style-qualified `textFont(_:)-(String)` name alone — `textFont("Helvetica Neue Bold")` stays bold under the default `TextStyle/normal`.
+  - Note: The style is re-applied when the font changes, so `textFont(_:)-(String)` after this one keeps the style. Unlike `textSize(_:)` and `textFont(_:)-(String)` it does not reset `textLeading(_:)`.
+  - Note: **Survives across frames.** Like the rest of the 2D style state it is **not** reset at the start of a frame, so a value set in `setup()` still applies in `draw()`. It is saved and restored by `push()` / `pop()`.
 - `func textToContours(_ string: String, _ x: Float, _ y: Float, sampleFactor: Float = 0.25) -> [[Vec2]]` -- Returns the glyph outlines of a text as closed polylines, one per contour.
 - `func textToPoints(_ string: String, _ x: Float, _ y: Float, sampleFactor: Float = 0.25) -> [Vec2]` -- Returns the points along the glyph outlines of a text as a single flat array (the equivalent
 - `func textToShape(_ string: String, _ x: Float, _ y: Float, sampleFactor: Float = 0.25) -> MShape` -- Converts the outlines of a text into a retained shape that can be drawn with its holes.
 - `func texture(_ img: MImage)` -- Sets the texture for subsequent 3D shapes.
   - Note: Affects **3D only** (to draw an image in 2D, use `image()`. ADR-0005).
+  - Note: **Resets every frame.** The texture binding is cleared at the start of every frame, so call this from `draw()` — a call in `setup()` is discarded before the first frame is drawn. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func textWidth(_ string: String) -> Float` -- Computes the width of a text string with the current font settings.
+- `func textWrap(_ mode: TextWrap)` -- Chooses where the rectangle form of `text(_:_:_:_:_:)` may break a line.
+  - Note: `TextWrap/word` prefers word boundaries rather than promising never to split a word. A word longer than the box is still broken between characters, because there is nowhere else to put it — both rules lay it out identically.
+  - Note: It has **no effect on `text(_:_:_:)`**, which breaks only at the newlines already in the string. Wrapping needs a width, and the three-argument form has none.
+  - Note: **Survives across frames.** Like the rest of the 2D style state it is **not** reset at the start of a frame, so a value set in `setup()` still applies in `draw()`. It is saved and restored by `push()` / `pop()`.
 - `func tint(_ color: Color)` -- Sets the tint color for images.
   - Note: Affects **2D only**. It applies to images drawn with `image()` and has no effect on 3D `texture(_:)` — a 3D texture is tinted by multiplying in the `fill(_:)-(Color)` color, so there is no dedicated tint slot to begin with (ADR-0005). Use `fill(_:)-(Color)` when you want to multiply a color into textured 3D.
 - `func tint(_ gray: Float)` -- Sets the image tint from a grayscale value.
@@ -559,6 +630,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func toneMapping(_ mode: ToneMapMode)` -- Sets the tone mapping applied to the 3D lighting result.
   - Note: This applies to **the 3D lighting result only**. The colors of 2D drawing do not change (the asymmetry is deliberate: 3D shading is a physical quantity, while a 2D color is a final color). It does not apply to drawing with no lights at all (the unlit pass) either.
   - Note: It is **not restored** by `pushStyle()` / `popStyle()`. It is treated as a property of the whole screen.
+  - Note: **Survives across frames.** Unlike the rest of the material state, tone mapping is a property of the whole screen and is **not** reset at the start of a frame, so setting it once in `setup()` is enough. `llms-sketch.txt` lists every state that does and does not survive a frame boundary.
 - `func torus(ringRadius: Float, tubeRadius: Float, detail: Int = 24)` -- Draws a torus (a doughnut shape).
   - Note: Affects **3D only** (it is drawn on the 3D canvas. ADR-0005).
 - `func translate(_ x: Float, _ y: Float)` -- Applies a translation to the current transform.
@@ -658,10 +730,15 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `let name: String` -- ユーザーに表示できるデバイス名（例: "FaceTime HD カメラ"）
 
 ### `struct CircleInstance` -- A compact per-circle record for explicit bulk 2D drawing.
+  - Important: The memory order is the declaration order, not the alphabetical order this documentation lists the properties in. The matching MSL declaration is `struct CircleInstance { float2 position; float diameter; float _pad; float4 color; };` — `position` at 0, `diameter` at 8, four unused bytes at 12, `color` at 16, stride 32.
+  - Note: An MSL struct written in that alphabetical order (`color`, `diameter`, `position`) compiles without a warning and still measures 32 bytes, so nothing flags it. It simply draws no circle at all: every center is reinterpreted from color bits and lands off screen, and every diameter is garbage. When a `GPUBuffer` batch renders nothing while the same values drawn from a `[CircleInstance]` array render fine, check this order first.
 
 - `var color: SIMD4<Float>` -- Per-circle RGBA color, normalized to 0...1.
+  - Note: Last in memory, at offset 16, despite being listed first alphabetically.
 - `var diameter: Float` -- Circle diameter in local units.
+  - Note: Second in memory, at offset 8, followed by four bytes of padding.
 - `var position: SIMD2<Float>` -- Circle center in local 2D coordinates.
+  - Note: First in memory, at offset 0. See the type's own documentation for the full layout: the properties are listed alphabetically here, not in memory order.
 - `init(position: SIMD2<Float>, diameter: Float, color: SIMD4<Float> = SIMD4(1, 1, 1, 1))` -- Creates a circle instance from a center vector, diameter, and SIMD color.
 - `init(position: SIMD2<Float>, diameter: Float, color: Color)` -- Creates a circle instance from a center vector, diameter, and `Color`.
 - `init(x: Float, y: Float, diameter: Float, color: Color = .white)` -- Creates a circle instance from scalar coordinates, diameter, and `Color`.
@@ -673,17 +750,26 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var b: Float` -- The blue component, on a 0.0 to 1.0 scale (out-of-range values are preserved).
 - `static let black: Color` -- Pure black.
 - `static let blue: Color` -- Pure blue.
+- `var brightness: Float { get }` -- The brightness of this color, on a 0.0 to 1.0 scale.
+  - Important: The value is **on a 0.0 to 1.0 scale and ignores `colorMode()`**, exactly like `r`, `g`, `b` and `a`. Under `colorMode(.hsb, 360, 100, 100)` a Processing sketch expects `brightness(c)` to be 0 to 100, so scale it yourself: `brightness(c) * 100`.
+  - Note: This is the largest of the three RGB components (the HSB "value"), not a perceptual luminance — pure blue and pure white both report 1.0.
 - `static let clear: Color` -- Fully transparent black.
 - `var clearColor: MTLClearColor { get }` -- The color as an `MTLClearColor` for use in a Metal render pass.
 - `static let cyan: Color` -- Pure cyan.
 - `var g: Float` -- The green component, on a 0.0 to 1.0 scale (out-of-range values are preserved).
 - `static let green: Color` -- Pure green.
+- `var hue: Float { get }` -- The hue of this color, on a 0.0 to 1.0 scale.
+  - Important: The value is **on a 0.0 to 1.0 scale and ignores `colorMode()`**, exactly like `r`, `g`, `b` and `a`. Under `colorMode(.hsb, 360, 100, 100)` a Processing sketch expects `hue(c)` to be 0 to 360, so scale it yourself: `hue(c) * 360`.
+  - Note: One full turn is 0.0 to 1.0 and the value never reaches 1.0 — pure red is 0.0, not 1.0. For a gray color (`saturation` of 0) the hue is undefined and 0.0 is returned, as in Processing.
 - `static let magenta: Color` -- Pure magenta.
 - `static let orange: Color` -- Orange.
 - `static var paramTypeTag: String { get }`
 - `var paramValue: ParamValue { get }`
 - `var r: Float` -- The red component, on a 0.0 to 1.0 scale (out-of-range values are preserved).
 - `static let red: Color` -- Pure red.
+- `var saturation: Float { get }` -- The saturation of this color, on a 0.0 to 1.0 scale.
+  - Important: The value is **on a 0.0 to 1.0 scale and ignores `colorMode()`**, exactly like `r`, `g`, `b` and `a`. Under `colorMode(.hsb, 360, 100, 100)` a Processing sketch expects `saturation(c)` to be 0 to 100, so scale it yourself: `saturation(c) * 100`.
+  - Note: Black has a saturation of 0.0.
 - `var simd: SIMD4<Float> { get }` -- The color as a `SIMD4<Float>` in (r, g, b, a) order.
 - `static let white: Color` -- Pure white.
 - `static let yellow: Color` -- Pure yellow.
@@ -815,6 +901,14 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var width: Int` -- オフスクリーンレンダーテクスチャの幅（ピクセル単位）。
 - `var windowScale: Float` -- ウィンドウのスケール係数（ウィンドウサイズ = テクスチャサイズ × scale）。
 - `init(width: Int = 800, height: Int = 600, title: String = "metaphor", fps: Int = 60, windowScale: Float = 1.0, renderLoopMode: RenderLoopMode = .displayLink, plugins: [PluginFactory] = [])` -- 新しいセカンダリウィンドウ設定を作成します。
+
+### `struct TextBounds` -- The rectangle a string occupies when `text()` draws it.
+
+- `var height: Float` -- The height of the box, in pixels.
+- `var width: Float` -- The width of the box, in pixels.
+- `var x: Float` -- The x coordinate of the left edge.
+- `var y: Float` -- The y coordinate of the top edge.
+- `init(x: Float, y: Float, width: Float, height: Float)` -- Creates a text bounding box.
 
 ### `struct VideoExportConfig` -- ビデオエクスポートのパラメータ設定
 
@@ -1267,6 +1361,12 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `case triangles` -- 3頂点のグループを個別の三角形として描画。
 - `case triangleStrip` -- 頂点をトライアングルストリップとして描画。
 
+### `enum ShapePositionMode` -- Defines how `SketchContext/shape(_:_:_:_:_:)` interprets the coordinates it is given.
+
+- `case center` -- Treat x, y as the center and w, h as the width and height.
+- `case corner` -- Treat x, y as the upper-left corner and w, h as the width and height (the default).
+- `case corners` -- Treat x, y as the upper-left corner and w, h as the coordinates of the lower-right corner.
+
 ### `enum StrokeCap` -- ストロークの端点に適用されるスタイルを指定します。
 
 - `case butt` -- 端点を超えた延長なし。
@@ -1300,6 +1400,18 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `case center`
 - `case top`
 
+### `enum TextStyle` -- The bold / italic combination applied on top of the current font.
+
+- `case bold` -- Draw with the bold face of the current font.
+- `case boldItalic` -- Draw with the bold italic face of the current font.
+- `case italic` -- Draw with the italic face of the current font.
+- `case normal` -- Draw with the face the font name itself selects (the default).
+
+### `enum TextWrap` -- Where the rectangle form of `text()` is allowed to break a line.
+
+- `case char` -- Break between characters, filling every line to the edge of the box.
+- `case word` -- Prefer word boundaries (the default).
+
 ### `enum ThermalState` -- システムの熱状態。負荷を自分で落とす（自己 degrade）ときの判断材料です。
 
 - `case critical` -- 危険。表示を維持することより発熱を下げることが優先される。
@@ -1323,16 +1435,14 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `init?(rawValue: Int)`
 - `func hash(into hasher: inout Hasher)`
 
-### `enum VertexLayout` -- Metal レンダーパイプライン用の定義済み頂点属性レイアウト
+### `enum VertexLayout` -- Predefined vertex attribute layouts for Metal render pipelines.
 
-- `case position` -- float3 位置のみ格納 (ストライド: 12 バイト)
-- `case position2DColor` -- float2 位置と float4 カラーを格納 (ストライド: 24 バイト、Canvas2D 用)
-- `case position2DOnly` -- float2 位置のみ格納 (ストライド: 8 バイト、Canvas2D インスタンシングユニットメッシュ用)
-- `case position2DTexCoordColor` -- float2 位置、float2 テクスチャ座標、float4 カラーを格納 (ストライド: 32 バイト、テクスチャ付き Canvas2D 用)
-- `case positionColor` -- float3 位置と float4 カラーを格納 (ストライド: 28 バイト)
-- `case positionNormalColor` -- float3 位置、float3 法線、float4 カラーを格納 (ストライド: 40 バイト)
-- `case positionNormalUV` -- float3 位置、float3 法線、float2 UV を格納 (ストライド: 48 バイト、アライメントパディング含む)
-- `func makeDescriptor() -> MTLVertexDescriptor` -- このレイアウトに一致する Metal 頂点デスクリプタを作成します。
+- `case position2DColor` -- Stores a float2 position and a float4 color (stride: 24 bytes, for Canvas2D).
+- `case position2DOnly` -- Stores a float2 position (stride: 8 bytes, for the Canvas2D instancing unit meshes).
+- `case position2DTexCoordColor` -- Stores a float2 position, texture coordinates and a float4 color (stride: 32 bytes).
+- `case positionNormalColor` -- Stores a float3 position, a float3 normal and a float4 color (stride: 48 bytes).
+- `case positionNormalUV` -- Stores a float3 position, a float3 normal and a float2 UV (stride: 48 bytes).
+- `func makeDescriptor() -> MTLVertexDescriptor` -- Creates a Metal vertex descriptor matching this layout.
 
 ### `enum VideoCodec` -- ビデオエンコードに使用するコーデック
 
@@ -1384,7 +1494,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class Canvas2D` -- Metal を利用したイミディエイトモード 2D 描画コンテキストを提供します。
 
-- （ほか 90 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- （ほか 96 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `var colorModeConfig: ColorModeConfig`
 - `var currentEncoder: (any MTLRenderCommandEncoder)? { get }` -- 現在のレンダーコマンドエンコーダーにアクセスします。フレーム中のみ有効です。
 - `var fillColor: SIMD4<Float>`
@@ -1534,20 +1644,26 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func endRecord(to path: String) throws` -- 記録を停止し、キャプチャしたフレームをGIFファイルに書き出します。
 - `func endRecordAsync(to path: String) async throws` -- 記録を停止し、キャプチャしたフレームを非同期でGIFファイルに書き出します。
 
-### `final class GPUBuffer<T>` -- CPU と GPU の両方からアクセス可能な型付き GPU バッファを提供します。
+### `final class GPUBuffer<T>` -- A typed GPU buffer that both the CPU and the GPU can read and write.
+  - Important: **Reading this buffer never waits for the GPU.** `subscript(_:)`, `toArray()` and `contents` hand back the shared memory exactly as it stands at that instant. `Sketch/dispatch(_:threads:configure:)` only *encodes* the kernel into the frame's command buffer, and the GPU does not begin until that buffer is committed, so a value read later in the same `compute()` is the value from before the dispatch.
+  - Important: "Read it on the next frame" is not a guarantee either, because a command buffer completes asynchronously. The one public API that does wait is `Sketch/loadPixels()`: on the normal path (shadows off, called from `draw()`) it commits **the frame's command buffer, the same one that carried `compute()`**, and blocks until the GPU finishes, so this frame's kernel writes are readable once it returns. Being a pixel API it also brings its own render pass split (cleared depth, changed 2D/3D stacking order), and with `enableShadows()` on it cannot split the pass at all and so does **not** wait for this frame's compute.
+  - Note: Until a read back of its own exists (Issue #1136), the portable way to know that a result has landed is to have the kernel write a sentinel of its own — a frame counter, a "done" flag — and to read the payload only once the sentinel has changed. Comparing values that are "probably one frame behind" instead counts the lag itself as a disagreement.
 
-- `let buffer: any MTLBuffer` -- 基盤となる Metal バッファ
-- `var contents: UnsafeMutableBufferPointer<T> { get }` -- バッファ内容への直接アクセスを unsafe mutable buffer pointer として提供します。
-- `let count: Int` -- バッファ内の要素数
-- `init?(device: any MTLDevice, count: Int)` -- 指定された要素数でゼロ初期化された空のバッファを作成します。
-- `init?(device: any MTLDevice, data: [T])` -- 要素の配列で初期化されたバッファを作成します。
-- `func copyFrom(_ data: [T])` -- Swift 配列の要素をバッファにコピーします。
-- `func toArray() -> [T]` -- バッファの内容を Swift 配列にコピーします。
-- `subscript(index: Int) -> T { get set }` -- 指定されたインデックスの要素にアクセスします。
+- `let buffer: any MTLBuffer` -- The underlying Metal buffer.
+- `var contents: UnsafeMutableBufferPointer<T> { get }` -- Direct access to the buffer contents as an unsafe mutable buffer pointer.
+  - Important: Access through the pointer does **not** wait for the GPU, and the GPU may be writing the same bytes concurrently. See the discussion on `GPUBuffer`.
+- `let count: Int` -- The number of elements in the buffer.
+- `init?(device: any MTLDevice, count: Int)` -- Creates an empty buffer of the given element count, zero filled.
+- `init?(device: any MTLDevice, data: [T])` -- Creates a buffer initialized with an array of elements.
+- `func copyFrom(_ data: [T])` -- Copies the elements of a Swift array into the buffer.
+- `func toArray() -> [T]` -- Copies the buffer contents into a Swift array.
+  - Important: The copy does **not** wait for the GPU. It snapshots the shared memory as it stands, so a call made in the same `compute()` as the dispatch that fills the buffer returns the contents from before the kernel ran. See the discussion on `GPUBuffer`.
+- `subscript(index: Int) -> T { get set }` -- Accesses the element at the given index.
+  - Important: The read does **not** wait for the GPU. See the discussion on `GPUBuffer` for what is and is not guaranteed after a dispatch.
 
 ### `final class Graphics` -- Provides an offscreen 2D drawing buffer (the equivalent of Processing's
 
-- （ほか 83 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- （ほか 89 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `var height: Float { get }` -- The height in pixels.
 - `var width: Float { get }` -- The width in pixels.
 - `func beginDraw()` -- Begins drawing by creating a command buffer and a render command encoder.
@@ -1671,8 +1787,9 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var isOfflineRendering: Bool` -- 決定論的フレームタイミングのオフラインレンダリングモードを有効化
 - `var isPostProcessAvailable: Bool { get }` -- ポストプロセスエフェクトが利用可能かどうかを示す
 - `var isRenderingFrame: Bool { get }` -- いま `renderFrame()` の内側か（= `draw()` が走っている最中か）。
-- `var lastGPUEndTime: Double { get }` -- 最後に完了したフレームの GPU 終了タイムスタンプ（秒）
-- `var lastGPUStartTime: Double { get }` -- 最後に完了したフレームの GPU 開始タイムスタンプ（秒）
+- `var lastGPUDurationMs: Double? { get }` -- The last completed frame's GPU execution time in milliseconds, or `nil`.
+- `var lastGPUEndTime: Double { get }` -- The last completed frame's GPU end timestamp, or `0` if unmeasured (seconds).
+- `var lastGPUStartTime: Double { get }` -- The last completed frame's GPU start timestamp, or `0` if unmeasured (seconds).
 - `var offlineDeltaTime: Double { get }` -- オフラインレンダリングモードでの1フレームあたりの固定デルタ時間を返します。
 - `var offlineFrameRate: Double` -- オフラインレンダリングモードでの時間計算に使用するフレームレート
 - `var onAfterDraw: ((any MTLCommandBuffer) -> Void)?` -- メイン描画パスの後にシャドウパスなどの追加レンダリングを行うコールバック
@@ -1759,7 +1876,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 ### `final class OrbitCamera` -- マウスドラッグとスクロールで3Dカメラオービットをインタラクティブに制御します。
 
 - `var azimuth: Float` -- 水平方向の角度（ラジアン、Y軸周りの回転）
-- `var damping: Float` -- ダンピング係数（0 = ダンピングなし、1に近いほど慣性が強い）
+- `var damping: Float { get set }` -- Inertia: how long the camera keeps gliding after you let go.
 - `var distance: Float` -- カメラからターゲットまでの距離
 - `var elevation: Float` -- 垂直方向の角度（ラジアン、水平面からの上下回転）
 - `var eye: SIMD3<Float> { get }` -- 球面座標をデカルト座標に変換してカメラ位置を計算します。
@@ -1767,16 +1884,16 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `var maxElevation: Float` -- 最大仰角（ラジアン）
 - `var minDistance: Float` -- ターゲットからの最小許容距離
 - `var minElevation: Float` -- 最小仰角（ラジアン）
-- `var sensitivity: Float` -- マウスドラッグ回転の感度
+- `var sensitivity: Float` -- How far a drag rotates the camera, in radians per pixel.
 - `var target: SIMD3<Float>` -- カメラが注視する点
 - `var up: SIMD3<Float> { get }` -- カメラの上方向ベクトル
 - `var zoomSensitivity: Float` -- スクロールホイールズームの感度
 - `init()` -- デフォルトパラメータで新しい OrbitCamera を作成します。
 - `init(distance: Float, azimuth: Float = 0, elevation: Float = 0.3)` -- カスタム初期設定で新しい OrbitCamera を作成します。
-- `func handleMouseDrag(dx: Float, dy: Float)` -- マウスドラッグの差分を適用してカメラを回転させます。
+- `func handleMouseDrag(dx: Float, dy: Float)` -- Rotates the camera by one drag delta.
 - `func handleScroll(delta: Float)` -- スクロール入力を適用してズーム距離を調整します。
 - `func reset(distance: Float = 500, azimuth: Float = 0, elevation: Float = 0.3)` -- カメラを指定された状態にリセットします。
-- `func update()` -- 速度にダンピングを適用し角度を更新します（毎フレーム呼び出し）。
+- `func update()` -- Advances the camera by one frame of damped motion. Call it every frame.
 
 ### `@propertyWrapper final class Param<Value> where Value : ParamRepresentable` -- スケッチのプロパティを **Parameter Store のパラメータとして宣言**する
   - Note: 値の読み書きは通常のプロパティと同じで、ストア未登録でも動作します（その場合は単なる格納プロパティとして振る舞う）。
@@ -1919,7 +2036,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class SketchContext` -- Sketch 内で使用される描画コンテキストを提供します。
 
-- （ほか 239 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- （ほか 245 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `let assetCache: AssetCache` -- `loadImage` / `loadModel` のパスキーアセットキャッシュ。
 - `var canvas: Canvas2D { get }` -- 2D キャンバス（上級者向け）。
 - `var canvas3D: Canvas3D { get }` -- 3D キャンバス（上級者向け）。
@@ -2180,14 +2297,30 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### Math
 
+- `func alpha(_ c: Color) -> Float` -- Extracts the alpha component of a color (compatible with Processing's `alpha()`).
+  - Important: The result is **on a 0.0 to 1.0 scale and ignores `colorMode()`**, unlike Processing, where `alpha()` follows `maxAlpha`. It is straight (non-premultiplied) alpha, as everywhere in the public API (ADR-0012). See `hue(_:)` for the reasoning.
+  - Note: This returns `Color/a` unchanged, including out-of-range components. A local named `alpha` shadows this function inside its scope; use the `Color/a` property there.
 - `func bezierPoint(_ a: Float, _ b: Float, _ c: Float, _ d: Float, _ t: Float) -> Float` -- Evaluates a point on a cubic Bezier curve at the given parameter.
 - `func bezierTangent(_ a: Float, _ b: Float, _ c: Float, _ d: Float, _ t: Float) -> Float` -- Evaluates the tangent of a cubic Bezier curve at the given parameter.
+- `func blue(_ c: Color) -> Float` -- Extracts the blue component of a color (compatible with Processing's `blue()`).
+  - Important: The result is **on a 0.0 to 1.0 scale and ignores `colorMode()`**, unlike Processing. See `red(_:)` for the porting trap and `hue(_:)` for the reasoning.
+  - Note: This returns `Color/b` unchanged, including out-of-range components. A local named `blue` shadows this function inside its scope; use the `Color/b` property there.
+- `func brightness(_ c: Color) -> Float` -- Extracts the brightness of a color (compatible with Processing's `brightness()`).
+  - Important: The result is **on a 0.0 to 1.0 scale and ignores `colorMode()`**, unlike Processing. See `hue(_:)` for why, and scale by hand when porting: `brightness(c) * 100` under `colorMode(HSB, 360, 100, 100)`.
+  - Note: This is the largest of the three RGB components (the HSB "value"), not a perceptual luminance. A local named `brightness` shadows this function inside its scope; use the `Color/brightness` property there.
 - `func constrain(_ value: Float, _ low: Float, _ high: Float) -> Float` -- Constrains a value to the given range.
 - `func curvePoint(_ a: Float, _ b: Float, _ c: Float, _ d: Float, _ t: Float) -> Float` -- Evaluates a point on a Catmull-Rom spline at the given parameter.
 - `func curveTangent(_ a: Float, _ b: Float, _ c: Float, _ d: Float, _ t: Float) -> Float` -- Evaluates the tangent of a Catmull-Rom spline at the given parameter.
 - `func degrees(_ radians: Float) -> Float` -- Converts an angle in radians to degrees.
 - `func dist(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float) -> Float` -- Calculates the Euclidean distance between two 2D points.
 - `func dist(_ x1: Float, _ y1: Float, _ z1: Float, _ x2: Float, _ y2: Float, _ z2: Float) -> Float` -- Calculates the Euclidean distance between two 3D points.
+- `func green(_ c: Color) -> Float` -- Extracts the green component of a color (compatible with Processing's `green()`).
+  - Important: The result is **on a 0.0 to 1.0 scale and ignores `colorMode()`**, unlike Processing. See `red(_:)` for the porting trap and `hue(_:)` for the reasoning.
+  - Note: This returns `Color/g` unchanged, including out-of-range components. A local named `green` shadows this function inside its scope; use the `Color/g` property there.
+- `func hue(_ c: Color) -> Float` -- Extracts the hue of a color (compatible with Processing's `hue()`).
+  - Important: The result is **on a 0.0 to 1.0 scale and ignores `colorMode()`**, unlike Processing, where `hue()` follows the current color mode. metaphor draws the line between the two scales at the type: the numeric `fill` / `stroke` / `background` / `tint` overloads follow `colorMode()`, while `Color` values are always normalized. These extractors take a `Color` and are the exact inverse of `Color/init(hue:saturation:brightness:alpha:)`, so they stay on the normalized side. Porting `colorMode(HSB, 360, 100, 100)` code means scaling by hand: `hue(c) * 360`.
+  - Note: One full turn is 0.0 to 1.0 and the value never reaches 1.0 — pure red is 0.0. A gray color returns 0.0, as in Processing.
+  - Note: Swift does not keep functions and variables in separate namespaces, so a local named `hue` shadows this function inside its scope. Use the `Color/hue` property instead there.
 - `func lerp<T>(_ a: T, _ b: T, _ t: T) -> T where T : FloatingPoint` -- Linearly interpolates between two values.
 - `func lerp(_ a: SIMD2<Float>, _ b: SIMD2<Float>, _ t: Float) -> SIMD2<Float>` -- Linearly interpolates between two 2D vectors.
 - `func lerp(_ a: SIMD3<Float>, _ b: SIMD3<Float>, _ t: Float) -> SIMD3<Float>` -- Linearly interpolates between two 3D vectors.
@@ -2204,7 +2337,13 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func random(_ low: Float, _ high: Float) -> Float` -- Returns a random Float value within the given range.
 - `func randomGaussian(_ mean: Float = 0, _ sd: Float = 1) -> Float` -- Returns a random value from a Gaussian (normal) distribution using the Box-Muller transform.
 - `func randomSeed(_ seed: UInt64)` -- Sets the seed of the pseudo-random number generator.
+- `func red(_ c: Color) -> Float` -- Extracts the red component of a color (compatible with Processing's `red()`).
+  - Important: The result is **on a 0.0 to 1.0 scale and ignores `colorMode()`**, unlike Processing. Ported code such as `fill(red(c), green(c), blue(c))` therefore compiles but draws almost black under the default `colorMode(.rgb, 255)` — pass the `Color` straight to `fill(_:)` instead, or scale by hand with `red(c) * 255`. See `hue(_:)` for the reasoning.
+  - Note: This returns `Color/r` unchanged, including components outside 0.0...1.0 (see "Out-of-range components" in `Color`). A local named `red` shadows this function inside its scope; use the `Color/r` property there.
 - `func saturate(_ x: Float) -> Float` -- Clamps a value to the range [0, 1].
+- `func saturation(_ c: Color) -> Float` -- Extracts the saturation of a color (compatible with Processing's `saturation()`).
+  - Important: The result is **on a 0.0 to 1.0 scale and ignores `colorMode()`**, unlike Processing. See `hue(_:)` for why, and scale by hand when porting: `saturation(c) * 100` under `colorMode(HSB, 360, 100, 100)`.
+  - Note: A local named `saturation` shadows this function inside its scope; use the `Color/saturation` property there.
 - `func smoothstep(_ edge0: Float, _ edge1: Float, _ x: Float) -> Float` -- Performs Hermite interpolation between two edges.
 - `func sq(_ value: Float) -> Float` -- Calculates the square of a value.
 

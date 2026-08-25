@@ -8,13 +8,13 @@
     @TopicsVisualStyle(compactGrid)
 }
 
-metaphor の中核となるレンダリングエンジン、描画システム、Sketch プロトコル。
+The rendering engine, drawing system, and Sketch protocol at the heart of metaphor.
 
 ## Overview
 
-MetaphorCore は Metal レンダリングパイプライン、2D/3D 描画バックエンド、
-コンピュートシェーダーサポート、そしてすべてを統合する ``MetaphorCore/Sketch`` プロトコルを提供します。
+MetaphorCore provides the Metal rendering pipeline, the 2D and 3D drawing backends,
+compute shader support, and the ``MetaphorCore/Sketch`` protocol that ties them together.
 
-通常は MetaphorCore を直接インポートせず、`import metaphor`（アンブレラモジュール）を使用してください。
-すべてのモジュール（オーディオ、物理演算、ML など）を含む
-[完全な API リファレンスはこちら](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphor)。
+You normally do not import MetaphorCore directly — use `import metaphor` (the umbrella module),
+which covers every module including audio, physics, and machine learning.
+[See the full API reference](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphor).

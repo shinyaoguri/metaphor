@@ -8,26 +8,26 @@
     @TopicsVisualStyle(compactGrid)
 }
 
-Core ML モデルと Metal レンダリングを統合するためのテクスチャ変換ユーティリティ。
+Texture conversion utilities for combining Core ML models with Metal rendering.
 
 ## Overview
 
-MetaphorML は Metal テクスチャと Core ML が使用するデータ形式のブリッジとなる
-``MetaphorML/MLTextureConverter`` を提供します。`MTLTexture`、`CVPixelBuffer`、`CGImage`、
-`MLMultiArray` 間を自由に変換し、GPU レンダリング済みフレームを ML モデルに入力したり、
-モデル出力をテクスチャとして描画したりできます。
+MetaphorML provides ``MetaphorML/MLTextureConverter``, a bridge between Metal textures and the
+data formats Core ML works with. Convert freely between `MTLTexture`, `CVPixelBuffer`, `CGImage`,
+and `MLMultiArray` to feed GPU-rendered frames into an ML model, or to draw a model's output
+back out as a texture.
 
-このモジュールは MetaphorCore に依存せず、単独で使用できます。
-`MetaphorML` を直接インポートするか、アンブレラモジュール（`import metaphor`）を使用してください。
+This module does not depend on MetaphorCore and can be used on its own.
+Import `MetaphorML` directly, or use the umbrella module (`import metaphor`).
 
-### クイックスタート
+### Quick Start
 
 ```swift
 let converter = MLTextureConverter(device: device, commandQueue: queue)
 
-// レンダリング済みフレームを Core ML モデルに入力
+// Feed a rendered frame into a Core ML model
 let pixelBuffer = converter.pixelBuffer(from: renderTexture)
 
-// モデル出力をテクスチャとして描画
+// Draw the model output as a texture
 let outputTexture = converter.texture(from: modelOutput)
 ```

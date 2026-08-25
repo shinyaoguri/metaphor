@@ -10,18 +10,22 @@ Five subcommands, all but `collect` driven by CI:
     changelog.py check
         Fail when there is nothing to release: no entry files in `changelog.d/`
         AND an empty (or missing, or duplicated) `## [Unreleased]` section. Also
-        rejects malformed entry filenames, so a typo is caught here rather than
-        at collect time. Runs at the very start of the release job, before
-        anything irreversible (branch push, tag, GitHub Release) has happened.
+        rejects entry files that are malformed — a bad filename, an empty body,
+        a link that is not an absolute URL, a link written in reference style —
+        and an `## [Unreleased]` section that already holds a link definition,
+        so a typo is caught here rather than at collect time. Runs at the very
+        start of the release job, before anything irreversible (branch push,
+        tag, GitHub Release) has happened.
 
     changelog.py lint
-        The filename/emptiness half of `check`, without the "something must be
-        pending" half. Runs per-PR in .github/workflows/ci.yml so a misnamed or
-        empty entry file is caught by its own author instead of by whoever cuts
-        the next release (Issue #405). Deliberately does NOT require an entry to
-        exist: whether a change is user-facing is a judgement call CI cannot
-        make, and internal-only work legitimately ships without one
-        (Issues #335 / #404).
+        The well-formedness half of `check`, without the "something must be
+        pending" half. Runs per-PR in .github/workflows/ci.yml so a misnamed
+        entry file, an empty one, or one linking with a relative path or in
+        reference style is caught by its own author instead of by whoever cuts
+        the next release (Issues #405 / #1181 / #1184). Deliberately does NOT
+        require an entry to exist: whether a change is user-facing is a
+        judgement call CI cannot make, and internal-only work legitimately
+        ships without one (Issues #335 / #404).
 
     changelog.py collect
         Fold `changelog.d/*.md` into `## [Unreleased]`, grouped under the usual
@@ -56,6 +60,10 @@ import re
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from markdown_common import strip_code  # noqa: E402
+
 DEFAULT_PATH = Path("CHANGELOG.md")
 DEFAULT_DIR = Path("changelog.d")
 FALLBACK_REPO_URL = "https://github.com/shinyaoguri/metaphor"
@@ -89,6 +97,27 @@ LINK_DEF_RE = re.compile(r"^\[([^\]]+)\]:\s*(\S+)\s*$")
 COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 LIST_ITEM_RE = re.compile(r"^\s*(?:[-*+]\s|\d+\.\s)")
 VERSION_RE = re.compile(r"^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$")
+
+# Markdown links in an entry body: `[text](target)` and `![alt](target)`. One
+# level of nested parentheses inside the target is allowed, because URLs carry
+# them. Same shape as the one in scripts/check-docs-links.py.
+ENTRY_LINK_RE = re.compile(
+    r"!?\[(?:[^\[\]]|\[[^\[\]]*\])*\]\((?P<target>[^()]*(?:\([^()]*\)[^()]*)*)\)"
+)
+# The only targets that resolve from *both* places an entry body is rendered.
+# `mailto:` is in because it is location-independent like `https://`; every
+# other scheme in a changelog entry is far likelier a typo than an intention.
+ABSOLUTE_TARGET_RE = re.compile(r"^(?:https?://|mailto:)", re.IGNORECASE)
+# Reference-style links in an entry body: `[text][id]`, the collapsed `[text][]`
+# and the image form `![alt][id]`. Same bracket allowance as ENTRY_LINK_RE; the
+# `[` after the closing `]` is what distinguishes this from the inline form.
+# The bare shortcut form `[text]` is deliberately NOT matched — it is
+# indistinguishable from ordinary bracketed prose, and unlike the two forms
+# here it cannot be paired with a definition without that definition tripping
+# LINK_DEF_RE below.
+REFERENCE_LINK_RE = re.compile(r"!?\[(?:[^\[\]]|\[[^\[\]]*\])*\]\[[^\[\]]*\]")
+# The fence / inline-code regexes and strip_code live in markdown_common, shared
+# with the two link checkers that draw the same line (Issue #1183).
 
 
 class ChangelogError(Exception):
@@ -180,6 +209,57 @@ def repo_url(lines: list[str]) -> str:
 # --------------------------------------------------------------------------
 # changelog.d/ entry files
 # --------------------------------------------------------------------------
+def relative_links(text: str) -> list[tuple[int, str]]:
+    """`(line number, target)` for every link target that is not an absolute URL.
+
+    An entry body is never rendered next to the entry file, so a target that is
+    resolved against the *document* — `../docs/x`, `./x`, `x`, `#heading` — has
+    no stable meaning. See `validate()` for the message that says so.
+    """
+    found: list[tuple[int, str]] = []
+    for lineno, line in enumerate(strip_code(text), 1):
+        for match in ENTRY_LINK_RE.finditer(line):
+            target = match.group("target").strip()
+            # `](<https://example.com>)` is a valid way to write an absolute URL.
+            if target.startswith("<") and target.endswith(">"):
+                target = target[1:-1].strip()
+            if not ABSOLUTE_TARGET_RE.match(target):
+                found.append((lineno, target))
+    return found
+
+
+def reference_links(text: str) -> list[tuple[int, str]]:
+    """`(line number, the link as written)` for every reference-style link.
+
+    A reference link needs a `[id]: <url>` definition line, and an entry has
+    nowhere to put one — see `validate()` for the two dead ends. Code is
+    excluded, like `relative_links()`: an entry may well *describe* the syntax.
+    """
+    return [
+        (lineno, match.group(0))
+        for lineno, line in enumerate(strip_code(text), 1)
+        for match in REFERENCE_LINK_RE.finditer(line)
+    ]
+
+
+def link_definitions(text: str) -> list[tuple[int, str]]:
+    """`(line number, the line)` for every link-definition line.
+
+    Reads the *raw* lines rather than `strip_code()`'d ones, on purpose. This is
+    the one check that must not be smarter than the code it protects:
+    `body_lines()` and the guard in `collect()` match this very regex line by
+    line with no idea that fences exist, so a column-0 `[id]: url` inside a
+    fenced block really does break them. Matching the same lines they do keeps
+    the check exactly as wide as the breakage. (An *indented* fence is safe
+    either way — LINK_DEF_RE is anchored at column 0.)
+    """
+    return [
+        (lineno, line)
+        for lineno, line in enumerate(text.splitlines(), 1)
+        if LINK_DEF_RE.match(line)
+    ]
+
+
 class Fragment:
     """One `changelog.d/<slug>.<category>.md` file."""
 
@@ -191,10 +271,12 @@ class Fragment:
     def heading(self) -> str:
         return CATEGORY_HEADINGS[self.category]
 
+    def text(self) -> str:
+        return self.path.read_text(encoding="utf-8")
+
     def lines(self) -> list[str]:
         """The entry as it should appear under its subheading."""
-        text = self.path.read_text(encoding="utf-8")
-        body = [line.rstrip() for line in text.split("\n")]
+        body = [line.rstrip() for line in self.text().split("\n")]
         while body and not body[0].strip():
             body.pop(0)
         while body and not body[-1].strip():
@@ -316,18 +398,110 @@ def validate(directory: Path) -> list[Fragment]:
     """Every entry file, with its name and contents already vetted.
 
     `fragments()` rejects a bad *name*; reading each one here additionally
-    rejects an empty file. Both are raised now rather than at collect time,
-    where the release is already half-written.
+    rejects an empty file, a link written as anything but an absolute URL, and
+    a link written in reference style. All are raised now rather than at
+    collect time, where the release is already half-written — and, for the
+    links, where it is already too late (see the messages below).
     """
     pending = fragments(directory)
+    relative: list[str] = []
+    reference: list[str] = []
     for fragment in pending:
         fragment.lines()
+        text = fragment.text()
+        relative += [
+            f"  {fragment.path}:{lineno}: `{target}`"
+            for lineno, target in relative_links(text)
+        ]
+        reference += [
+            f"  {fragment.path}:{lineno}: `{found}`"
+            for lineno, found in reference_links(text) + link_definitions(text)
+        ]
+
+    problems: list[str] = []
+    if relative:
+        count = len(relative)
+        problems.append(
+            f"{count} link{'' if count == 1 else 's'} in {directory}/ "
+            f"{'is' if count == 1 else 'are'} not an absolute URL:\n"
+            + "\n".join(relative)
+            + "\n"
+            "  An entry body is never rendered next to its own file. `collect`\n"
+            f"  folds it into {DEFAULT_PATH} at the repository root and `notes`\n"
+            "  copies the same text into the GitHub Release body; neither\n"
+            f"  resolves a target relative to {directory}/, and a Release body\n"
+            "  cannot be corrected once the release is cut.\n"
+            f"  Write the target in full: {FALLBACK_REPO_URL}/blob/main/<path>\n"
+            f"  for a file, {FALLBACK_REPO_URL}/tree/main/<path> for a directory.\n"
+            "  A same-file anchor (`](#heading)`) is no better — it would land on\n"
+            "  whichever heading the host document happens to have. To write a\n"
+            "  path without linking it, put it in a code span instead."
+        )
+    if reference:
+        count = len(reference)
+        problems.append(
+            f"{count} reference-style link{'' if count == 1 else 's'} in "
+            f"{directory}/ {'has' if count == 1 else 'have'} nowhere to keep "
+            f"{'its' if count == 1 else 'their'} definition:\n"
+            + "\n".join(reference)
+            + "\n"
+            "  `[text][id]` only becomes a link next to a `[id]: <url>`\n"
+            "  definition line, and an entry has no place to keep one:\n"
+            "    - Left in the entry file, `collect` folds the definition\n"
+            f"      *inside* `## [{UNRELEASED}]`, where it stops being a\n"
+            "      definition. `notes` then drops that line from the GitHub\n"
+            "      Release body — leaving `[text][id]` as bare text, and a\n"
+            "      Release body cannot be corrected once the release is cut —\n"
+            "      and the *next* release's `collect` refuses to run until\n"
+            "      someone moves the line back by hand.\n"
+            f"    - Parked at the bottom of {DEFAULT_PATH} instead, it is out of\n"
+            "      reach of `notes`, which copies one section rather than the\n"
+            "      whole file. The Release body shows the bare text again.\n"
+            "  Write the link inline — `[#511](https://github.com/…/issues/511)`\n"
+            "  — which is what every entry here already does. To show the\n"
+            "  reference syntax without using it, put it in a code span or a\n"
+            "  fenced block."
+        )
+    if problems:
+        raise ChangelogError("\n\n".join(problems))
     return pending
+
+
+def reject_link_defs_in_unreleased(lines: list[str], path: Path) -> None:
+    """Refuse a `## [Unreleased]` section that already holds a link definition.
+
+    `merge_body()` would fold the next release's entries in around it and
+    `body_lines()` would drop it from the release notes, so the fold has to stop
+    here. Checked by `lint` and `check` as well as by `collect`, which is the
+    point: `collect` runs from inside the release job, well past the gate that
+    is supposed to catch this (Issue #1184). Reaching it means someone hand-
+    edited the section — entry files are screened by `validate()`.
+    """
+    unreleased = find(parse(lines), UNRELEASED)
+    offenders = [
+        f"  {path}:{i + 1}: `{lines[i]}`"
+        for i in range(unreleased.body_start, unreleased.body_end)
+        if LINK_DEF_RE.match(lines[i])
+    ]
+    if not offenders:
+        return
+    raise ChangelogError(
+        f"link definitions found inside the `## [{UNRELEASED}]` section of "
+        f"{path} — they belong at the bottom of the file:\n"
+        + "\n".join(offenders)
+        + "\n"
+        "  `collect` folds the next release's entries into this section and\n"
+        "  refuses to write around a definition line; `notes` strips the line\n"
+        "  out of the GitHub Release body, so any `[text][id]` relying on it\n"
+        "  ships as bare text. Move the definitions to the block at the bottom\n"
+        "  of the file and write the entries' own links inline."
+    )
 
 
 def cmd_check(args: argparse.Namespace) -> int:
     pending = validate(args.dir)
     lines = read(args.path)
+    reject_link_defs_in_unreleased(lines, args.path)
     unreleased = find(parse(lines), UNRELEASED)
     if not pending and not has_entries(body_lines(lines, unreleased)):
         raise ChangelogError(
@@ -358,8 +532,14 @@ def cmd_lint(args: argparse.Namespace) -> int:
     `check` is the release gate; this is the per-PR gate. Splitting them is the
     whole point: a pull request must not be forced to invent a changelog entry
     for internal-only work, but the entry it *does* add has to be well-formed.
+
+    The `## [Unreleased]` section is read too, for the one thing `validate()`
+    cannot see: a pull request that writes into that section by hand — the
+    escape hatch changelog.d/README.md documents — can leave a link definition
+    where the next `collect` will refuse to fold around it.
     """
     pending = validate(args.dir)
+    reject_link_defs_in_unreleased(read(args.path), args.path)
     if not pending:
         print(f"OK: no entry files in {args.dir}/ (nothing to lint).")
         return 0
@@ -378,12 +558,8 @@ def collect(args: argparse.Namespace) -> list[Fragment]:
     if not pending:
         return []
     lines = read(args.path)
+    reject_link_defs_in_unreleased(lines, args.path)
     unreleased = find(parse(lines), UNRELEASED)
-    if any(LINK_DEF_RE.match(line) for line in lines[unreleased.body_start : unreleased.body_end]):
-        raise ChangelogError(
-            f"link definitions found inside the `## [{UNRELEASED}]` section of "
-            f"{args.path} — they belong at the bottom of the file."
-        )
     lines[unreleased.body_start : unreleased.body_end] = merge_body(
         lines[unreleased.body_start : unreleased.body_end], pending
     )

@@ -66,9 +66,10 @@ struct DegenerateSizeGuardTests {
     /// `Graphics` / `Graphics3D` / メインキャンバスが共通で通る唯一の関門。
     @Test("TextureManager が退化サイズを throw で弾く", arguments: degenerateSizes)
     fileprivate func textureManagerThrows(size: DegenerateSize) throws {
+        let device = try #require(MetalTestHelper.device)
         #expect(throws: MetaphorError.self) {
             _ = try TextureManager(
-                device: MetalTestHelper.device!,
+                device: device,
                 width: size.width,
                 height: size.height,
                 sampleCount: 1
@@ -78,12 +79,14 @@ struct DegenerateSizeGuardTests {
 
     @Test("Graphics の init が退化サイズを throw で弾く", arguments: degenerateSizes)
     fileprivate func graphicsInitThrows(size: DegenerateSize) throws {
+        let device = try #require(MetalTestHelper.device)
+        let queue = try MetalTestHelper.commandQueue()
         let shaderLib = try MetalTestHelper.shaderLibrary()
-        let depthCache = MetalTestHelper.depthStencilCache()
+        let depthCache = try MetalTestHelper.depthStencilCache()
         #expect(throws: MetaphorError.self) {
             _ = try Graphics(
-                device: MetalTestHelper.device!,
-                commandQueue: MetalTestHelper.commandQueue()!,
+                device: device,
+                commandQueue: queue,
                 shaderLibrary: shaderLib,
                 depthStencilCache: depthCache,
                 width: size.width,
@@ -94,12 +97,14 @@ struct DegenerateSizeGuardTests {
 
     @Test("Graphics3D の init が退化サイズを throw で弾く", arguments: degenerateSizes)
     fileprivate func graphics3DInitThrows(size: DegenerateSize) throws {
+        let device = try #require(MetalTestHelper.device)
+        let queue = try MetalTestHelper.commandQueue()
         let shaderLib = try MetalTestHelper.shaderLibrary()
-        let depthCache = MetalTestHelper.depthStencilCache()
+        let depthCache = try MetalTestHelper.depthStencilCache()
         #expect(throws: MetaphorError.self) {
             _ = try Graphics3D(
-                device: MetalTestHelper.device!,
-                commandQueue: MetalTestHelper.commandQueue()!,
+                device: device,
+                commandQueue: queue,
                 shaderLibrary: shaderLib,
                 depthStencilCache: depthCache,
                 width: size.width,
@@ -127,7 +132,8 @@ struct DegenerateSizeGuardTests {
     /// 無かった。context を経由しない呼び出しが同じ形で落ちる口が残っていた。
     @Test("MImage.createImage(device:) が退化サイズで nil を返す", arguments: degenerateSizes)
     fileprivate func createImageReturnsNil(size: DegenerateSize) throws {
-        #expect(MImage.createImage(size.width, size.height, device: MetalTestHelper.device!) == nil)
+        let device = try #require(MetalTestHelper.device)
+        #expect(MImage.createImage(size.width, size.height, device: device) == nil)
     }
 
     // MARK: ガードが効きすぎていないこと
@@ -138,7 +144,7 @@ struct DegenerateSizeGuardTests {
         let context = try makeContext()
         #expect(context.createGraphics(1, 1) != nil)
         #expect(context.createGraphics3D(1, 1) != nil)
-        #expect(MImage.createImage(1, 1, device: MetalTestHelper.device!) != nil)
+        #expect(MImage.createImage(1, 1, device: try #require(MetalTestHelper.device)) != nil)
     }
 }
 
@@ -169,9 +175,10 @@ struct OversizedGuardTests {
 
     @Test("TextureManager が上限超えを throw で弾く", arguments: oversizedSizes)
     fileprivate func textureManagerThrows(size: DegenerateSize) throws {
+        let device = try #require(MetalTestHelper.device)
         #expect(throws: MetaphorError.self) {
             _ = try TextureManager(
-                device: MetalTestHelper.device!,
+                device: device,
                 width: size.width,
                 height: size.height,
                 sampleCount: 1
@@ -195,14 +202,15 @@ struct OversizedGuardTests {
     /// 外側に残っていた口 (Issue #806)。下限だけが #798 で塞がれていた。
     @Test("MImage.createImage(device:) が上限超えで nil を返す", arguments: oversizedSizes)
     fileprivate func createImageReturnsNil(size: DegenerateSize) throws {
-        #expect(MImage.createImage(size.width, size.height, device: MetalTestHelper.device!) == nil)
+        let device = try #require(MetalTestHelper.device)
+        #expect(MImage.createImage(size.width, size.height, device: device) == nil)
     }
 
     /// ガードが効きすぎていないこと。上限ちょうどは 1GiB を確保してしまうので、
     /// じゅうぶん大きい実用サイズで代用する。
     @Test("上限内の大きな MImage は作れる")
     func largeValidImageSucceeds() throws {
-        #expect(MImage.createImage(4096, 4096, device: MetalTestHelper.device!) != nil)
+        #expect(MImage.createImage(4096, 4096, device: try #require(MetalTestHelper.device)) != nil)
     }
 
     /// ガードが効きすぎていないこと。上限ちょうど (16384 角) は色 + 深度で 2GiB を

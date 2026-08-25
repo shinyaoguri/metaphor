@@ -70,12 +70,12 @@ Phase 1 完了・Epic A/E/F の消化から時間が経ったため、**「標�
 
 | 群 | 内容 | 受け皿 |
 |---|---|---|
-| 色の分解 | `hue()` / `saturation()` / `brightness()` / `alpha()` / `blendColor()`。`Color` は HSB→RGB の一方向のみで逆変換が無い | [#811](https://github.com/shinyaoguri/metaphor/issues/811)（新規） |
+| 色の分解 | `hue()` / `saturation()` / `brightness()` / `alpha()` / `red()` / `green()` / `blue()`。`Color` は HSB→RGB の一方向のみで逆変換が無かった | [#811](https://github.com/shinyaoguri/metaphor/issues/811) **解決済み**（戻り値は 0–1・`colorMode` 非依存。根拠は Issue のコメント）。`blendColor()` は [#1153](https://github.com/shinyaoguri/metaphor/issues/1153) へ分離 |
 | キャンバスのピクセル | `get(x,y)` / `get(x,y,w,h)` / `set(x,y,c)`。`MImage` にはあるがキャンバス版が無い | [#812](https://github.com/shinyaoguri/metaphor/issues/812)（新規） |
 | 2D 形状 | `quadraticVertex` / `bezierDetail` / `shapeMode`。調査中に **`bezier()` だけ分割数 24 固定・`bezierVertex()` は `curveDetail`(20) 依存**という食い違いも判明 | [#813](https://github.com/shinyaoguri/metaphor/issues/813)（新規） |
 | 3D の逆変換 | `modelX/Y/Z`。ADR-0007 が Follow-up に明記したまま未起票だった | [#814](https://github.com/shinyaoguri/metaphor/issues/814)（新規） |
 | 3D のパリティ残り | `ambient()` / `textureMode` / `textureWrap` / `lightFalloff` / `lightSpecular` / `beginCamera` / `frustum`。`ambient()` は uniform 側（`currentMaterial.ambientColor`）が既にあり口を開けるだけ | [#815](https://github.com/shinyaoguri/metaphor/issues/815)（新規） |
-| テキストのスタイル | p5 の `textStyle` / `textWrap` / `textBounds`。太字は `textFont("Helvetica Neue Bold")` で**実は出せる**（実測）が未文書 | [#816](https://github.com/shinyaoguri/metaphor/issues/816)（新規） |
+| テキストのスタイル | p5 の `textStyle` / `textWrap` / `textBounds`。太字は `textFont("Helvetica Neue Bold")` で**実は出せる**（実測）が未文書 | [#816](https://github.com/shinyaoguri/metaphor/issues/816) **解決済み**（`textStyle(_:)` を追加。名前の連結ではなくトレイト合成で、字面が無ければ警告 — 根拠は Issue のコメント）。`textWrap` / `textBounds` は [#1165](https://github.com/shinyaoguri/metaphor/issues/1165) へ分離し、そちらも **解決済み**（`textWrap(_:)` は既定 `.word` = 従来の挙動、`textBounds(_:_:_:)` は advance ベース = `textWidth()` と同じ物差し — 根拠は Issue のコメント） |
 | canvas 全体の `filter()` / `blend()` | 現状は `filter(_ image:_ type:)`（画像単体）と postFX のみ | Phase 2 に既載・**未起票** |
 | データ IO の小物 | `loadXML`/`saveXML`・`loadBytes`/`saveBytes`・`createReader`/`createWriter`・`nf`/`nfc`/`nfp`/`nfs`/`hex`/`binary` | 需要待ち（JSON/Table/Strings は Phase 1 #278 で充足） |
 | 画像からの IBL | p5 の `imageLight()` / `panorama()` 相当。`environment()` はプリセット 3 種のみ（G3b #710） | Epic G の残り（G2/G4 と同じ「AI が届く絵の天井」側） |

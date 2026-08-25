@@ -59,6 +59,20 @@ def render_document() -> dict:
                 ],
             }
         ],
+        "topicSections": [
+            {
+                "title": "2D Drawing",
+                "anchor": "2D-Drawing",
+                "identifiers": ["doc://metaphor/documentation/MetaphorCore/Canvas2D"],
+            }
+        ],
+        "seeAlsoSections": [
+            {
+                "title": "Instance Methods",
+                "anchor": "Instance-Methods",
+                "identifiers": ["doc://metaphor/documentation/MetaphorCore/Graphics"],
+            }
+        ],
     }
 
 
@@ -140,6 +154,27 @@ class SlotDiscoveryTests(unittest.TestCase):
         self.assertIn("Draws a circle.", found)
         self.assertIn("Overview", found)
 
+    def test_finds_section_titles(self):
+        """Topics のグループ名（`.docc` 由来と DocC 自動生成の両方）も訳す — #1115。
+
+        ここが漏れると、`.docc` を英語化した分だけ日本語版の Topics が英語になる。
+        """
+        document = render_document()
+        found = {
+            translate.source_of(container, key)[0]
+            for container, key in translate.iter_translatable_slots(document)
+            if translate.source_of(container, key) is not None
+        }
+        self.assertIn("2D Drawing", found)
+        self.assertIn("Instance Methods", found)
+
+    def test_never_touches_section_identifiers(self):
+        """セクションで訳すのは `title` だけ。`anchor` / `identifiers` は触らない。"""
+        document = render_document()
+        for container, key in translate.iter_translatable_slots(document):
+            if "identifiers" in container:
+                self.assertEqual(key, "title")
+
     def test_never_touches_code_listings(self):
         document = render_document()
         for container, key in translate.iter_translatable_slots(document):
@@ -203,6 +238,20 @@ class ApplyLedgerTests(unittest.TestCase):
         ][0]["content"][0]
         self.assertEqual(heading["text"], "概要")
         self.assertEqual(heading["anchor"], "Overview", "アンカーを訳すとページ内リンクが切れる")
+
+    def test_keeps_anchor_when_section_title_is_translated(self):
+        """Topics のグループ名は訳すが、`anchor` と `identifiers` は英語のまま（#1115）。"""
+        entries = {translate.text_key("2D Drawing"): {"en": "2D Drawing", "ja": "2D 描画"}}
+        translate.apply_ledger(self.docs_dir, entries)
+
+        section = json.loads(self.page.read_text(encoding="utf-8"))["topicSections"][0]
+        self.assertEqual(section["title"], "2D 描画")
+        self.assertEqual(section["anchor"], "2D-Drawing", "アンカーを訳すとリンクが切れる")
+        self.assertEqual(
+            section["identifiers"],
+            ["doc://metaphor/documentation/MetaphorCore/Canvas2D"],
+            "シンボルの参照を訳すとページが引けなくなる",
+        )
 
     def test_untranslated_text_is_left_in_english(self):
         replaced, left, _ = translate.apply_ledger(self.docs_dir, {})

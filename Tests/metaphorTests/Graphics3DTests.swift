@@ -13,12 +13,12 @@ struct Graphics3DCreationTests {
 
     @Test("creation succeeds")
     func creation() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let shaderLib = try MetalTestHelper.shaderLibrary()
-        let depthCache = MetalTestHelper.depthStencilCache()
+        let depthCache = try MetalTestHelper.depthStencilCache()
         let pg3d = try Graphics3D(
             device: device,
-            commandQueue: MetalTestHelper.commandQueue()!,
+            commandQueue: try MetalTestHelper.commandQueue(),
             shaderLibrary: shaderLib,
             depthStencilCache: depthCache,
             width: 400,
@@ -30,12 +30,12 @@ struct Graphics3DCreationTests {
 
     @Test("custom dimensions")
     func dimensions() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let shaderLib = try MetalTestHelper.shaderLibrary()
-        let depthCache = MetalTestHelper.depthStencilCache()
+        let depthCache = try MetalTestHelper.depthStencilCache()
         let pg3d = try Graphics3D(
             device: device,
-            commandQueue: MetalTestHelper.commandQueue()!,
+            commandQueue: try MetalTestHelper.commandQueue(),
             shaderLibrary: shaderLib,
             depthStencilCache: depthCache,
             width: 800,
@@ -47,12 +47,12 @@ struct Graphics3DCreationTests {
 
     @Test("texture exists with correct size")
     func textureExists() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let shaderLib = try MetalTestHelper.shaderLibrary()
-        let depthCache = MetalTestHelper.depthStencilCache()
+        let depthCache = try MetalTestHelper.depthStencilCache()
         let pg3d = try Graphics3D(
             device: device,
-            commandQueue: MetalTestHelper.commandQueue()!,
+            commandQueue: try MetalTestHelper.commandQueue(),
             shaderLibrary: shaderLib,
             depthStencilCache: depthCache,
             width: 400,
@@ -95,12 +95,12 @@ struct Graphics3DCreationTests {
 struct Graphics3DLifecycleTests {
 
     private func makeGraphics3D(width: Int = 400, height: Int = 300) throws -> Graphics3D {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let shaderLib = try MetalTestHelper.shaderLibrary()
-        let depthCache = MetalTestHelper.depthStencilCache()
+        let depthCache = try MetalTestHelper.depthStencilCache()
         return try Graphics3D(
             device: device,
-            commandQueue: MetalTestHelper.commandQueue()!,
+            commandQueue: try MetalTestHelper.commandQueue(),
             shaderLibrary: shaderLib,
             depthStencilCache: depthCache,
             width: width,
@@ -161,12 +161,12 @@ struct Graphics3DLifecycleTests {
 struct Graphics3DTransformTests {
 
     private func makeGraphics3D() throws -> Graphics3D {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let shaderLib = try MetalTestHelper.shaderLibrary()
-        let depthCache = MetalTestHelper.depthStencilCache()
+        let depthCache = try MetalTestHelper.depthStencilCache()
         return try Graphics3D(
             device: device,
-            commandQueue: MetalTestHelper.commandQueue()!,
+            commandQueue: try MetalTestHelper.commandQueue(),
             shaderLibrary: shaderLib,
             depthStencilCache: depthCache,
             width: 400,
@@ -284,12 +284,12 @@ struct Graphics3DTransformTests {
     @Test("Primitives3D exact reproduction - box at (130, 180, 0)")
     func primitives3DExactReproduction() throws {
         // Exact reproduction of the Primitives3D example
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let shaderLib = try MetalTestHelper.shaderLibrary()
-        let depthCache = MetalTestHelper.depthStencilCache()
+        let depthCache = try MetalTestHelper.depthStencilCache()
         let pg3d = try Graphics3D(
             device: device,
-            commandQueue: MetalTestHelper.commandQueue()!,
+            commandQueue: try MetalTestHelper.commandQueue(),
             shaderLibrary: shaderLib,
             depthStencilCache: depthCache,
             width: 640,
@@ -574,12 +574,12 @@ struct Canvas3DBatchFlushTests {
 
     @Test("camera() change does not retroactively apply to already-submitted shapes")
     func cameraChangeDoesNotAffectSubmittedShapes() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let shaderLib = try MetalTestHelper.shaderLibrary()
-        let depthCache = MetalTestHelper.depthStencilCache()
+        let depthCache = try MetalTestHelper.depthStencilCache()
         let pg3d = try Graphics3D(
             device: device,
-            commandQueue: MetalTestHelper.commandQueue()!,
+            commandQueue: try MetalTestHelper.commandQueue(),
             shaderLibrary: shaderLib,
             depthStencilCache: depthCache,
             width: 400, height: 300
@@ -1112,7 +1112,7 @@ struct Canvas3DShapeUVTests {
 
     @Test("vertex(x,y,z,u,v) maps the texture across a beginShape3D quad")
     func texturedQuadSamplesTexture() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         guard let img = UVTestSupport.makeHalfRedHalfGreenTexture(device: device) else {
             Issue.record("Failed to create texture")
             return
@@ -1155,7 +1155,7 @@ struct Canvas3DShapeUVTests {
 
     @Test("texture() without UV vertices keeps the plain fill path")
     func textureWithoutUVKeepsFillPath() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         guard let img = UVTestSupport.makeHalfRedHalfGreenTexture(device: device) else {
             Issue.record("Failed to create texture")
             return
@@ -1200,7 +1200,7 @@ struct Canvas3DShapeUVTests {
 
     @Test("UV follows the vertices through triangleStrip tessellation")
     func triangleStripKeepsUVAlignment() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         guard let img = UVTestSupport.makeHalfRedHalfGreenTexture(device: device) else {
             Issue.record("Failed to create texture")
             return
@@ -1226,7 +1226,7 @@ struct Canvas3DShapeUVTests {
 
     @Test("textured shape larger than the setVertexBytes limit uses the ring buffer")
     func largeTexturedShapeBindsViaRing() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         guard let img = UVTestSupport.makeHalfRedHalfGreenTexture(device: device) else {
             Issue.record("Failed to create texture")
             return
@@ -1320,7 +1320,7 @@ struct Canvas3DDynamicMeshUVTests {
 
     @Test("addTexCoord maps the texture across an indexed dynamic mesh")
     func indexedDynamicMeshSamplesTexture() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         guard let img = UVTestSupport.makeHalfRedHalfGreenTexture(device: device) else {
             Issue.record("Failed to create texture")
             return
@@ -1348,7 +1348,7 @@ struct Canvas3DDynamicMeshUVTests {
 
     @Test("UV follows the vertices on the non-indexed draw path")
     func nonIndexedDynamicMeshSamplesTexture() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         guard let img = UVTestSupport.makeHalfRedHalfGreenTexture(device: device) else {
             Issue.record("Failed to create texture")
             return
@@ -1376,7 +1376,7 @@ struct Canvas3DDynamicMeshUVTests {
 
     @Test("texture() without addTexCoord keeps the plain fill path")
     func textureWithoutUVKeepsFillPath() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         guard let img = UVTestSupport.makeHalfRedHalfGreenTexture(device: device) else {
             Issue.record("Failed to create texture")
             return
@@ -1403,7 +1403,7 @@ struct Canvas3DDynamicMeshUVTests {
 
     @Test("UV is ignored when no texture is bound")
     func uvWithoutTextureFallsBackToFill() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
 
         guard
             let (pixels, texW, texH) = try UVTestSupport.render({ canvas3D, w, h in
@@ -1424,7 +1424,7 @@ struct Canvas3DDynamicMeshUVTests {
 
     @Test("setTexCoord respreads the UV of an existing vertex")
     func setTexCoordUpdatesExistingVertex() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         guard let img = UVTestSupport.makeHalfRedHalfGreenTexture(device: device) else {
             Issue.record("Failed to create texture")
             return
@@ -1480,7 +1480,7 @@ struct Canvas3DDynamicMeshUVTests {
 
     @Test("stroke on a textured mesh rebinds the non-UV vertices")
     func strokeOnTexturedMeshUsesPlainVertices() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         guard let img = makeRedTexture(device: device) else {
             Issue.record("Failed to create texture")
             return
@@ -1515,7 +1515,7 @@ struct Canvas3DDynamicMeshUVTests {
 
     @Test("clear() resets the UV declaration")
     func clearResetsUVDeclaration() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         guard let img = UVTestSupport.makeHalfRedHalfGreenTexture(device: device) else {
             Issue.record("Failed to create texture")
             return
@@ -1601,7 +1601,7 @@ struct Canvas3DDynamicMeshStrokeTests {
 
     @Test("stroke on a dynamic mesh uses the stroke color, not the vertex color (#436)")
     func strokeColorIgnoresVertexColor() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
 
         // 頂点カラー赤 × stroke 緑。`wirePipelineState` を通らないと
         // フラグメントは `in.color * uniforms.color` = 黒になり、緑が 1 画素も残らない
@@ -1625,7 +1625,7 @@ struct Canvas3DDynamicMeshStrokeTests {
 
     @Test("stroke stays visible over the fill of the same dynamic mesh (#436)")
     func strokeVisibleOverOwnFill() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
 
         // fill と stroke は同一ジオメトリを 2 パスで描く。深度バイアスを掛けないと
         // 線は深度比較 `.less` で塗りに負けて 1 本も残らない（#429 と同じ症状）
@@ -1654,9 +1654,9 @@ struct Graphics3DLoadPixelsFreshnessTests {
     private func makeGraphics3D(
         queue: MTLCommandQueue, width: Int = 400, height: Int = 300
     ) throws -> Graphics3D {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let shaderLib = try MetalTestHelper.shaderLibrary()
-        let depthCache = MetalTestHelper.depthStencilCache()
+        let depthCache = try MetalTestHelper.depthStencilCache()
         return try Graphics3D(
             device: device,
             commandQueue: queue,
@@ -1675,7 +1675,7 @@ struct Graphics3DLoadPixelsFreshnessTests {
 
     @Test("toImage carries the drawing queue as the readback queue")
     func toImageCarriesReadbackQueue() throws {
-        let queue = try #require(MetalTestHelper.commandQueue())
+        let queue = try MetalTestHelper.commandQueue()
         let pg3d = try makeGraphics3D(queue: queue)
         pg3d.beginDraw()
         pg3d.endDraw()
@@ -1691,7 +1691,7 @@ struct Graphics3DLoadPixelsFreshnessTests {
 
     @Test("draw then loadPixels immediately reads the latest content")
     func loadPixelsAfterEndDraw() throws {
-        let queue = try #require(MetalTestHelper.commandQueue())
+        let queue = try MetalTestHelper.commandQueue()
         let pg3d = try makeGraphics3D(queue: queue)
 
         // 赤い box を unlit（lightCount == 0 で頂点カラーをそのまま出す）で描き、

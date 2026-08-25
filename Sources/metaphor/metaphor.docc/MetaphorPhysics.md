@@ -8,45 +8,45 @@
     @TopicsVisualStyle(compactGrid)
 }
 
-Verlet 積分と空間ハッシュによる 2D 物理シミュレーション。
+2D physics simulation using Verlet integration and spatial hashing.
 
 ## Overview
 
-MetaphorPhysics は Verlet 積分を使用した軽量な 2D 物理エンジンを提供します。
-円や矩形のシェイプを持つ剛体を作成し、距離コンストレイントで接続したり
-ワールド座標にピン留めしたりして、毎フレームシミュレーションを更新します。
-広域位相の衝突検出には ``MetaphorPhysics/SpatialHash2D`` を使用し、多数のボディを効率的に処理します。
+MetaphorPhysics provides a lightweight 2D physics engine built on Verlet integration.
+Create rigid bodies with circle or rectangle shapes, connect them with distance constraints
+or pin them to world coordinates, and update the simulation every frame.
+Broad-phase collision detection uses ``MetaphorPhysics/SpatialHash2D`` to handle large body counts efficiently.
 
-このモジュールは MetaphorCore に依存せず、単独で使用できます。
-アンブレラモジュール（`import metaphor`）使用時は、`createPhysics2D()` などの
-便利なメソッドからアクセスできます。
+This module does not depend on MetaphorCore and can be used on its own.
+With the umbrella module (`import metaphor`), reach it through convenience methods
+such as `createPhysics2D()`.
 
-### クイックスタート
+### Quick Start
 
 ```swift
 let physics = Physics2D(cellSize: 50)
 physics.setGravity(0, 500)
 physics.bounds = (min: SIMD2(0, 0), max: SIMD2(800, 600))
 
-// bounds の壁は「同じ係数を持つ動かないボディ」として振る舞う。置いた静的ボディと
-// 挙動は同じで、跳ねずに溜めたいときはボディ側の restitution を 0 にする
+// The bounds walls behave as immovable bodies with the same coefficients. They act just like
+// a static body you place yourself; to collect without bouncing, set the body's restitution to 0
 let platform = physics.addRect(x: 400, y: 400, width: 300, height: 20)
 platform.isStatic = true
 
 let ball = physics.addCircle(x: 400, y: 100, radius: 20)
 ball.restitution = 0.8
 
-// 描画ループ内: 実フレーム時間は advance() へ渡す（step() ではない）
+// Inside the draw loop: pass real frame time to advance(), not step()
 physics.advance(deltaTime)
 circle(ball.position.x, ball.position.y, 40)
 ```
 
-> Important: `step(_:iterations:)` には**固定刻み**を渡します。Verlet は速度を
-> 「1 ステップあたりの変位」で持ち、反発の静定閾値も `dt²` に比例するため、
-> 揺れる実フレーム時間をそのまま渡すとエネルギーが出入りし、同じスケッチが
-> 実行のたび・機械ごとに違う動きになります。実フレーム時間から回すときは
-> `advance(_:iterations:)` を使ってください — 経過時間を溜めて
-> `fixedTimeStep`（既定 1/120 秒）で消化するので、フレーム時間の揺れに
-> 結果が依存しなくなります（`import metaphor` の自動サブシステム更新も
-> こちらを通ります）。`step()` は自分で刻みを決める場合（固定刻みループ、
-> オフラインレンダリング、テスト）向けの低レベル API として残っています。
+> Important: Pass a **fixed time step** to `step(_:iterations:)`. Verlet stores velocity as
+> "displacement per step", and the resting threshold for restitution scales with `dt²`, so
+> handing it a fluctuating real frame time lets energy enter and leave the system — the same
+> sketch then moves differently from run to run and from machine to machine. To drive it from
+> real frame time, use `advance(_:iterations:)` instead: it accumulates elapsed time and
+> consumes it in `fixedTimeStep` increments (1/120 second by default), so the result no longer
+> depends on frame time jitter. The automatic subsystem update in `import metaphor` goes
+> through this path as well. `step()` remains as a low-level API for when you set the step
+> yourself — fixed-step loops, offline rendering, and tests.

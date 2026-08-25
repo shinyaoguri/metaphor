@@ -25,6 +25,7 @@ extension Canvas2D {
     public func textFont(_ family: String) {
         currentFontFamily = family
         currentTextLeading = nil
+        resolveCurrentFont()
     }
 
     /// 読み込み済みのフォントを設定します。
@@ -36,6 +37,38 @@ extension Canvas2D {
     public func textFont(_ font: MFont) {
         currentFontFamily = font.postScriptName
         currentTextLeading = nil
+        resolveCurrentFont()
+    }
+
+    /// Sets the bold / italic style applied on top of the current font.
+    ///
+    /// Unlike ``textSize(_:)`` and ``textFont(_:)-(String)`` this does **not** reset the leading.
+    /// An explicit ``textLeading(_:)`` is worth keeping, and a leading that was never set stays
+    /// derived from whatever font is current, so it follows the style on its own.
+    ///
+    /// - Parameter style: The style to apply.
+    public func textStyle(_ style: TextStyle) {
+        currentTextStyle = style
+        resolveCurrentFont()
+    }
+
+    /// Folds the requested family and style into the name every downstream consumer uses.
+    ///
+    /// - Note: A style the current font has no face for leaves the font unchanged and warns
+    ///   rather than silently substituting a different one.
+    func resolveCurrentFont() {
+        let resolved = TextFontResolver.resolve(family: currentFontFamily, style: currentTextStyle)
+        resolvedFontName = resolved.name
+        guard !resolved.styleApplied else { return }
+
+        // 毎フレーム `textStyle()` を呼ぶ書き方でも警告が溢れないよう、(family, style) ごとに 1 回。
+        let key = "\(currentFontFamily)|\(currentTextStyle)"
+        guard warnedMissingTextStyles.insert(key).inserted else { return }
+        metaphorWarning(
+            "textStyle(): \"\(currentFontFamily)\" に \(currentTextStyle) の字面が無いため、"
+                + "スタイルを当てずにそのまま描きます。"
+                + "別のフォントへ差し替えるか、textFont(\"<名前> Bold\") のように"
+                + "スタイル込みの名前を渡してください")
     }
 
     /// テキストの揃え方を設定します。
@@ -58,6 +91,16 @@ extension Canvas2D {
         currentTextLeading = leading
     }
 
+    /// Chooses where the rectangle form of ``text(_:_:_:_:_:)`` may break a line.
+    ///
+    /// - Note: It has no effect on ``text(_:_:_:)``, which only ever breaks at the newlines
+    ///   already in the string.
+    ///
+    /// - Parameter mode: The wrap rule.
+    public func textWrap(_ mode: TextWrap) {
+        currentTextWrap = mode
+    }
+
     /// 実際に使う行の高さ（ピクセル単位）。
     ///
     /// ``textLeading(_:)`` で明示されていればその値、していなければ Processing の
@@ -65,9 +108,9 @@ extension Canvas2D {
     var effectiveTextLeading: Float {
         if let leading = currentTextLeading { return leading }
         let ascent = textRenderer.textAscent(
-            fontSize: currentTextSize, fontFamily: currentFontFamily)
+            fontSize: currentTextSize, fontFamily: resolvedFontName)
         let descent = textRenderer.textDescent(
-            fontSize: currentTextSize, fontFamily: currentFontFamily)
+            fontSize: currentTextSize, fontFamily: resolvedFontName)
         return (ascent + descent) * 1.275
     }
 
@@ -90,7 +133,7 @@ extension Canvas2D {
         Self.lines(of: string)
             .map {
                 textRenderer.textWidth(
-                    string: $0, fontSize: currentTextSize, fontFamily: currentFontFamily)
+                    string: $0, fontSize: currentTextSize, fontFamily: resolvedFontName)
             }
             .max() ?? 0
     }
@@ -108,13 +151,47 @@ extension Canvas2D {
     /// 現在のフォントのアセントを返します。
     /// - Returns: ピクセル単位のフォントアセント。
     public func textAscent() -> Float {
-        textRenderer.textAscent(fontSize: currentTextSize, fontFamily: currentFontFamily)
+        textRenderer.textAscent(fontSize: currentTextSize, fontFamily: resolvedFontName)
     }
 
     /// 現在のフォントのディセントを返します。
     /// - Returns: ピクセル単位のフォントディセント。
     public func textDescent() -> Float {
-        textRenderer.textDescent(fontSize: currentTextSize, fontFamily: currentFontFamily)
+        textRenderer.textDescent(fontSize: currentTextSize, fontFamily: resolvedFontName)
+    }
+
+    /// Returns the rectangle ``text(_:_:_:)`` would fill for this string at `(x, y)`.
+    ///
+    /// - Note: The width is the one ``textWidth(_:)`` reports — the sum of the per-character
+    ///   advances, which is the ruler ``text(_:_:_:)`` lays glyphs out with and
+    ///   ``textAlign(_:_:)`` aligns against. It is therefore **not** the extent of the ink:
+    ///   glyphs such as `f`, or an italic face, can paint a little past either edge.
+    ///
+    /// - Returns: The box, with `x` / `y` at its top-left corner.
+    public func textBounds(_ string: String, _ x: Float, _ y: Float) -> TextBounds {
+        // `text()` が `guard !string.isEmpty` で何も描かずに帰る文字列。描かないものの箱は 0。
+        guard !string.isEmpty else { return TextBounds(x: x, y: y, width: 0, height: 0) }
+
+        // ここから下は `text(_:_:_:)` の配置計算をそのままなぞる。揃えの規則が将来変わっても
+        // textBounds が置いていかれないよう、自前で組み直さず同じ 2 段を通す。
+        let width = textWidth(string)
+        let hangingHeight = Float(Self.lines(of: string).count - 1) * effectiveTextLeading
+        var lineY = y
+        switch currentTextAlignV {
+        case .top, .baseline: break
+        case .center: lineY -= hangingHeight / 2
+        case .bottom: lineY -= hangingHeight
+        }
+        let origin = textBaselineOrigin(x: x, y: lineY, width: width)
+
+        let ascent = textAscent()
+        let descent = textDescent()
+        return TextBounds(
+            x: origin.x,
+            y: origin.y - ascent,
+            width: width,
+            height: ascent + descent + hangingHeight
+        )
     }
 
     /// テキストの基準点 `(x, y)` を、現在の ``textAlign(_:_:)`` からベースライン左端へ
@@ -130,9 +207,9 @@ extension Canvas2D {
     /// - Returns: ベースライン左端の座標。
     func textBaselineOrigin(x: Float, y: Float, width: Float) -> (x: Float, y: Float) {
         let ascent = textRenderer.textAscent(
-            fontSize: currentTextSize, fontFamily: currentFontFamily)
+            fontSize: currentTextSize, fontFamily: resolvedFontName)
         let descent = textRenderer.textDescent(
-            fontSize: currentTextSize, fontFamily: currentFontFamily)
+            fontSize: currentTextSize, fontFamily: resolvedFontName)
 
         var originX = x
         switch currentTextAlignH {
@@ -201,13 +278,13 @@ extension Canvas2D {
         guard !string.isEmpty else { return }
 
         if let (atlasTex, glyphs) = textRenderer.textGlyphs(
-            string: string, fontSize: currentTextSize, fontFamily: currentFontFamily
+            string: string, fontSize: currentTextSize, fontFamily: resolvedFontName
         ), !glyphs.isEmpty {
             // 揃えの基準は advance の合計 = textWidth() が返す幅（#803）。最後のグリフの
             // ビットマップの右端（$0.x + $0.width）で測ると、アトラスへ書き込むときの
             // 余白 2px（TextRenderer の glyphW）が幅に混ざる。
             let totalWidth = textRenderer.textWidth(
-                string: string, fontSize: currentTextSize, fontFamily: currentFontFamily)
+                string: string, fontSize: currentTextSize, fontFamily: resolvedFontName)
             // drawTextFromAtlas の y は「ベースライン」位置（PositionedGlyph の座標が
             // ベースライン基準のため）。textBaselineOrigin が各揃えモードから変換する。
             let origin = textBaselineOrigin(x: x, y: y, width: totalWidth)
@@ -219,7 +296,7 @@ extension Canvas2D {
             let cached = textRenderer.textTexture(
                 string: string,
                 fontSize: currentTextSize,
-                fontFamily: currentFontFamily,
+                fontFamily: resolvedFontName,
                 frameCount: frameCounter
             )
         else { return }
@@ -247,8 +324,8 @@ extension Canvas2D {
 
     /// バウンディングボックス内に自動改行付きでテキストを描画します。
     ///
-    /// 行の高さは ``textLeading(_:)`` に従い、箱の高さに入り切らない行は
-    /// Processing と同じく描かれません（箱でクリップされます）。
+    /// 行の高さは ``textLeading(_:)`` に従い、折り返し規則は ``textWrap(_:)`` に従います。
+    /// 箱の高さに入り切らない行は Processing と同じく描かれません（箱でクリップされます）。
     ///
     /// 色の扱いは ``text(_:_:_:)`` と同じで、``noFill()`` はテキストに効きません。
     ///
@@ -265,10 +342,11 @@ extension Canvas2D {
             let cached = textRenderer.textTextureMultiline(
                 string: string,
                 fontSize: currentTextSize,
-                fontFamily: currentFontFamily,
+                fontFamily: resolvedFontName,
                 maxWidth: w,
                 maxHeight: h,
                 leading: effectiveTextLeading,
+                wrap: currentTextWrap,
                 frameCount: frameCounter
             )
         else { return }
