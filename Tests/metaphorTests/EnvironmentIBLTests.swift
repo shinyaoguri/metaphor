@@ -146,9 +146,9 @@ struct EnvironmentIBLTests {
     func environmentWorksOnGraphics3D() throws {
         let graphics = try Graphics3D(
             device: #require(MetalTestHelper.device),
-            commandQueue: #require(MetalTestHelper.commandQueue()),
+            commandQueue: MetalTestHelper.commandQueue(),
             shaderLibrary: MetalTestHelper.shaderLibrary(),
-            depthStencilCache: MetalTestHelper.depthStencilCache(),
+            depthStencilCache: try MetalTestHelper.depthStencilCache(),
             width: Self.size,
             height: Self.size
         )
@@ -166,7 +166,7 @@ struct EnvironmentIBLTests {
         // MSAA サンプル数がメインパス（4）と違っても skybox のパイプラインが作れて、
         // 何かが描かれていること（真っ黒でない）を見る
         let image = try GoldenImage.readback(
-            texture: graphics.texture, commandQueue: #require(MetalTestHelper.commandQueue()))
+            texture: graphics.texture, commandQueue: MetalTestHelper.commandQueue())
         var lit = false
         for y in 0..<image.height where !lit {
             for x in 0..<image.width where Self.luminance(Self.pixel(image, (x: x, y: y))) > 0.05 {

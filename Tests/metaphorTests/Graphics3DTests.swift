@@ -15,10 +15,10 @@ struct Graphics3DCreationTests {
     func creation() throws {
         let device = MetalTestHelper.device!
         let shaderLib = try MetalTestHelper.shaderLibrary()
-        let depthCache = MetalTestHelper.depthStencilCache()
+        let depthCache = try MetalTestHelper.depthStencilCache()
         let pg3d = try Graphics3D(
             device: device,
-            commandQueue: MetalTestHelper.commandQueue()!,
+            commandQueue: try MetalTestHelper.commandQueue(),
             shaderLibrary: shaderLib,
             depthStencilCache: depthCache,
             width: 400,
@@ -32,10 +32,10 @@ struct Graphics3DCreationTests {
     func dimensions() throws {
         let device = MetalTestHelper.device!
         let shaderLib = try MetalTestHelper.shaderLibrary()
-        let depthCache = MetalTestHelper.depthStencilCache()
+        let depthCache = try MetalTestHelper.depthStencilCache()
         let pg3d = try Graphics3D(
             device: device,
-            commandQueue: MetalTestHelper.commandQueue()!,
+            commandQueue: try MetalTestHelper.commandQueue(),
             shaderLibrary: shaderLib,
             depthStencilCache: depthCache,
             width: 800,
@@ -49,10 +49,10 @@ struct Graphics3DCreationTests {
     func textureExists() throws {
         let device = MetalTestHelper.device!
         let shaderLib = try MetalTestHelper.shaderLibrary()
-        let depthCache = MetalTestHelper.depthStencilCache()
+        let depthCache = try MetalTestHelper.depthStencilCache()
         let pg3d = try Graphics3D(
             device: device,
-            commandQueue: MetalTestHelper.commandQueue()!,
+            commandQueue: try MetalTestHelper.commandQueue(),
             shaderLibrary: shaderLib,
             depthStencilCache: depthCache,
             width: 400,
@@ -97,10 +97,10 @@ struct Graphics3DLifecycleTests {
     private func makeGraphics3D(width: Int = 400, height: Int = 300) throws -> Graphics3D {
         let device = MetalTestHelper.device!
         let shaderLib = try MetalTestHelper.shaderLibrary()
-        let depthCache = MetalTestHelper.depthStencilCache()
+        let depthCache = try MetalTestHelper.depthStencilCache()
         return try Graphics3D(
             device: device,
-            commandQueue: MetalTestHelper.commandQueue()!,
+            commandQueue: try MetalTestHelper.commandQueue(),
             shaderLibrary: shaderLib,
             depthStencilCache: depthCache,
             width: width,
@@ -163,10 +163,10 @@ struct Graphics3DTransformTests {
     private func makeGraphics3D() throws -> Graphics3D {
         let device = MetalTestHelper.device!
         let shaderLib = try MetalTestHelper.shaderLibrary()
-        let depthCache = MetalTestHelper.depthStencilCache()
+        let depthCache = try MetalTestHelper.depthStencilCache()
         return try Graphics3D(
             device: device,
-            commandQueue: MetalTestHelper.commandQueue()!,
+            commandQueue: try MetalTestHelper.commandQueue(),
             shaderLibrary: shaderLib,
             depthStencilCache: depthCache,
             width: 400,
@@ -286,10 +286,10 @@ struct Graphics3DTransformTests {
         // Exact reproduction of the Primitives3D example
         let device = MetalTestHelper.device!
         let shaderLib = try MetalTestHelper.shaderLibrary()
-        let depthCache = MetalTestHelper.depthStencilCache()
+        let depthCache = try MetalTestHelper.depthStencilCache()
         let pg3d = try Graphics3D(
             device: device,
-            commandQueue: MetalTestHelper.commandQueue()!,
+            commandQueue: try MetalTestHelper.commandQueue(),
             shaderLibrary: shaderLib,
             depthStencilCache: depthCache,
             width: 640,
@@ -576,10 +576,10 @@ struct Canvas3DBatchFlushTests {
     func cameraChangeDoesNotAffectSubmittedShapes() throws {
         let device = MetalTestHelper.device!
         let shaderLib = try MetalTestHelper.shaderLibrary()
-        let depthCache = MetalTestHelper.depthStencilCache()
+        let depthCache = try MetalTestHelper.depthStencilCache()
         let pg3d = try Graphics3D(
             device: device,
-            commandQueue: MetalTestHelper.commandQueue()!,
+            commandQueue: try MetalTestHelper.commandQueue(),
             shaderLibrary: shaderLib,
             depthStencilCache: depthCache,
             width: 400, height: 300
@@ -1656,7 +1656,7 @@ struct Graphics3DLoadPixelsFreshnessTests {
     ) throws -> Graphics3D {
         let device = MetalTestHelper.device!
         let shaderLib = try MetalTestHelper.shaderLibrary()
-        let depthCache = MetalTestHelper.depthStencilCache()
+        let depthCache = try MetalTestHelper.depthStencilCache()
         return try Graphics3D(
             device: device,
             commandQueue: queue,
@@ -1675,7 +1675,7 @@ struct Graphics3DLoadPixelsFreshnessTests {
 
     @Test("toImage carries the drawing queue as the readback queue")
     func toImageCarriesReadbackQueue() throws {
-        let queue = try #require(MetalTestHelper.commandQueue())
+        let queue = try MetalTestHelper.commandQueue()
         let pg3d = try makeGraphics3D(queue: queue)
         pg3d.beginDraw()
         pg3d.endDraw()
@@ -1691,7 +1691,7 @@ struct Graphics3DLoadPixelsFreshnessTests {
 
     @Test("draw then loadPixels immediately reads the latest content")
     func loadPixelsAfterEndDraw() throws {
-        let queue = try #require(MetalTestHelper.commandQueue())
+        let queue = try MetalTestHelper.commandQueue()
         let pg3d = try makeGraphics3D(queue: queue)
 
         // 赤い box を unlit（lightCount == 0 で頂点カラーをそのまま出す）で描き、

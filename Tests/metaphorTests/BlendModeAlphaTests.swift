@@ -16,9 +16,9 @@ struct BlendModeAlphaTests {
     private func makeGraphics(width: Int = 32, height: Int = 32) throws -> Graphics {
         try Graphics(
             device: MetalTestHelper.device!,
-            commandQueue: MetalTestHelper.commandQueue()!,
+            commandQueue: try MetalTestHelper.commandQueue(),
             shaderLibrary: try MetalTestHelper.shaderLibrary(),
-            depthStencilCache: MetalTestHelper.depthStencilCache(),
+            depthStencilCache: try MetalTestHelper.depthStencilCache(),
             width: width,
             height: height
         )

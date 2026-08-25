@@ -29,9 +29,9 @@ struct OffscreenTransparentDefaultTests {
     private func makeGraphics() throws -> Graphics {
         try Graphics(
             device: MetalTestHelper.device!,
-            commandQueue: MetalTestHelper.commandQueue()!,
+            commandQueue: try MetalTestHelper.commandQueue(),
             shaderLibrary: try MetalTestHelper.shaderLibrary(),
-            depthStencilCache: MetalTestHelper.depthStencilCache(),
+            depthStencilCache: try MetalTestHelper.depthStencilCache(),
             width: Self.size,
             height: Self.size
         )
@@ -40,9 +40,9 @@ struct OffscreenTransparentDefaultTests {
     private func makeGraphics3D() throws -> Graphics3D {
         try Graphics3D(
             device: MetalTestHelper.device!,
-            commandQueue: MetalTestHelper.commandQueue()!,
+            commandQueue: try MetalTestHelper.commandQueue(),
             shaderLibrary: try MetalTestHelper.shaderLibrary(),
-            depthStencilCache: MetalTestHelper.depthStencilCache(),
+            depthStencilCache: try MetalTestHelper.depthStencilCache(),
             width: Self.size,
             height: Self.size
         )

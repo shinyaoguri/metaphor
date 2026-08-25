@@ -79,11 +79,11 @@ struct DegenerateSizeGuardTests {
     @Test("Graphics の init が退化サイズを throw で弾く", arguments: degenerateSizes)
     fileprivate func graphicsInitThrows(size: DegenerateSize) throws {
         let shaderLib = try MetalTestHelper.shaderLibrary()
-        let depthCache = MetalTestHelper.depthStencilCache()
+        let depthCache = try MetalTestHelper.depthStencilCache()
         #expect(throws: MetaphorError.self) {
             _ = try Graphics(
                 device: MetalTestHelper.device!,
-                commandQueue: MetalTestHelper.commandQueue()!,
+                commandQueue: try MetalTestHelper.commandQueue(),
                 shaderLibrary: shaderLib,
                 depthStencilCache: depthCache,
                 width: size.width,
@@ -95,11 +95,11 @@ struct DegenerateSizeGuardTests {
     @Test("Graphics3D の init が退化サイズを throw で弾く", arguments: degenerateSizes)
     fileprivate func graphics3DInitThrows(size: DegenerateSize) throws {
         let shaderLib = try MetalTestHelper.shaderLibrary()
-        let depthCache = MetalTestHelper.depthStencilCache()
+        let depthCache = try MetalTestHelper.depthStencilCache()
         #expect(throws: MetaphorError.self) {
             _ = try Graphics3D(
                 device: MetalTestHelper.device!,
-                commandQueue: MetalTestHelper.commandQueue()!,
+                commandQueue: try MetalTestHelper.commandQueue(),
                 shaderLibrary: shaderLib,
                 depthStencilCache: depthCache,
                 width: size.width,

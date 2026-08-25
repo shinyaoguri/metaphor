@@ -185,9 +185,9 @@ struct OrthoDefaultBoundsTests {
         let device = MetalTestHelper.device!
         let pg3d = try Graphics3D(
             device: device,
-            commandQueue: MetalTestHelper.commandQueue()!,
+            commandQueue: try MetalTestHelper.commandQueue(),
             shaderLibrary: MetalTestHelper.shaderLibrary(),
-            depthStencilCache: MetalTestHelper.depthStencilCache(),
+            depthStencilCache: try MetalTestHelper.depthStencilCache(),
             width: 400,
             height: 300
         )
