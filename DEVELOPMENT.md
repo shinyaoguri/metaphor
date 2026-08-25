@@ -24,7 +24,7 @@ make build      # swift build
 make test       # swift test
 make ci-check   # per-PR CI のうち手元で走らせられる検査を全部（push 前に通す）
 make static-check # そのうちビルドが要らない半分だけ（lint / 契約 / スクリプトのテスト）
-make static-check-fast # さらにそのうち生成器スクリプトのテストを除いた 11 本（pre-push が毎回走らせる）
+make static-check-fast # さらにそのうち生成器スクリプトのテストを除いた 12 本（pre-push が毎回走らせる）
 make clean      # ビルド成果物をクリーン
 make check      # セットアップ状態を確認
 make docs       # DocC ドキュメントをビルド
@@ -61,7 +61,7 @@ make static-check   # lint 群 + 契約 + 生成器スクリプトのユニッ�
 
 | いつ | 何が走るか | 実測 |
 |---|---|---|
-| 毎回（ブランチ削除の push を除く） | `make static-check-fast`（ビルド不要な CI 検査 11 本） | 約 5 秒 |
+| 毎回（ブランチ削除の push を除く） | `make static-check-fast`（ビルド不要な CI 検査 12 本） | 約 5 秒 |
 | 生成物の入力を触った push | `scripts/check-generated-freshness.sh`（触ったものだけ選ぶ） | 検査による（`llms` は `swift build` を含む） |
 | `Sources/**/*.swift` か DocC カタログを触った push | `make docs-check`（DocC の警告 0） | 約 3 秒 |
 

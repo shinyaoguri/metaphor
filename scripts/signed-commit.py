@@ -42,7 +42,7 @@ SSH エージェントがハングして本スクリプトが復旧手段にな�
 そこで送信の前に、pre-push と同じものを走らせ、落ちたら **1 バイトも送らずに**
 abort します。降りるにはそれぞれ明示のフラグが要ります。
 
-1. `make static-check-fast`（ビルド不要な CI 検査 11 本）— `--skip-ci-checks`
+1. `make static-check-fast`（ビルド不要な CI 検査 12 本）— `--skip-ci-checks`
 2. `scripts/check-generated-freshness.sh --all`（生成物の鮮度）— `--skip-freshness`
 3. `make docs-check`（DocC の警告 0）— `--skip-ci-checks`
 
