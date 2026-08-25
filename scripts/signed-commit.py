@@ -308,7 +308,7 @@ def main(argv: list[str] | None = None) -> int:
     # examples index in place, so a stale tree has to be caught (and aborted on)
     # while `git status` still reflects what the author actually meant to send.
     #
-    # 順序は ci.yml と pre-push に合わせてある。ビルド不要な 11 本が先で、ビルドを
+    # 順序は ci.yml と pre-push に合わせてある。ビルド不要な 12 本が先で、ビルドを
     # 要求する 2 本があと（#1155）。
     if not args.skip_ci_checks and not args.dry_run:
         code = check_ci_targets(args.repo_root, CI_CHECK_TARGETS_BEFORE_FRESHNESS)
