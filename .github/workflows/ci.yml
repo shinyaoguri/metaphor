@@ -297,10 +297,15 @@ jobs:
           # には数秒余計に走るだけだが、取りこぼすと**次に Sources を触った無関係な
           # PR**が自分の入れていない 404 で落ちる（責めるべき PR がずれる）。
           # 検査そのものを直した PR でも走らせたいので、スクリプト自身も入れる。
+          # markdown_common.py も入力（コードを落とす前処理の実体。#1183 で 3 本の
+          # 検査から寄せた）。共有部品を入力に足し忘れると、そこを直した PR で検査が
+          # 走らず素通りする — #788 で shots_common.py を足し忘れて撮り直し漏れが
+          # 通ったのと同じ失敗。
           if [ "$docc" = true ] || \
              scripts/pr-changed-files.sh "$base" "$head" \
                -- 'docs/**' 'Examples/**' 'website/**' 'changelog.d/**' '*.md' \
-                  'scripts/check-reference-links.py' 2>/dev/null | grep -q .; then
+                  'scripts/check-reference-links.py' 'scripts/markdown_common.py' \
+                  2>/dev/null | grep -q .; then
             echo "reference_links=true" >> "$GITHUB_OUTPUT"
           else
             echo "reference_links=false" >> "$GITHUB_OUTPUT"

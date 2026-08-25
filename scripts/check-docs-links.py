@@ -33,6 +33,10 @@ import sys
 from pathlib import Path
 from urllib.parse import unquote
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from markdown_common import strip_code  # noqa: E402
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # 対象: docs/**/*.md + ルートの主要ドキュメント。
@@ -44,8 +48,8 @@ ROOT_DOCS = ("README.md", "README.en.md", "DEVELOPMENT.md", "CONTRIBUTING.md", "
 # リンク先として許すスキーム。`doc:` は DocC のシンボルリンクで、解決するのは DocC 側。
 EXTERNAL_SCHEMES = ("http://", "https://", "mailto:", "doc:", "tel:")
 
-_FENCE_RE = re.compile(r"^\s*(?P<marker>```+|~~~+)")
-_INLINE_CODE_RE = re.compile(r"(?P<ticks>`+)(?P<code>.*?)(?P=ticks)")
+# フェンス・インラインコードの正規表現と `strip_code` は markdown_common が持つ
+# （3 本の検査で同じ線引きを使うため。#1183）。
 _HEADING_RE = re.compile(r"^(?P<level>#{1,6})\s+(?P<text>.*?)\s*#*\s*$")
 _HTML_ANCHOR_RE = re.compile(r"""<a\s[^>]*(?:id|name)\s*=\s*['"](?P<anchor>[^'"]+)['"]""")
 # [text](target) / ![alt](target)。target 内の 1 段のカッコまでは許す（URL に現れうる）。
@@ -53,34 +57,6 @@ _LINK_RE = re.compile(r"\[(?:[^\[\]]|\[[^\[\]]*\])*\]\((?P<target>[^()]*(?:\([^(
 _MD_LINK_TEXT_RE = re.compile(r"\[(?P<text>[^\[\]]*)\]\([^()]*\)")
 _ADR_FILE_RE = re.compile(r"^(?P<number>\d{4})-.+\.md$")
 _ADR_ROW_RE = re.compile(r"^\|\s*\[(?P<number>\d{4})\]\((?P<target>[^)]+)\)\s*\|")
-
-
-def strip_code(text: str, *, keep_inline_code: bool = False) -> list[str]:
-    """コードを落とした行の一覧を返す（行番号を保つため空行に置き換える）。
-
-    説明文中の `` `[こちら](...)` `` を「リンク先が無い」と誤検出しないための前処理
-    （実例: docs/adr/0008-docc-reference-images-via-gyazo.md）。
-
-    `keep_inline_code=True` は見出しを読むとき用。GitHub の slug はコードスパンの**中身を
-    残す**ので、アンカーを組み立てる側でインラインコードごと落とすと偽陽性になる
-    （実例: docs/processing-migration-guide.md の `### `frameRate()` sets, ...`）。
-    フェンスは両方で落とす — シェルの `# コメント` を見出しと取り違えないため。
-    """
-    lines: list[str] = []
-    fence: str | None = None
-    for line in text.splitlines():
-        match = _FENCE_RE.match(line)
-        if fence is None:
-            if match:
-                fence = match.group("marker")[0]
-                lines.append("")
-                continue
-            lines.append(line if keep_inline_code else _INLINE_CODE_RE.sub("", line))
-        else:
-            if match and match.group("marker")[0] == fence:
-                fence = None
-            lines.append("")
-    return lines
 
 
 def slugify(heading_text: str) -> str:

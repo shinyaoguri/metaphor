@@ -60,6 +60,10 @@ import re
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from markdown_common import strip_code  # noqa: E402
+
 DEFAULT_PATH = Path("CHANGELOG.md")
 DEFAULT_DIR = Path("changelog.d")
 FALLBACK_REPO_URL = "https://github.com/shinyaoguri/metaphor"
@@ -112,8 +116,8 @@ ABSOLUTE_TARGET_RE = re.compile(r"^(?:https?://|mailto:)", re.IGNORECASE)
 # here it cannot be paired with a definition without that definition tripping
 # LINK_DEF_RE below.
 REFERENCE_LINK_RE = re.compile(r"!?\[(?:[^\[\]]|\[[^\[\]]*\])*\]\[[^\[\]]*\]")
-FENCE_RE = re.compile(r"^\s*(?P<marker>```+|~~~+)")
-INLINE_CODE_RE = re.compile(r"(?P<ticks>`+)(?P<code>.*?)(?P=ticks)")
+# The fence / inline-code regexes and strip_code live in markdown_common, shared
+# with the two link checkers that draw the same line (Issue #1183).
 
 
 class ChangelogError(Exception):
@@ -205,31 +209,6 @@ def repo_url(lines: list[str]) -> str:
 # --------------------------------------------------------------------------
 # changelog.d/ entry files
 # --------------------------------------------------------------------------
-def strip_code(text: str) -> list[str]:
-    """The text with code removed, one entry per line (blanked, not dropped, so
-    line numbers survive).
-
-    An entry that *mentions* a path — ``- `image()` no longer resolves
-    `../foo`.`` — must not be read as a link. Same treatment, for the same
-    reason, as scripts/check-docs-links.py and scripts/check-reference-links.py.
-    """
-    lines: list[str] = []
-    fence: str | None = None
-    for line in text.splitlines():
-        match = FENCE_RE.match(line)
-        if fence is None:
-            if match:
-                fence = match.group("marker")[0]
-                lines.append("")
-                continue
-            lines.append(INLINE_CODE_RE.sub("", line))
-        else:
-            if match and match.group("marker")[0] == fence:
-                fence = None
-            lines.append("")
-    return lines
-
-
 def relative_links(text: str) -> list[tuple[int, str]]:
     """`(line number, target)` for every link target that is not an absolute URL.
 
