@@ -580,7 +580,7 @@ Maintaining this file
   package under `Examples/Tutorial/` and a result image generated from it, so
   every line of code in the prose is compiled in CI. Read them on the
   [tutorial site](https://shinyaoguri.github.io/metaphor/tutorial/) or in
-  [`docs/tutorial/`](../docs/tutorial/)
+  [`docs/tutorial/`](https://github.com/shinyaoguri/metaphor/tree/main/docs/tutorial)
   ([#488](https://github.com/shinyaoguri/metaphor/issues/488))
 - **83 example packages that had no picture now ship one**, shot by actually running
   the sketch headless through the Probe (`make example-shots`). Together with the 162
@@ -591,7 +591,7 @@ Maintaining this file
   of sketches whose drawing is broken, each naming the issue that tracks it) and
   `probe-input.jsonl` (the sketch needs mouse or keyboard input before it draws
   anything worth looking at — that input is fed to the sketch during the shot). A new
-  [`docs/ai/examples-shots.config.json`](../docs/ai/examples-shots.config.json) holds
+  [`docs/ai/examples-shots.config.json`](https://github.com/shinyaoguri/metaphor/blob/main/docs/ai/examples-shots.config.json) holds
   per-example exceptions to *when* the frame is grabbed, for sketches that settle into
   their picture on a different schedule than the 1.5 second default
   ([#501](https://github.com/shinyaoguri/metaphor/issues/501))
@@ -603,7 +603,7 @@ Maintaining this file
   point is the movement itself also carry an animated WebP captured from that
   same sketch. Read them on the
   [tutorial site](https://shinyaoguri.github.io/metaphor/tutorial/) or in
-  [`docs/tutorial/`](../docs/tutorial/)
+  [`docs/tutorial/`](https://github.com/shinyaoguri/metaphor/tree/main/docs/tutorial)
   ([#508](https://github.com/shinyaoguri/metaphor/issues/508))
 - Tutorial part 4, "入力を受ける" (input), is now published — four sections covering
   the mouse (`mouseX` / `pmouseX` / `isMousePressed` and the event callbacks),
@@ -612,11 +612,10 @@ Maintaining this file
   hand-built UI (hover / press / drag, buttons and sliders), and windows
   (rendering resolution vs. `windowScale`, letterboxing, secondary windows). Each
   section ships a runnable SwiftPM package under `Examples/Tutorial/04-Input/`.
-  The API reference's
-  [Getting Started](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphor/gettingstarted)
-  page now points at this part instead of listing the input API twice. Read it on
-  the [tutorial site](https://shinyaoguri.github.io/metaphor/tutorial/input/) or
-  in [`docs/tutorial/`](../docs/tutorial/)
+  The API reference's Getting Started page now points at this part instead of
+  listing the input API twice. Read it on the
+  [tutorial site](https://shinyaoguri.github.io/metaphor/tutorial/input/) or
+  in [`docs/tutorial/`](https://github.com/shinyaoguri/metaphor/tree/main/docs/tutorial)
   ([#509](https://github.com/shinyaoguri/metaphor/issues/509))
 - Tutorial screenshots can now be captured with input applied: a
   `probe-input.jsonl` next to a tutorial sketch is streamed to the sketch's stdin
@@ -635,7 +634,7 @@ Maintaining this file
   `Examples/Tutorial/05-ThreeD/`, and the transform and camera sections carry an
   animated WebP. Read it on the
   [tutorial site](https://shinyaoguri.github.io/metaphor/tutorial/3d/) or in
-  [`docs/tutorial/`](../docs/tutorial/)
+  [`docs/tutorial/`](https://github.com/shinyaoguri/metaphor/tree/main/docs/tutorial)
   ([#526](https://github.com/shinyaoguri/metaphor/issues/526))
 - The API reference now shows what a symbol actually draws: `circle()`, `rect()`,
   `arc()`, `bezier()`, `rotate()`, `rectMode()`, `strokeWeight()` and
@@ -671,7 +670,7 @@ Maintaining this file
   Each section ships a runnable SwiftPM package under `Examples/Tutorial/06-GPU/`,
   and the particle and post-process sections carry an animated WebP. Read it on
   the [tutorial site](https://shinyaoguri.github.io/metaphor/tutorial/gpu/) or in
-  [`docs/tutorial/`](../docs/tutorial/)
+  [`docs/tutorial/`](https://github.com/shinyaoguri/metaphor/tree/main/docs/tutorial)
   ([#543](https://github.com/shinyaoguri/metaphor/issues/543))
 - Tutorial part 8, "外とつなぐ" (connecting to the outside), is now published —
   four sections covering OSC (`createOSCSender` / `createOSCReceiver`, address
@@ -687,7 +686,7 @@ Maintaining this file
   writing values from outside through `set-request.json`). Each section ships a
   runnable SwiftPM package under `Examples/Tutorial/08-Connect/`. Read it on the
   [tutorial site](https://shinyaoguri.github.io/metaphor/tutorial/connect/) or in
-  [`docs/tutorial/`](../docs/tutorial/)
+  [`docs/tutorial/`](https://github.com/shinyaoguri/metaphor/tree/main/docs/tutorial)
   ([#545](https://github.com/shinyaoguri/metaphor/issues/545))
 - Tutorial part 9, "作品にする" (making it a work), is now published — five
   sections on getting a sketch out of the window: stills (`save(_:)` as a
@@ -705,7 +704,7 @@ Maintaining this file
   `enablePerformanceHUD()`). Each section ships a runnable SwiftPM package under
   `Examples/Tutorial/09-Artwork/`. Read it on the
   [tutorial site](https://shinyaoguri.github.io/metaphor/tutorial/artwork/) or in
-  [`docs/tutorial/`](../docs/tutorial/)
+  [`docs/tutorial/`](https://github.com/shinyaoguri/metaphor/tree/main/docs/tutorial)
   ([#546](https://github.com/shinyaoguri/metaphor/issues/546))
 - Tutorial part 10, "AI と作る" (making things with an AI), is now published, and
   with it the tutorial's ten-part arc is complete. Five sections on handing the
@@ -724,7 +723,7 @@ Maintaining this file
   runnable SwiftPM package under `Examples/Tutorial/10-AI/`; the other two are
   about operating the tools, and say so. Read it on the
   [tutorial site](https://shinyaoguri.github.io/metaphor/tutorial/ai/) or in
-  [`docs/tutorial/`](../docs/tutorial/)
+  [`docs/tutorial/`](https://github.com/shinyaoguri/metaphor/tree/main/docs/tutorial)
   ([#547](https://github.com/shinyaoguri/metaphor/issues/547))
 - Every published tutorial section now ends with a **"ふりかえり" (recap)** checklist,
   and every part opens with **"この部の前提" (prerequisites)**. The recap is three to
@@ -732,7 +731,7 @@ Maintaining this file
   what they skimmed past without a quiz; the prerequisites name the earlier parts and
   the specific things they taught (Part 1 names the Swift knowledge and the supported
   hardware instead). Both were applied retroactively to all 40 published sections
-  across Parts 1–5, and [`docs/tutorial/README.md`](../docs/tutorial/README.md) now
+  across Parts 1–5, and [`docs/tutorial/README.md`](https://github.com/shinyaoguri/metaphor/blob/main/docs/tutorial/README.md) now
   carries them as writing conventions so later parts are written with them from the
   start. The tutorial site styles the task lists so the checkbox replaces the bullet
   instead of doubling it
@@ -1043,7 +1042,7 @@ Maintaining this file
   was rewritten from labels ("the result of easing") into descriptions of what is
   actually visible ("three circles chasing a white ring, the ones with a smaller
   easing coefficient trailing further behind"), and
-  [`docs/tutorial/README.md`](../docs/tutorial/README.md) now carries the rule as a
+  [`docs/tutorial/README.md`](https://github.com/shinyaoguri/metaphor/blob/main/docs/tutorial/README.md) now carries the rule as a
   writing convention: say what can be seen, put the movement in the clip's alt, and
   make the still's alt carry the section on its own
   ([#553](https://github.com/shinyaoguri/metaphor/issues/553))
@@ -1203,7 +1202,7 @@ Maintaining this file
   revision was written against. Two consequences worth knowing: images do not
   render offline, and a fork cannot replace one without a maintainer uploading
   it. Rationale and the measurements behind it are in
-  [ADR-0010](../docs/adr/0010-tutorial-images-via-gyazo.md)
+  [ADR-0010](https://github.com/shinyaoguri/metaphor/blob/main/docs/adr/0010-tutorial-images-via-gyazo.md)
   ([#511](https://github.com/shinyaoguri/metaphor/issues/511))
 - **The API freeze announced with `v0.9.0` has been withdrawn.** Design work was
   still outstanding when it shipped — renamed APIs whose old spellings are still
