@@ -43,17 +43,26 @@ The rest of the GPU surface:
   `createMaterialFromFile(path:fragmentFunction:)` + `material()` — see
   [`ToonShading`](ToonShading).
 
-## Why the unused `.glsl` files are still here
+## Where the original `.glsl` went
 
-Every ported sketch keeps its original sample's `data/*.glsl` (22 files under this
-directory) even though nothing reads them at runtime. They are the reference
-material for porting those sketches back to real shaders now that the 2D shader
-API has landed: the GLSL sources are what the Metal ports will be translated
-from — exactly like the `.pde` originals kept beside them. They are deliberate
-dead weight, not leftovers; please do not "clean them up".
+Every ported sketch used to keep its original sample's `data/*.glsl` beside the
+Swift port, as the reference material a future Metal translation would be made
+from. Those 28 files were removed in
+[#1190](https://github.com/shinyaoguri/metaphor/issues/1190): seven of them
+declared GPLv2, LGPL-2.1 or CC BY-NC-SA in their own headers, which this
+repository's MIT license cannot absorb, and the remaining 21 shared their
+provenance without saying anything about their license. Nothing read any of them
+at runtime — metaphor is Metal, and the only example here that calls
+`loadShader()` reads a `.metal` file written for this repository. The details are
+in [THIRD_PARTY_LICENSES.md](../../../THIRD_PARTY_LICENSES.md).
 
-`ToonShading` is the first one that went through that translation: its
-`ToonShading/Resources/Toon.metal` is a line-by-line port of `data/ToonFrag.glsl`,
-with the same four thresholds and the same four colours, and `data/ToonVert.glsl`
-turned out to be unnecessary because the built-in vertex stage already supplies
-what it computed. The GLSL stayed put as the record of where the Metal came from.
+To translate one of these sketches into a real Metal shader, fetch the GLSL from
+upstream — [processing/processing-examples](https://github.com/processing/processing-examples)
+mirrors Processing's own tree, and each sketch's `.pde` names what it loaded.
+
+`ToonShading` is the one that already went through that translation, and its
+lineage is worth recording here since the source it came from is no longer in the
+tree: `ToonShading/Resources/Toon.metal` is a line-by-line port of the sample's
+`data/ToonFrag.glsl`, with the same four thresholds and the same four colours.
+The companion `data/ToonVert.glsl` turned out to be unnecessary, because the
+built-in vertex stage already supplies what it computed.

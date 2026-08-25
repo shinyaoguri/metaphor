@@ -56,6 +56,29 @@ final class Glow: Sketch {
 }
 """
 
+# 原典がシェーダだったと宣言しつつ、移植先も実際にシェーダを使っている状態。
+# `cpu-approximation` は「CPU で近似した」印なので、こちらは `shader` が勝つ。
+PORTED_EFFECT_SKETCH = """
+import metaphor
+
+// NOTE: Original uses a GLSL edge detection shader.
+// This version ports it to a Metal post-process pass.
+@main
+final class Glow: Sketch {
+    func setup() { addPostEffect(BloomEffect()) }
+}
+"""
+
+# どのタグの合図も持たない素のスケッチ。
+PLAIN_SKETCH = """
+import metaphor
+
+@main
+final class Plain: Sketch {
+    func draw() { circle(0, 0, 10) }
+}
+"""
+
 THREE_D_SKETCH = """
 import metaphor
 
@@ -111,16 +134,13 @@ final class Classify: Sketch {
 """
 
 
-def make_example(root: Path, name: str, *, swift: str = CPU_SKETCH,
-                 glsl: bool = False, metal: bool = False) -> Path:
+def make_example(root: Path, name: str, *, swift: str = PLAIN_SKETCH,
+                 metal: bool = False) -> Path:
     """Write a minimal example package and return its directory."""
     example_dir = root / name
     (example_dir / name).mkdir(parents=True)
     (example_dir / "Package.swift").write_text("// swift-tools-version:5.10\n")
     (example_dir / name / "App.swift").write_text(swift)
-    if glsl:
-        (example_dir / "data").mkdir()
-        (example_dir / "data" / "effect.glsl").write_text("void main() {}\n")
     if metal:
         (example_dir / name / "Effect.metal").write_text("// MSL\n")
     return example_dir
@@ -132,9 +152,9 @@ class SourceTagsTests(unittest.TestCase):
         self.root = Path(self._tmp.name)
         self.addCleanup(self._tmp.cleanup)
 
-    def test_glsl_without_shader_api_is_cpu_approximation(self) -> None:
-        """Topics/Shaders/*: the GLSL original is kept, the port is CPU-side."""
-        example = make_example(self.root, "EdgeDetect", glsl=True)
+    def test_cpu_note_without_shader_api_is_cpu_approximation(self) -> None:
+        """Topics/Shaders/*: the source says the original was GLSL, the port is CPU-side."""
+        example = make_example(self.root, "EdgeDetect", swift=CPU_SKETCH)
         self.assertEqual(
             gen.source_tags_for(example, "supported"), {"cpu-approximation"}
         )
@@ -143,9 +163,9 @@ class SourceTagsTests(unittest.TestCase):
         example = make_example(self.root, "Glow", swift=EFFECT_SKETCH)
         self.assertEqual(gen.source_tags_for(example, "supported"), {"shader"})
 
-    def test_shader_api_wins_over_a_leftover_glsl_file(self) -> None:
+    def test_shader_api_wins_over_the_cpu_note(self) -> None:
         """A ported sketch flips from cpu-approximation to shader on its own."""
-        example = make_example(self.root, "Glow", swift=EFFECT_SKETCH, glsl=True)
+        example = make_example(self.root, "Glow", swift=PORTED_EFFECT_SKETCH)
         self.assertEqual(gen.source_tags_for(example, "supported"), {"shader"})
 
     def test_own_metal_source_earns_the_shader_tag(self) -> None:
@@ -154,7 +174,7 @@ class SourceTagsTests(unittest.TestCase):
 
     def test_placeholders_are_not_cpu_approximations(self) -> None:
         """A stub/obsolete example implements nothing to approximate with."""
-        example = make_example(self.root, "DomeProjection", glsl=True)
+        example = make_example(self.root, "DomeProjection", swift=CPU_SKETCH)
         self.assertEqual(gen.source_tags_for(example, "obsolete"), set())
         self.assertEqual(gen.source_tags_for(example, "stub"), set())
 
@@ -164,8 +184,8 @@ class SourceTagsTests(unittest.TestCase):
         checkout = example / ".build" / "checkouts" / "dep"
         checkout.mkdir(parents=True)
         (checkout / "Vendored.metal").write_text("// MSL\n")
-        (checkout / "vendored.glsl").write_text("void main() {}\n")
         (checkout / "Dep.swift").write_text(EFFECT_SKETCH)
+        (checkout / "Cpu.swift").write_text(CPU_SKETCH)
         self.assertEqual(gen.source_tags_for(example, "supported"), set())
 
     # --- `3d` はソース根拠で決める（#940） -------------------------------
@@ -384,7 +404,7 @@ class DiscoverExamplesTests(unittest.TestCase):
     def test_discovery_carries_the_source_tags(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            make_example(root, "EdgeDetect", glsl=True)
+            make_example(root, "EdgeDetect", swift=CPU_SKETCH)
             (found,) = gen.discover_examples(root)
             self.assertIn("cpu-approximation", found["tags"])
             self.assertNotIn("shader", found["tags"])

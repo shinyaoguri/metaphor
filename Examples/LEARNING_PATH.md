@@ -106,8 +106,8 @@ the effect with CPU pixel loops instead, which is why
 `cpu-approximation`. They are still worth reading for the effect itself (an
 edge-detection kernel, a separable blur, Game of Life rules) — just not as
 shader code. See
-[Topics/Shaders/README.md](Topics/Shaders/README.md), which also explains why the
-unused `.glsl` files are kept.
+[Topics/Shaders/README.md](Topics/Shaders/README.md), which also explains where
+the samples' original `.glsl` went and how to fetch it when porting one to Metal.
 
 ## 7. metaphor-specific features
 
