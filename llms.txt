@@ -1397,16 +1397,16 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `init?(rawValue: Int)`
 - `func hash(into hasher: inout Hasher)`
 
-### `enum VertexLayout` -- Metal レンダーパイプライン用の定義済み頂点属性レイアウト
+### `enum VertexLayout` -- Predefined vertex attribute layouts for Metal render pipelines.
 
-- `case position` -- float3 位置のみ格納 (ストライド: 12 バイト)
-- `case position2DColor` -- float2 位置と float4 カラーを格納 (ストライド: 24 バイト、Canvas2D 用)
-- `case position2DOnly` -- float2 位置のみ格納 (ストライド: 8 バイト、Canvas2D インスタンシングユニットメッシュ用)
-- `case position2DTexCoordColor` -- float2 位置、float2 テクスチャ座標、float4 カラーを格納 (ストライド: 32 バイト、テクスチャ付き Canvas2D 用)
-- `case positionColor` -- float3 位置と float4 カラーを格納 (ストライド: 28 バイト)
-- `case positionNormalColor` -- float3 位置、float3 法線、float4 カラーを格納 (ストライド: 40 バイト)
-- `case positionNormalUV` -- float3 位置、float3 法線、float2 UV を格納 (ストライド: 48 バイト、アライメントパディング含む)
-- `func makeDescriptor() -> MTLVertexDescriptor` -- このレイアウトに一致する Metal 頂点デスクリプタを作成します。
+- `case position` -- Stores a float3 position (stride: 16 bytes).
+- `case position2DColor` -- Stores a float2 position and a float4 color (stride: 24 bytes, for Canvas2D).
+- `case position2DOnly` -- Stores a float2 position (stride: 8 bytes, for the Canvas2D instancing unit meshes).
+- `case position2DTexCoordColor` -- Stores a float2 position, texture coordinates and a float4 color (stride: 32 bytes).
+- `case positionColor` -- Stores a float3 position and a float4 color (stride: 32 bytes).
+- `case positionNormalColor` -- Stores a float3 position, a float3 normal and a float4 color (stride: 48 bytes).
+- `case positionNormalUV` -- Stores a float3 position, a float3 normal and a float2 UV (stride: 48 bytes).
+- `func makeDescriptor() -> MTLVertexDescriptor` -- Creates a Metal vertex descriptor matching this layout.
 
 ### `enum VideoCodec` -- ビデオエンコードに使用するコーデック
 

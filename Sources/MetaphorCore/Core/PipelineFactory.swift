@@ -2,100 +2,132 @@ import Metal
 
 // MARK: - 頂点デスクリプタプリセット
 
-/// Metal レンダーパイプライン用の定義済み頂点属性レイアウト
+/// Predefined vertex attribute layouts for Metal render pipelines.
+///
+/// Offsets and strides are written as byte literals rather than `MemoryLayout` arithmetic,
+/// because a vertex descriptor declares the bytes handed to the GPU. That those literals agree
+/// with the Swift vertex structs which actually write those bytes is checked by
+/// `VertexLayoutParityTests`, which names each struct (issue #1158).
+///
+/// Arithmetic invites expressions that produce the right number only by coincidence. The color
+/// of ``position2DColor`` starts at byte 8 because `Canvas2D.Vertex2D` begins with two `Float`
+/// fields — not because `MemoryLayout<SIMD2<Float>>.stride` is 8. That struct contains no
+/// `SIMD2` at all, so adding one more `Float` to it moves the color to byte 12.
 public enum VertexLayout {
-    /// float3 位置のみ格納 (ストライド: 12 バイト)
+    /// Stores a float3 position (stride: 16 bytes).
+    ///
+    /// No Swift vertex struct writes this layout. The float3 sits in the 16-byte slot a
+    /// `SIMD3<Float>` occupies, the same way ``positionNormalColor`` counts it; this is not a
+    /// 12-byte packed layout.
     case position
-    /// float3 位置と float4 カラーを格納 (ストライド: 28 バイト)
+    /// Stores a float3 position and a float4 color (stride: 32 bytes).
+    ///
+    /// No Swift vertex struct writes this layout. The color starts at byte 16, not byte 12.
     case positionColor
-    /// float3 位置、float3 法線、float4 カラーを格納 (ストライド: 40 バイト)
+    /// Stores a float3 position, a float3 normal and a float4 color (stride: 48 bytes).
+    ///
+    /// Matches the bytes written by `Vertex3D`.
     case positionNormalColor
-    /// float3 位置、float3 法線、float2 UV を格納 (ストライド: 48 バイト、アライメントパディング含む)
+    /// Stores a float3 position, a float3 normal and a float2 UV (stride: 48 bytes).
+    ///
+    /// Matches the bytes written by `Vertex3DTextured`. The stride includes the 8 bytes of
+    /// alignment padding that follow the UV.
     case positionNormalUV
-    /// float2 位置と float4 カラーを格納 (ストライド: 24 バイト、Canvas2D 用)
+    /// Stores a float2 position and a float4 color (stride: 24 bytes, for Canvas2D).
+    ///
+    /// Matches the bytes written by `Canvas2D.Vertex2D`.
     case position2DColor
-    /// float2 位置、float2 テクスチャ座標、float4 カラーを格納 (ストライド: 32 バイト、テクスチャ付き Canvas2D 用)
+    /// Stores a float2 position, texture coordinates and a float4 color (stride: 32 bytes).
+    ///
+    /// Matches the bytes written by `Canvas2D.TexturedVertex2D`, used for textured drawing.
     case position2DTexCoordColor
-    /// float2 位置のみ格納 (ストライド: 8 バイト、Canvas2D インスタンシングユニットメッシュ用)
+    /// Stores a float2 position (stride: 8 bytes, for the Canvas2D instancing unit meshes).
+    ///
+    /// Matches the `[SIMD2<Float>]` that `UnitMesh2D` uploads without an intermediate struct.
     case position2DOnly
 
-    /// このレイアウトに一致する Metal 頂点デスクリプタを作成します。
+    /// Creates a Metal vertex descriptor matching this layout.
     ///
-    /// - Returns: 適切な属性フォーマット、オフセット、ストライドで構成された `MTLVertexDescriptor`
+    /// - Returns: An `MTLVertexDescriptor` configured with the attribute formats, offsets and
+    ///   stride for this layout.
     public func makeDescriptor() -> MTLVertexDescriptor {
         let descriptor = MTLVertexDescriptor()
 
         switch self {
         case .position:
+            // 相手の構造体は無し。float3 は 16 バイト枠（12 バイトのパックではない）。
             descriptor.attributes[0].format = .float3
             descriptor.attributes[0].offset = 0
             descriptor.attributes[0].bufferIndex = 0
-            descriptor.layouts[0].stride = MemoryLayout<SIMD3<Float>>.stride
+            descriptor.layouts[0].stride = 16
 
         case .positionColor:
+            // 相手の構造体は無し。
             descriptor.attributes[0].format = .float3
             descriptor.attributes[0].offset = 0
             descriptor.attributes[0].bufferIndex = 0
             descriptor.attributes[1].format = .float4
-            descriptor.attributes[1].offset = MemoryLayout<SIMD3<Float>>.stride
+            descriptor.attributes[1].offset = 16
             descriptor.attributes[1].bufferIndex = 0
-            descriptor.layouts[0].stride =
-                MemoryLayout<SIMD3<Float>>.stride + MemoryLayout<SIMD4<Float>>.stride
+            descriptor.layouts[0].stride = 32
 
         case .positionNormalColor:
+            // Vertex3D: position @0 / normal @16 / color @32、stride 48。
             descriptor.attributes[0].format = .float3
             descriptor.attributes[0].offset = 0
             descriptor.attributes[0].bufferIndex = 0
             descriptor.attributes[1].format = .float3
-            descriptor.attributes[1].offset = MemoryLayout<SIMD3<Float>>.stride
+            descriptor.attributes[1].offset = 16
             descriptor.attributes[1].bufferIndex = 0
             descriptor.attributes[2].format = .float4
-            descriptor.attributes[2].offset = MemoryLayout<SIMD3<Float>>.stride * 2
+            descriptor.attributes[2].offset = 32
             descriptor.attributes[2].bufferIndex = 0
-            descriptor.layouts[0].stride =
-                MemoryLayout<SIMD3<Float>>.stride * 2 + MemoryLayout<SIMD4<Float>>.stride
+            descriptor.layouts[0].stride = 48
 
         case .positionNormalUV:
+            // Vertex3DTextured: position @0 / normal @16 / uv @32、stride 48
+            //（uv は 8 バイトで、後ろに 8 バイトのアライメントパディングが付く）。
             descriptor.attributes[0].format = .float3
             descriptor.attributes[0].offset = 0
             descriptor.attributes[0].bufferIndex = 0
             descriptor.attributes[1].format = .float3
-            descriptor.attributes[1].offset = MemoryLayout<SIMD3<Float>>.stride
+            descriptor.attributes[1].offset = 16
             descriptor.attributes[1].bufferIndex = 0
             descriptor.attributes[2].format = .float2
-            descriptor.attributes[2].offset = MemoryLayout<SIMD3<Float>>.stride * 2
+            descriptor.attributes[2].offset = 32
             descriptor.attributes[2].bufferIndex = 0
-            // ストライド = 48: SIMD3(16) + SIMD3(16) + SIMD2(8) + 8バイトのアライメントパディング
-            descriptor.layouts[0].stride = MemoryLayout<SIMD3<Float>>.stride * 3
+            descriptor.layouts[0].stride = 48
 
         case .position2DColor:
+            // Canvas2D.Vertex2D: posX/posY @0 / r,g,b,a @8、stride 24（Float が 6 本）。
             descriptor.attributes[0].format = .float2
             descriptor.attributes[0].offset = 0
             descriptor.attributes[0].bufferIndex = 0
             descriptor.attributes[1].format = .float4
-            descriptor.attributes[1].offset = MemoryLayout<SIMD2<Float>>.stride
+            descriptor.attributes[1].offset = 8
             descriptor.attributes[1].bufferIndex = 0
-            descriptor.layouts[0].stride =
-                MemoryLayout<SIMD2<Float>>.stride + MemoryLayout<SIMD4<Float>>.stride
+            descriptor.layouts[0].stride = 24
 
         case .position2DTexCoordColor:
+            // Canvas2D.TexturedVertex2D: posX/posY @0 / u,v @8 / r,g,b,a @16、
+            // stride 32（Float が 8 本）。
             descriptor.attributes[0].format = .float2  // 位置
             descriptor.attributes[0].offset = 0
             descriptor.attributes[0].bufferIndex = 0
             descriptor.attributes[1].format = .float2  // テクスチャ座標
-            descriptor.attributes[1].offset = MemoryLayout<SIMD2<Float>>.stride
+            descriptor.attributes[1].offset = 8
             descriptor.attributes[1].bufferIndex = 0
             descriptor.attributes[2].format = .float4  // カラー (ティント)
-            descriptor.attributes[2].offset = MemoryLayout<SIMD2<Float>>.stride * 2
+            descriptor.attributes[2].offset = 16
             descriptor.attributes[2].bufferIndex = 0
-            descriptor.layouts[0].stride =
-                MemoryLayout<SIMD2<Float>>.stride * 2 + MemoryLayout<SIMD4<Float>>.stride
+            descriptor.layouts[0].stride = 32
 
         case .position2DOnly:
+            // UnitMesh2D が流す [SIMD2<Float>]。
             descriptor.attributes[0].format = .float2
             descriptor.attributes[0].offset = 0
             descriptor.attributes[0].bufferIndex = 0
-            descriptor.layouts[0].stride = MemoryLayout<SIMD2<Float>>.stride
+            descriptor.layouts[0].stride = 8
         }
 
         return descriptor

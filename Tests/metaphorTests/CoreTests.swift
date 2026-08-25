@@ -1,61 +1,7 @@
 import Testing
 import Metal
-import simd
 @testable import metaphor
 @testable import MetaphorCore
-
-// MARK: - VertexLayout Tests
-
-@Suite("VertexLayout")
-struct VertexLayoutTests {
-
-    @Test("position layout has correct stride")
-    func positionStride() {
-        let descriptor = VertexLayout.position.makeDescriptor()
-        let stride = descriptor.layouts[0].stride
-        #expect(stride == MemoryLayout<SIMD3<Float>>.stride)
-    }
-
-    @Test("positionColor layout has correct stride")
-    func positionColorStride() {
-        let descriptor = VertexLayout.positionColor.makeDescriptor()
-        let stride = descriptor.layouts[0].stride
-        let expected = MemoryLayout<SIMD3<Float>>.stride + MemoryLayout<SIMD4<Float>>.stride
-        #expect(stride == expected)
-    }
-
-    @Test("positionNormalColor layout has correct stride")
-    func positionNormalColorStride() {
-        let descriptor = VertexLayout.positionNormalColor.makeDescriptor()
-        let stride = descriptor.layouts[0].stride
-        let expected = MemoryLayout<SIMD3<Float>>.stride * 2 + MemoryLayout<SIMD4<Float>>.stride
-        #expect(stride == expected)
-    }
-
-    @Test("positionNormalUV layout has correct stride (48 bytes)")
-    func positionNormalUVStride() {
-        let descriptor = VertexLayout.positionNormalUV.makeDescriptor()
-        let stride = descriptor.layouts[0].stride
-        let expected = MemoryLayout<SIMD3<Float>>.stride * 3  // 48 bytes (alignment padding)
-        #expect(stride == expected)
-    }
-
-    @Test("position2DColor layout has correct stride")
-    func position2DColorStride() {
-        let descriptor = VertexLayout.position2DColor.makeDescriptor()
-        let stride = descriptor.layouts[0].stride
-        let expected = MemoryLayout<SIMD2<Float>>.stride + MemoryLayout<SIMD4<Float>>.stride
-        #expect(stride == expected)
-    }
-
-    @Test("positionNormalColor attributes have correct offsets")
-    func positionNormalColorOffsets() {
-        let descriptor = VertexLayout.positionNormalColor.makeDescriptor()
-        #expect(descriptor.attributes[0].offset == 0)
-        #expect(descriptor.attributes[1].offset == MemoryLayout<SIMD3<Float>>.stride)
-        #expect(descriptor.attributes[2].offset == MemoryLayout<SIMD3<Float>>.stride * 2)
-    }
-}
 
 // MARK: - BlendMode Tests
 
