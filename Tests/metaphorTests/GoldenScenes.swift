@@ -16,6 +16,7 @@ let goldenImageSize = 128
 /// ``GoldenScenes/scene(named:)`` で引く。
 let goldenSceneNames: [String] = [
     "shapes-2d",
+    "curves-2d",
     "alpha-compositing",
     "blend-modes",
     "lighting-blinn-phong",
@@ -89,6 +90,7 @@ enum GoldenScenes {
     /// カタログ全体（ゴールデン用 + パリティ専用）。
     static let all: [GoldenScene] = [
         shapes2D,
+        curves2D,
         alphaCompositing,
         blendModes,
         lightingBlinnPhong,
@@ -118,6 +120,125 @@ enum GoldenScenes {
         c.stroke(Color(r: 0.35, g: 1.0, b: 0.55))
         c.strokeWeight(1)
         c.line(4, 64, 124, 64)
+    }
+
+    /// 曲線（3 次ベジェ / 2 次ベジェ / Catmull-Rom）の**描かれた絵**を凍結するシーン（#1160）。
+    ///
+    /// ## なぜ独立シーンなのか
+    ///
+    /// `shapes2D` に `bezier()` を 1 本足すだけで `shapes-2d.png` が
+    /// `maxChannelDiff=232 / 252 画素 (1.54%)` 動き、撮り直しが要る。`shapes-2d` は
+    /// コマンド記録パリティ（``commandRecordParitySceneNames``）も参照しているので、
+    /// 曲線と直線図形は分けたほうが失敗メッセージで切り分けられる。
+    ///
+    /// ## 何を守るか（既存のテストとの分担）
+    ///
+    /// 曲線の**数式**は構造テストがすでに押さえている
+    /// （`ShapeVocabularyTests` = #813、`CurveVertexTests` = #503、`CurveTests` = #538、
+    /// `GraphicsCurveSettingsTests` = #540）。それらはいずれも
+    /// `expandShapeVerticesEx()` / `curveSegmentPoints()` が返す**頂点列**か
+    /// `vertexCount` の増え方までしか見ておらず、その頂点列が
+    /// **どう線幅・キャップを持った三角形になるか**は誰も検証していなかった。
+    ///
+    /// 実測（#1160）: `bezier()` の各セグメントを
+    /// `strokeLine(..., capStart: false, capEnd: false)` に変える
+    /// （「セグメントごとのキャップは無駄だから接合に変えよう」という現実的なリファクタ）と、
+    /// 太いストロークの絵ははっきり変わるのに **2213 件すべてが緑のまま**通った。
+    /// このシーンはそこを塞ぐ。加えて、**`beginShape()` / `endShape()` を踏む
+    /// ゴールデンはこれが最初**で、曲線輪郭のテッセレーション（塗り）も初めて凍結される。
+    ///
+    /// ## 既定値に意図的に依存している
+    ///
+    /// ``Canvas2D/bezierDetail(_:)`` / ``Canvas2D/curveDetail(_:)`` /
+    /// ``Canvas2D/curveTightness(_:)`` を**シーン側で設定しない**。既定を変えたら
+    /// このゴールデンが赤くなるのが狙いで、それは #813（分割数 24 → 既定 20）が
+    /// 落ちた穴そのものだから。意図して既定を変えるときは撮り直しが要るが、
+    /// `lighting-*` が既定のシェーディングに依存しているのと同じ運用で、
+    /// `METAPHOR_UPDATE_GOLDEN=1` の 1 コマンドで済む。
+    ///
+    /// 「本当に検出できるのか」は `GoldenImageTests` の検出力検査が毎回測る（#535 と同じ形）。
+    ///
+    /// ## 構図
+    ///
+    /// - 上 2 段: **同じ制御点**の 3 次ベジェを 2 経路で描く。上が `bezier()` の一発描き、
+    ///   下が `beginShape()` + `bezierVertex()`（`translate` で 34px 下へずらしただけ）。
+    ///   片方の経路だけ分割数が変わればどちらか一方の帯だけが動くので、
+    ///   #813 が直した「同じ曲線が描き方で違う細かさになる」ずれが絵に出る。
+    ///   波形にしてあるのは曲率の高いところほど分割数の差が弦のずれとして出るため。
+    /// - 下段左: `quadraticVertex()` で作った**閉じた塗り + ストローク**。
+    ///   2 次 → 3 次の昇格（`2/3` 係数）と、曲線輪郭の ear-clip 分解が同時に載る。
+    /// - 下段右: `curveVertex()` の連結（既定 tightness、白）に、**同じ 4 点**の
+    ///   `curve()` を `curveTightness(0.75)` で重ねる（マゼンタ）。tightness の配管が
+    ///   死ぬと 2 本が重なって消えるので、「tightness が効いていること」自体が絵に載る。
+    static let curves2D = GoldenScene(name: "curves-2d", draw: curves2DDraw())
+
+    /// `curves-2d` の描画本体。**曲線の分割数・tightness だけ**を差し替えられる形にしてある。
+    ///
+    /// 引数を省くと**ライブラリの既定値のまま**描く（シーンが既定に依存するのが要件なので、
+    /// ここで `bezierDetail(20)` のように明示してはいけない）。検出力検査だけが値を渡して
+    /// 「その値を変えると絵が動くか」を測る。構図を検査側へ書き写すとシーンだけ直されて
+    /// 検査が別の絵を見る事故が起きるため、可変点だけを引数にして構図はここ 1 箇所に置く
+    /// （`blinnPhongDraw(specular:)` と同じ理由。#375 / #357）。
+    static func curves2DDraw(
+        bezierDetail: Int? = nil,
+        curveDetail: Int? = nil,
+        curveTightness: Float? = nil
+    ) -> (SketchContext) -> Void {
+        { c in
+            c.background(Color(r: 0.07, g: 0.08, b: 0.11))
+            if let bezierDetail { c.bezierDetail(bezierDetail) }
+            if let curveDetail { c.curveDetail(curveDetail) }
+            if let curveTightness { c.curveTightness(curveTightness) }
+
+            // 1) bezier() の一発描き。制御点は 2) と 1 つも違わない。
+            c.noFill()
+            c.strokeWeight(2)
+            c.stroke(Color(r: 0.35, g: 0.85, b: 1.0))
+            c.bezier(6, 20, 40, 60, 88, -20, 122, 20)
+
+            // 2) 同じ制御点を beginShape() + bezierVertex() で。下へずらして並べる。
+            c.stroke(Color(r: 1.0, g: 0.55, b: 0.30))
+            c.pushMatrix()
+            c.translate(0, 34)
+            c.beginShape()
+            c.vertex(6, 20)
+            c.bezierVertex(40, 60, 88, -20, 122, 20)
+            c.endShape()
+            c.popMatrix()
+
+            // 3) quadraticVertex で作った閉じた形。塗りとストロークの両方を載せる。
+            c.fill(Color(r: 0.95, g: 0.80, b: 0.25))
+            c.stroke(Color(r: 0.90, g: 0.30, b: 0.35))
+            c.strokeWeight(2)
+            c.beginShape()
+            c.vertex(8, 120)
+            c.quadraticVertex(8, 74, 33, 74)
+            c.quadraticVertex(58, 74, 58, 120)
+            c.endShape(.close)
+
+            // 4) curveVertex() の連結（既定 tightness）。両端は Processing 流に重ねて
+            //    制御ハンドルにする。
+            c.noFill()
+            c.stroke(Color(r: 0.95, g: 0.95, b: 0.95))
+            c.strokeWeight(2)
+            c.beginShape()
+            c.curveVertex(66, 118)
+            c.curveVertex(66, 118)
+            c.curveVertex(96, 76)
+            c.curveVertex(124, 118)
+            c.curveVertex(124, 118)
+            c.endShape()
+
+            // 5) 4) の第 1 セグメントと**同じ 4 点**を curve() で、tightness だけ変えて重ねる。
+            //    tightness が効かなくなると 4) と経路が一致して 2 本が 1 本に見えるので、
+            //    「tightness が効いていること」自体が絵に載る。
+            //    このシーンで最後に描くものなので tightness は戻さない（戻すと
+            //    curveTightness 引数の指定が意味を失う）。
+            c.stroke(Color(r: 1.0, g: 0.35, b: 0.85))
+            c.strokeWeight(2)
+            c.curveTightness(-0.6)
+            c.curve(66, 118, 66, 118, 96, 76, 124, 118)
+        }
     }
 
     /// α < 1 の合成結果を丸ごと固定するシーン（ADR-0012 / #850）。
