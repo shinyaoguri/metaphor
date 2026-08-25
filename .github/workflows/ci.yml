@@ -354,6 +354,18 @@ jobs:
       # 正本（scripts/tests/ にユニットテストがある）。ビルド不要なので手前に置く。
       - name: Check for raw print() in Sources
         run: python3 scripts/check-no-raw-print.py
+      # GPU テストの `!` が nil を踏むとテストプロセスごと落ち、同時に走っていた
+      # 59 件が 1 件も判定を出さずに全滅する（#1003 の実測。`gh run rerun --failed`
+      # も効かない）。#1172 が 119 箇所を潰し、commandQueue() は非 Optional になって
+      # 型で再発が止まったが、`MetalTestHelper.device` の Optional は
+      # `isGPUAvailable`（= `device != nil`）というゲートそのものなので非 Optional に
+      # できず、`device!` は型では止まらない（Issue #1171）。
+      # `.swift-format` の NeverForceUnwrap では代われない — swift-format は
+      # **`@Test` 属性の付いた関数の本体を対象から外す**（6.3.0 で実測）ので、
+      # まさに止めたい場所を素通りする。判定規則と例外はスクリプト側が正本
+      # （scripts/tests/ にユニットテストがある）。ビルド不要なので手前に置く。
+      - name: Check for force unwraps of MetalTestHelper in Tests
+        run: python3 scripts/check-no-force-unwrap-tests.py
       # doc コメントは llms.txt（AI 向け API 正典）と DocC の入力で、日本語版
       # /reference/ja/ は英語版から生成される（ADR-0011）＝ 英語が上流。PR #361 /
       # #365 が周辺モジュールを英語化したのに検査が無く、93 行が静かに戻っていた

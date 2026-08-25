@@ -116,7 +116,7 @@ ci-check: static-check
 # （docs / scripts / workflows だけ）はこれだけ通せば足りる — 実測 40 秒弱で、
 # うち 35 秒は scripts/tests のユニットテスト。
 #
-# 中身は 2 つに割ってある（Issue #1155）。上の 11 本（static-check-fast）は合計
+# 中身は 2 つに割ってある（Issue #1155）。上の 12 本（static-check-fast）は合計
 # 5 秒強で、**pre-push と signed-commit.py がそのまま無条件に走らせる**。scripts/tests
 # だけがここに残るのは、ビルド不要な検査の中で唯一コストがビルドと同じ桁（実測
 # 35.6 秒）で、`git push` の体感を変えてしまうため。パストリガーで絞る案は採らな
@@ -127,7 +127,7 @@ static-check: static-check-fast
 	@echo "Running generator script tests (CI parity)..."
 	@python3 -m unittest discover -s scripts/tests
 
-# static-check のうち、秒未満〜2 秒で終わる 11 本（Issue #1155）
+# static-check のうち、秒未満〜2 秒で終わる 12 本（Issue #1155）
 #
 # 並びは**実測の所要時間の昇順**で、CI の並び順とは意図的に変えてある。CI は
 # ステップ単位でログが分かれるので順序が体験に効かないが、手元では 1 本のログに
@@ -141,6 +141,7 @@ static-check-fast:
 	@python3 scripts/check-doc-comment-language.py
 	@python3 scripts/check-no-raw-print.py
 	@$(MAKE) --no-print-directory docs-links-check
+	@python3 scripts/check-no-force-unwrap-tests.py
 	@$(MAKE) --no-print-directory lint-python
 	@python3 scripts/check-ci-parity.py
 	@./scripts/check-contract.sh

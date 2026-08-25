@@ -91,6 +91,10 @@ LEDGER: dict[str, tuple[str, str]] = {
         "python3 scripts/check-strict-concurrency.py",
     ),
     "Check for raw print() in Sources": ("local", "python3 scripts/check-no-raw-print.py"),
+    "Check for force unwraps of MetalTestHelper in Tests": (
+        "local",
+        "python3 scripts/check-no-force-unwrap-tests.py",
+    ),
     "Check doc comment language": (
         "local",
         "python3 scripts/check-doc-comment-language.py",

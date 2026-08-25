@@ -42,7 +42,7 @@ SSH エージェントがハングして本スクリプトが復旧手段にな�
 そこで送信の前に、pre-push と同じものを走らせ、落ちたら **1 バイトも送らずに**
 abort します。降りるにはそれぞれ明示のフラグが要ります。
 
-1. `make static-check-fast`（ビルド不要な CI 検査 11 本）— `--skip-ci-checks`
+1. `make static-check-fast`（ビルド不要な CI 検査 12 本）— `--skip-ci-checks`
 2. `scripts/check-generated-freshness.sh --all`（生成物の鮮度）— `--skip-freshness`
 3. `make docs-check`（DocC の警告 0）— `--skip-ci-checks`
 
@@ -308,7 +308,7 @@ def main(argv: list[str] | None = None) -> int:
     # examples index in place, so a stale tree has to be caught (and aborted on)
     # while `git status` still reflects what the author actually meant to send.
     #
-    # 順序は ci.yml と pre-push に合わせてある。ビルド不要な 11 本が先で、ビルドを
+    # 順序は ci.yml と pre-push に合わせてある。ビルド不要な 12 本が先で、ビルドを
     # 要求する 2 本があと（#1155）。
     if not args.skip_ci_checks and not args.dry_run:
         code = check_ci_targets(args.repo_root, CI_CHECK_TARGETS_BEFORE_FRESHNESS)
