@@ -104,6 +104,20 @@ public enum ShapeMode: Sendable {
     case triangleFan
 }
 
+/// Defines how ``SketchContext/shape(_:_:_:_:_:)`` interprets the coordinates it is given.
+///
+/// The counterpart of ``RectMode`` / ``EllipseMode`` / ``ImageMode`` for retained shapes. The
+/// name differs from Processing's `shapeMode()` only because ``ShapeMode`` is already taken by the
+/// primitive kind passed to `beginShape()`.
+public enum ShapePositionMode: Sendable {
+    /// Treat x, y as the upper-left corner and w, h as the width and height (the default).
+    case corner
+    /// Treat x, y as the upper-left corner and w, h as the coordinates of the lower-right corner.
+    case corners
+    /// Treat x, y as the center and w, h as the width and height.
+    case center
+}
+
 /// `endShape()` 呼び出し時にシェイプを閉じるかどうかを指定します。
 public enum CloseMode: Sendable {
     /// 最後の頂点と最初の頂点を接続せずシェイプを開いたままにする。

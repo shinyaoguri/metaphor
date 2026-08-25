@@ -276,6 +276,16 @@ extension SketchContext {
         canvas.curve(x1, y1, x2, y2, x3, y3, x4, y4)
     }
 
+    /// Adds a quadratic Bezier vertex, promoted internally to the equivalent cubic.
+    /// - Parameters:
+    ///   - cx: The x coordinate of the control point.
+    ///   - cy: The y coordinate of the control point.
+    ///   - x: The x coordinate of the end point.
+    ///   - y: The y coordinate of the end point.
+    public func quadraticVertex(_ cx: Float, _ cy: Float, _ x: Float, _ y: Float) {
+        canvas.quadraticVertex(cx, cy, x, y)
+    }
+
     /// Catmull-Rom スプライン頂点を追加します。
     /// - Parameters:
     ///   - x: x 座標。
@@ -288,6 +298,12 @@ extension SketchContext {
     /// - Parameter n: 分割数。
     public func curveDetail(_ n: Int) {
         canvas.curveDetail(n)
+    }
+
+    /// Sets the number of segments used to approximate a cubic Bezier.
+    /// - Parameter n: The number of segments.
+    public func bezierDetail(_ n: Int) {
+        canvas.bezierDetail(n)
     }
 
     /// Catmull-Rom カーブの張り具合を設定します。

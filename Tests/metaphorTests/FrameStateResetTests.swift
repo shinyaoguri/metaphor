@@ -355,6 +355,10 @@ struct FrameStateResetTests {
         canvas.textSize(41)
         canvas.currentStrokeCap = .square
         canvas.currentStrokeJoin = .bevel
+        // 曲線の分割数とシェイプの座標解釈もスタイル状態（#813）。
+        canvas.bezierDetail(7)
+        canvas.curveDetail(9)
+        canvas.shapeMode(.center)
 
         canvas.begin(encoder: nil, bufferIndex: 0)
 
@@ -366,6 +370,9 @@ struct FrameStateResetTests {
         #expect(canvas.currentTextSize == 41)
         #expect(canvas.currentStrokeCap == .square)
         #expect(canvas.currentStrokeJoin == .bevel)
+        #expect(canvas.bezierDetailCount == 7)
+        #expect(canvas.curveDetailCount == 9)
+        #expect(canvas.currentShapePositionMode == .center)
     }
 
     // MARK: - ヘルパー

@@ -125,6 +125,11 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func beginVideoRecord(_ path: String? = nil, config: VideoExportConfig = VideoExportConfig())` -- Starts recording the video output.
 - `func bezier(_ x1: Float, _ y1: Float, _ cx1: Float, _ cy1: Float, _ cx2: Float, _ cy2: Float, _ x2: Float, _ y2: Float)` -- Draws a cubic Bézier curve.
   - Note: Affects **2D only** (there is no 3D Bézier curve; ADR-0005).
+- `func bezierDetail(_ n: Int)` -- Sets the number of segments used to approximate a cubic Bézier.
+  - Note: Affects **2D only** (it is for `bezier(_:_:_:_:_:_:_:_:)` / `bezierVertex(_:_:_:_:_:_:)` / `quadraticVertex(_:_:_:_:)` and has no effect on 3D. ADR-0005).
+  - Note: The default is **20 segments**, the same as `curveDetail(_:)` and Processing. Until Issue #813 the one-shot `bezier(_:_:_:_:_:_:_:_:)` was fixed at 24 segments while `bezierVertex(_:_:_:_:_:_:)` followed `curveDetail(_:)`, so the same curve came out at two different resolutions depending on how it was drawn. Both now follow this setting, and `curveDetail(_:)` is left to `curve(_:_:_:_:_:_:_:_:)` / `curveVertex(_:_:)` as in Processing.
+  - Note: **Survives across frames.** Like the rest of the 2D style state it is **not** reset at the start of a frame, so a value set in `setup()` still applies in `draw()`. It is saved and restored by `push()` / `pop()`.
+  - Important: Values below 1 are rounded up to 1, as in `curveDetail(_:)`.
 - `func bezierVertex(_ cx1: Float, _ cy1: Float, _ cx2: Float, _ cy2: Float, _ x: Float, _ y: Float)` -- Adds a cubic Bézier vertex to the current shape.
   - Note: Affects **2D only** (a 3D shape has no Bézier vertices; ADR-0005).
 - `func blendMode(_ mode: BlendMode)` -- Sets the blend mode for subsequent drawing operations.
@@ -464,6 +469,10 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
   - Note: Affects **both 2D and 3D**. What separates it from `push()` is that it does not include the transform: this one saves the style only (ADR-0005 Amendment 2026-08-02).
 - `func quad(_ x1: Float, _ y1: Float, _ x2: Float, _ y2: Float, _ x3: Float, _ y3: Float, _ x4: Float, _ y4: Float)` -- Draws a quadrilateral defined by four vertices.
   - Note: Affects **2D only** (to build an arbitrary quadrilateral in 3D, use `beginShape3D(_:)`. ADR-0005).
+- `func quadraticVertex(_ cx: Float, _ cy: Float, _ x: Float, _ y: Float)` -- Adds a quadratic Bézier vertex to the current shape.
+  - Note: Affects **2D only** (a 3D shape has no Bézier vertices; ADR-0005).
+  - Note: A quadratic is the cubic whose control points are `P0 + 2/3 (Q - P0)` and `P2 + 2/3 (Q - P2)`, so this is promoted and drawn through `bezierVertex(_:_:_:_:_:_:)`. Processing and p5.js do the same, and the number of segments therefore follows `bezierDetail(_:)`.
+  - Important: The preceding vertex is the start point, so place one `vertex(_:_:)` before calling it. With no preceding vertex the origin `(0, 0)` is used, the same as `bezierVertex(_:_:_:_:_:_:)`.
 - `func radialGradient(_ cx: Float, _ cy: Float, _ radius: Float, _ innerColor: Color, _ outerColor: Color, segments: Int = 36)` -- Draws a circle filled with a radial gradient.
   - Note: Affects **2D only** (a 3D gradient is built with a shader or with vertex colors. ADR-0005).
 - `func rect(_ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- Draws a rectangle.
@@ -535,6 +544,10 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func shape(_ s: MShape)` -- Draws a retained shape at the origin.
 - `func shape(_ s: MShape, _ x: Float, _ y: Float)` -- Draws a retained shape at the given position.
 - `func shape(_ s: MShape, _ x: Float, _ y: Float, _ w: Float, _ h: Float)` -- Draws a retained shape at the given position and size.
+- `func shapeMode(_ mode: ShapePositionMode)` -- Sets how `shape(_:_:_:_:_:)` interprets the position and size it is given.
+  - Note: Affects **2D only** (it is for `shape(_:_:_:_:_:)` on a 2D shape and does not change how the position of a 3D shape is interpreted; ADR-0005).
+  - Note: With `ShapePositionMode/corner` (the default) x, y is the upper-left corner and w, h are the width and height. With `ShapePositionMode/corners` w, h are the coordinates of the lower-right corner instead. With `ShapePositionMode/center` x, y is the center of the shape.
+  - Note: **Survives across frames.** Like the rest of the 2D style state it is **not** reset at the start of a frame, so a value set in `setup()` still applies in `draw()`. It is saved and restored by `push()` / `pop()`.
 - `func shearX(_ angle: Float)` -- Applies a shear along the x axis to the current transform.
   - Note: Affects **2D only**. The unification with P3D semantics is limited to `translate(_:_:)` / `rotate(_:)` / `scale(_:_:)`, and shear is out of scope (ADR-0005 Amendment 2026-08-02).
 - `func shearY(_ angle: Float)` -- Applies a shear along the y axis to the current transform.
@@ -1322,6 +1335,12 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `case triangles` -- 3頂点のグループを個別の三角形として描画。
 - `case triangleStrip` -- 頂点をトライアングルストリップとして描画。
 
+### `enum ShapePositionMode` -- Defines how `SketchContext/shape(_:_:_:_:_:)` interprets the coordinates it is given.
+
+- `case center` -- Treat x, y as the center and w, h as the width and height.
+- `case corner` -- Treat x, y as the upper-left corner and w, h as the width and height (the default).
+- `case corners` -- Treat x, y as the upper-left corner and w, h as the coordinates of the lower-right corner.
+
 ### `enum StrokeCap` -- ストロークの端点に適用されるスタイルを指定します。
 
 - `case butt` -- 端点を超えた延長なし。
@@ -1439,7 +1458,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class Canvas2D` -- Metal を利用したイミディエイトモード 2D 描画コンテキストを提供します。
 
-- （ほか 90 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- （ほか 93 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `var colorModeConfig: ColorModeConfig`
 - `var currentEncoder: (any MTLRenderCommandEncoder)? { get }` -- 現在のレンダーコマンドエンコーダーにアクセスします。フレーム中のみ有効です。
 - `var fillColor: SIMD4<Float>`
@@ -1608,7 +1627,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class Graphics` -- Provides an offscreen 2D drawing buffer (the equivalent of Processing's
 
-- （ほか 83 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- （ほか 86 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `var height: Float { get }` -- The height in pixels.
 - `var width: Float { get }` -- The width in pixels.
 - `func beginDraw()` -- Begins drawing by creating a command buffer and a render command encoder.
@@ -1981,7 +2000,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class SketchContext` -- Sketch 内で使用される描画コンテキストを提供します。
 
-- （ほか 239 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- （ほか 242 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `let assetCache: AssetCache` -- `loadImage` / `loadModel` のパスキーアセットキャッシュ。
 - `var canvas: Canvas2D { get }` -- 2D キャンバス（上級者向け）。
 - `var canvas3D: Canvas3D { get }` -- 3D キャンバス（上級者向け）。
