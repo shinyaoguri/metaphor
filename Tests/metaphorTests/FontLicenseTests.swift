@@ -15,65 +15,21 @@ import Testing
 @Suite("Bundled font licenses")
 struct FontLicenseTests {
 
-    /// リポジトリルート。`Tests/metaphorTests/` から 3 つ上。
-    private static let repositoryRoot = URL(fileURLWithPath: #filePath)
-        .deletingLastPathComponent()  // Tests/metaphorTests
-        .deletingLastPathComponent()  // Tests
-        .deletingLastPathComponent()  // リポジトリルート
+    /// リポジトリルート。`CheckedInFiles` と同じものを使う。
+    private static let repositoryRoot = CheckedInFiles.repositoryRoot
 
     private static let fontExtensions: Set<String> = ["ttf", "otf", "ttc", "woff", "woff2"]
 
-    /// `git ls-files` の起動・実行に失敗したことを表す。
-    ///
-    /// 走査できなかったときに「フォント 0 件 = 全部記載済み」と読めてしまうのが最悪なので、
-    /// 黙って空配列を返さずテストを失敗させる。
-    private struct GitListingFailure: Error, CustomStringConvertible {
-        let description: String
-    }
-
     /// リポジトリに checked in された全フォントを、ルートからの相対パスで返す。
     ///
-    /// ワーキングツリーを `FileManager.enumerator` で舐めるのではなく `git ls-files` を使う。
-    /// テスト名どおり「checked in された」ものだけを見たいからで、こうしておけば
-    /// gitignore 済みのビルド生成物（`website/dist/` の `.woff2` など）が
+    /// ワーキングツリーを `FileManager.enumerator` で舐めるのではなく `git ls-files` を使う
+    /// （実体は `CheckedInFiles`）。テスト名どおり「checked in された」ものだけを見たいからで、
+    /// こうしておけば gitignore 済みのビルド生成物（`website/dist/` の `.woff2` など）が
     /// 将来どこに増えても除外リストを育て続けずに済む（Issue #957）。
     private static func checkedInFonts() throws -> [String] {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        // `-z` は NUL 区切り。`Examples/Topics/Advanced Data/` のように空白を含むパスがある。
-        process.arguments = ["git", "ls-files", "-z"]
-        process.currentDirectoryURL = repositoryRoot.standardizedFileURL
-
-        let output = Pipe()
-        let errors = Pipe()
-        process.standardOutput = output
-        process.standardError = errors
-
-        do {
-            try process.run()
-        } catch {
-            throw GitListingFailure(description: "git ls-files を起動できなかった: \(error)")
+        try CheckedInFiles.list().filter {
+            fontExtensions.contains(($0 as NSString).pathExtension.lowercased())
         }
-        let stdout = output.fileHandleForReading.readDataToEndOfFile()
-        let stderr = errors.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
-
-        guard process.terminationStatus == 0 else {
-            let message = String(decoding: stderr, as: UTF8.self)
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-            throw GitListingFailure(
-                description: """
-                    git ls-files が失敗した（終了コード \(process.terminationStatus)）: \(message)
-                    このテストは git の管理対象を正本にするので、走査できないときは緑にしない。
-                    """)
-        }
-
-        return
-            String(decoding: stdout, as: UTF8.self)
-            .split(separator: "\0")
-            .map(String.init)
-            .filter { fontExtensions.contains(($0 as NSString).pathExtension.lowercased()) }
-            .sorted()
     }
 
     private static func sha256(of url: URL) throws -> String {
