@@ -145,6 +145,7 @@ public final class Canvas2D: CanvasStyle {
     var currentRectMode: RectMode = .corner
     var currentEllipseMode: EllipseMode = .center
     var currentImageMode: ImageMode = .corner
+    var currentShapePositionMode: ShapePositionMode = .corner
     public var colorModeConfig: ColorModeConfig = ColorModeConfig()
     var tintColor: SIMD4<Float> = SIMD4<Float>(1, 1, 1, 1)
     var hasTint: Bool = false
@@ -190,6 +191,10 @@ public final class Canvas2D: CanvasStyle {
     // MARK: - 曲線状態
 
     var curveDetailCount: Int = 20
+    /// Segments used to approximate a cubic Bezier (``bezier(_:_:_:_:_:_:_:_:)`` and
+    /// ``bezierVertex(_:_:_:_:_:_:)``). 20 is Processing's default and matches
+    /// ``curveDetailCount``; see `bezierDetail(_:)`.
+    var bezierDetailCount: Int = 20
     var curveTightnessValue: Float = 0.0
 
     // MARK: - シェイプ構築状態
@@ -203,7 +208,7 @@ public final class Canvas2D: CanvasStyle {
     }
 
     var isRecordingShape: Bool = false
-    var shapeMode: ShapeMode = .polygon
+    var currentShapeMode: ShapeMode = .polygon
     var shapeVertexList: [ShapeVertexType] = {
         var arr: [ShapeVertexType] = []
         arr.reserveCapacity(64)
@@ -261,6 +266,7 @@ public final class Canvas2D: CanvasStyle {
         var rectMode: RectMode
         var ellipseMode: EllipseMode
         var imageMode: ImageMode
+        var shapePositionMode: ShapePositionMode
         var colorModeConfig: ColorModeConfig
         var tintColor: SIMD4<Float>
         var hasTint: Bool
@@ -270,6 +276,7 @@ public final class Canvas2D: CanvasStyle {
         var textAlignV: TextAlignV
         var textLeading: Float?
         var curveDetail: Int
+        var bezierDetail: Int
         var curveTightness: Float
         var strokeCap: StrokeCap
         var strokeJoin: StrokeJoin
@@ -747,6 +754,13 @@ public final class Canvas2D: CanvasStyle {
     /// - Parameter mode: 画像モード（例: `.corner`、`.center`）。
     public func imageMode(_ mode: ImageMode) {
         currentImageMode = mode
+    }
+
+    /// Sets how ``SketchContext/shape(_:_:_:_:_:)`` interprets its coordinates.
+    ///
+    /// - Parameter mode: The shape position mode (`.corner`, `.corners`, or `.center`).
+    public func shapeMode(_ mode: ShapePositionMode) {
+        currentShapePositionMode = mode
     }
 
     // MARK: - カラーモード

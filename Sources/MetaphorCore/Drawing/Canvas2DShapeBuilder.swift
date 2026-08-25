@@ -10,7 +10,7 @@ extension Canvas2D {
     public func beginShape(_ mode: ShapeMode = .polygon) {
         svgRecorder?.beginShape(mode, style: svgStyle(), tightness: curveTightnessValue)
         isRecordingShape = true
-        shapeMode = mode
+        currentShapeMode = mode
         shapeVertexList.removeAll(keepingCapacity: true)
         contourVertices.removeAll(keepingCapacity: true)
         isRecordingContour = false
@@ -71,6 +71,44 @@ extension Canvas2D {
         shapeVertexList.append(.bezier(cx1: cx1, cy1: cy1, cx2: cx2, cy2: cy2, x: x, y: y))
     }
 
+    /// Adds a quadratic Bezier vertex to the shape being recorded.
+    ///
+    /// Promoted to the equivalent cubic and appended through
+    /// ``bezierVertex(_:_:_:_:_:_:)``, which is how Processing and p5.js implement it too: a
+    /// quadratic with start `P0`, control `Q` and end `P2` is the cubic whose controls are
+    /// `P0 + 2/3 (Q - P0)` and `P2 + 2/3 (Q - P2)`.
+    ///
+    /// - Parameters:
+    ///   - cx: The x coordinate of the control point.
+    ///   - cy: The y coordinate of the control point.
+    ///   - x: The x coordinate of the end point.
+    ///   - y: The y coordinate of the end point.
+    public func quadraticVertex(_ cx: Float, _ cy: Float, _ x: Float, _ y: Float) {
+        guard isRecordingShape else { return }
+        let (px, py) = lastShapeAnchor()
+        let k: Float = 2.0 / 3.0
+        bezierVertex(
+            px + k * (cx - px), py + k * (cy - py),
+            x + k * (cx - x), y + k * (cy - y),
+            x, y)
+    }
+
+    /// The vertex recorded last, which is where the next curve starts. The origin if there is none.
+    ///
+    /// The origin is deliberate: it is what ``expandShapeVerticesEx()`` initializes `lastX` /
+    /// `lastY` to. Picking any other fallback here would make the control points computed for a
+    /// `quadraticVertex` with no preceding vertex disagree with the start point used to expand it.
+    private func lastShapeAnchor() -> (Float, Float) {
+        switch shapeVertexList.last {
+        case .normal(let x, let y): return (x, y)
+        case .colored(let x, let y, _): return (x, y)
+        case .textured(let x, let y, _, _): return (x, y)
+        case .bezier(_, _, _, _, let x, let y): return (x, y)
+        case .curve(let x, let y): return (x, y)
+        case nil: return (0, 0)
+        }
+    }
+
     /// Catmull-Rom スプライン頂点を追加します（beginShape と endShape の間で使用）。
     /// - Parameters:
     ///   - x: x座標。
@@ -105,6 +143,17 @@ extension Canvas2D {
         curveDetailCount = max(1, n)
     }
 
+    /// Sets the number of segments used to approximate a cubic Bezier.
+    ///
+    /// Applies to ``bezier(_:_:_:_:_:_:_:_:)`` and ``bezierVertex(_:_:_:_:_:_:)`` alike; before
+    /// this existed the first was fixed at 24 segments and the second followed
+    /// ``curveDetail(_:)`` (Issue #813).
+    ///
+    /// - Parameter n: The number of segments (values below 1 are rounded up to 1).
+    public func bezierDetail(_ n: Int) {
+        bezierDetailCount = max(1, n)
+    }
+
     /// 曲線のタイトネスを設定します（-5.0 〜 5.0 が目安。0.0 が標準 Catmull-Rom）。
     ///
     /// 範囲外の値も受け付けます（Processing と同じく clamp しません）が、曲線が制御点から
@@ -136,7 +185,7 @@ extension Canvas2D {
             let exVerts = expandShapeVerticesEx()
             guard !exVerts.isEmpty else { return }
 
-            switch shapeMode {
+            switch currentShapeMode {
             case .polygon:
                 drawPolygonShapeEx(exVerts, close: close)
             case .triangles:
@@ -154,7 +203,7 @@ extension Canvas2D {
             let verts = expandShapeVerticesEx().map { $0.tuple }
             guard !verts.isEmpty else { return }
 
-            switch shapeMode {
+            switch currentShapeMode {
             case .polygon:
                 drawPolygonShape(verts, close: close)
             case .points:
@@ -256,7 +305,7 @@ extension Canvas2D {
                 lastX = x
                 lastY = y
             case .bezier(let cx1, let cy1, let cx2, let cy2, let x, let y):
-                let segments = curveDetailCount
+                let segments = bezierDetailCount
                 for step in 1...segments {
                     let t = Float(step) / Float(segments)
                     let px = bezierPoint(lastX, cx1, cx2, x, t)

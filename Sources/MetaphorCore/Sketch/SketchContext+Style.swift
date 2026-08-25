@@ -20,6 +20,12 @@ extension SketchContext {
         canvas.imageMode(mode)
     }
 
+    /// Sets how the coordinates given to a retained shape are interpreted.
+    /// - Parameter mode: The shape position mode.
+    public func shapeMode(_ mode: ShapePositionMode) {
+        canvas.shapeMode(mode)
+    }
+
     // MARK: - Drawing Style
 
     /// 現在の共有描画スタイルを返します。

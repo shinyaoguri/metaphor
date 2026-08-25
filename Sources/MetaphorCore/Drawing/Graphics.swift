@@ -331,6 +331,10 @@ public final class Graphics {
     /// - Parameter mode: The image mode.
     public func imageMode(_ mode: ImageMode) { canvas.imageMode(mode) }
 
+    /// Sets how a retained shape drawn with a position and a size reads its coordinates.
+    /// - Parameter mode: The shape position mode.
+    public func shapeMode(_ mode: ShapePositionMode) { canvas.shapeMode(mode) }
+
     /// Sets the tint color for images.
     /// - Parameter color: The tint color.
     public func tint(_ color: Color) { canvas.tint(color) }
@@ -651,6 +655,16 @@ public final class Graphics {
         _ cx1: Float, _ cy1: Float, _ cx2: Float, _ cy2: Float, _ x: Float, _ y: Float
     ) { canvas.bezierVertex(cx1, cy1, cx2, cy2, x, y) }
 
+    /// Adds a quadratic Bezier vertex to the current shape.
+    /// - Parameters:
+    ///   - cx: The control point x.
+    ///   - cy: The control point y.
+    ///   - x: The end x.
+    ///   - y: The end y.
+    public func quadraticVertex(_ cx: Float, _ cy: Float, _ x: Float, _ y: Float) {
+        canvas.quadraticVertex(cx, cy, x, y)
+    }
+
     /// Adds a Catmull-Rom spline vertex to the current shape.
     /// - Parameters:
     ///   - x: The x coordinate.
@@ -662,6 +676,12 @@ public final class Graphics {
     /// It affects both ``curve(_:_:_:_:_:_:_:_:)`` and ``curveVertex(_:_:)``.
     /// - Parameter n: The number of segments (values below 1 are rounded up to 1).
     public func curveDetail(_ n: Int) { canvas.curveDetail(n) }
+
+    /// Sets the number of segments used to approximate a cubic Bezier.
+    ///
+    /// It affects both ``bezier(_:_:_:_:_:_:_:_:)`` and ``bezierVertex(_:_:_:_:_:_:)``.
+    /// - Parameter n: The number of segments (values below 1 are rounded up to 1).
+    public func bezierDetail(_ n: Int) { canvas.bezierDetail(n) }
 
     /// Sets the tightness of Catmull-Rom spline curves.
     ///

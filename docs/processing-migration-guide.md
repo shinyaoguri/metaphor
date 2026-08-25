@@ -159,11 +159,11 @@ free functions noted as such.
 | `beginShape(TRIANGLES)` etc. | `beginShape(.triangles)`, `.triangleStrip`, `.triangleFan`, `.lines`, `.points`, `.polygon` |
 | `vertex(x, y)` / `vertex(x, y, u, v)` | `vertex(x, y)` / `vertex(x, y, u, v)`, plus `vertex(x, y, color)` |
 | `bezierVertex(…)` / `curveVertex(x, y)` | `bezierVertex(cx1, cy1, cx2, cy2, x, y)` / `curveVertex(x, y)` |
-| `quadraticVertex(…)` | — not implemented ([#813](https://github.com/shinyaoguri/metaphor/issues/813)) |
-| `bezierDetail(n)` | — not implemented ([#813](https://github.com/shinyaoguri/metaphor/issues/813)). Note `bezier()` uses a fixed 24 segments while `bezierVertex()` follows `curveDetail()` (20 by default), so the same curve differs between the two |
-| `shapeMode(…)` | — not implemented ([#813](https://github.com/shinyaoguri/metaphor/issues/813)); `shape(s, x, y, w, h)` always interprets its arguments one way |
+| `quadraticVertex(…)` | `quadraticVertex(cx, cy, x, y)` — promoted to the equivalent cubic, as in Processing |
+| `bezierDetail(n)` | `bezierDetail(_ n: Int)` — default 20, the same as `curveDetail()` and Processing. It drives `bezier()`, `bezierVertex()` and `quadraticVertex()` alike; until [#813](https://github.com/shinyaoguri/metaphor/issues/813) `bezier()` was fixed at 24 segments while `bezierVertex()` followed `curveDetail()`, so the same curve came out at two resolutions |
+| `shapeMode(…)` | `shapeMode(.corner)` / `.corners` / `.center` — default `.corner`, for `shape(s, x, y, w, h)` on a 2D shape (the sibling of `rectMode()` / `ellipseMode()` / `imageMode()`). The enum is `ShapePositionMode`, because `ShapeMode` already names the primitive kind passed to `beginShape()` |
 | `beginContour()` / `endContour()` | `beginContour()` / `endContour()` — 2D shapes only; on a 3D shape they warn and do nothing ([#736](https://github.com/shinyaoguri/metaphor/issues/736)) |
-| `curveDetail()` / `curveTightness()` | `curveDetail(_ n: Int)` / `curveTightness(_ t: Float)` |
+| `curveDetail()` / `curveTightness()` | `curveDetail(_ n: Int)` / `curveTightness(_ t: Float)` — as in Processing, `curveDetail()` is for `curve()` / `curveVertex()` only; Bézier curves follow `bezierDetail()` |
 | `rectMode(CORNER/CORNERS/CENTER/RADIUS)` | `rectMode(.corner)` / `.corners` / `.center` / `.radius` — default `.corner` |
 | `ellipseMode(…)` | `ellipseMode(.center)` / `.radius` / `.corner` / `.corners` — default `.center` |
 | `strokeWeight(w)` | `strokeWeight(_ weight: Float)` |
@@ -1017,7 +1017,6 @@ sizes, colors) stay unlabelled, optional modifiers get labels (ADR-0007).
 | canvas-wide `filter()` and `blend()` | Planned, Phase 2. Today `filter(_ image: MImage, _ type: FilterType)` filters an image, and post-process effects (`addPostEffect`) cover the whole frame. |
 | `PDF` export | Demand-gated, Phase 4 — [Epic #288](https://github.com/shinyaoguri/metaphor/issues/288). `DXF` export likewise has no equivalent. |
 | `blendColor()` | Not implemented — [#1153](https://github.com/shinyaoguri/metaphor/issues/1153). `blendMode()` configures drawing, not a pair of colors. The component extractors (`hue()` / `saturation()` / `brightness()` / `alpha()` / `red()` / `green()` / `blue()`) **do** exist — they return 0–1 and ignore `colorMode`. |
-| `quadraticVertex()`, `bezierDetail()`, `shapeMode()` | Not implemented — [#813](https://github.com/shinyaoguri/metaphor/issues/813). |
 | `ambient()`, `lightFalloff()`, `lightSpecular()`, `textureMode()`, `textureWrap()`, `beginCamera()` / `endCamera()`, `frustum()` | Not implemented — [#815](https://github.com/shinyaoguri/metaphor/issues/815). |
 | p5 `textStyle()` / `textWrap()` / `textBounds()` | Not implemented — [#816](https://github.com/shinyaoguri/metaphor/issues/816). A style-qualified family name (`textFont("Helvetica Neue Bold")`) covers bold and italic. |
 | `loadXML()` / `saveXML()` / `XML`, `loadBytes()` / `saveBytes()`, `createReader()` / `createWriter()`, `nf()` / `nfc()` / `nfp()` / `nfs()` / `hex()` / `binary()` | Not implemented. JSON, CSV/TSV and plain strings are covered; the rest is demand-gated. Swift's `String(format:)` replaces the `nf` family. |
