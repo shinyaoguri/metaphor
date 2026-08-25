@@ -48,6 +48,10 @@ import sys
 from pathlib import Path
 from urllib.parse import unquote
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from markdown_common import strip_code  # noqa: E402
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # 公開サイトのリファレンスのベース。Makefile の DOCC_BASE_PATH（metaphor/reference）と
@@ -64,8 +68,8 @@ _DISAMBIGUATION_RE = re.compile(r"-[0-9a-z]{2,}$")
 # 末尾の約物を落とす。
 _TRAILING_PUNCTUATION = ".,、。：:；;!?"
 
-_FENCE_RE = re.compile(r"^\s*(?P<marker>```+|~~~+)")
-_INLINE_CODE_RE = re.compile(r"(?P<ticks>`+)(?P<code>.*?)(?P=ticks)")
+# フェンス・インラインコードの正規表現と `strip_code` は markdown_common が持つ
+# （3 本の検査で同じ線引きを使うため。#1183）。
 
 # 走査対象。`website/**` は将来 Markdown が増えたときのために入れてある（現状 README.md のみ）。
 SCAN_GLOBS = (
@@ -97,29 +101,6 @@ def markdown_files(repo_root: Path) -> list[Path]:
         if path.is_file():
             found.add(path)
     return sorted(found)
-
-
-def strip_code(text: str) -> list[str]:
-    """コードを落とした行の一覧を返す（行番号を保つため空行に置き換える）。
-
-    URL の**形**を説明するプレースホルダ（`.../documentation/…`）を「そんなページは無い」と
-    誤検出しないための前処理であり、同時に死んだ URL を引き合いに出すときの逃げ道でもある。
-    """
-    lines: list[str] = []
-    fence: str | None = None
-    for line in text.splitlines():
-        match = _FENCE_RE.match(line)
-        if fence is None:
-            if match:
-                fence = match.group("marker")[0]
-                lines.append("")
-                continue
-            lines.append(_INLINE_CODE_RE.sub("", line))
-        else:
-            if match and match.group("marker")[0] == fence:
-                fence = None
-            lines.append("")
-    return lines
 
 
 def reference_paths(text: str):
