@@ -26,6 +26,8 @@ extension Canvas2D {
                 hasTint: hasTint,
                 textSize: currentTextSize,
                 fontFamily: currentFontFamily,
+                textStyle: currentTextStyle,
+                resolvedFontName: resolvedFontName,
                 textAlignH: currentTextAlignH,
                 textAlignV: currentTextAlignV,
                 textLeading: currentTextLeading,
@@ -64,6 +66,8 @@ extension Canvas2D {
         hasTint = saved.hasTint
         currentTextSize = saved.textSize
         currentFontFamily = saved.fontFamily
+        currentTextStyle = saved.textStyle
+        resolvedFontName = saved.resolvedFontName
         currentTextAlignH = saved.textAlignH
         currentTextAlignV = saved.textAlignV
         currentTextLeading = saved.textLeading
@@ -94,6 +98,8 @@ extension Canvas2D {
                 hasTint: hasTint,
                 textSize: currentTextSize,
                 fontFamily: currentFontFamily,
+                textStyle: currentTextStyle,
+                resolvedFontName: resolvedFontName,
                 textAlignH: currentTextAlignH,
                 textAlignV: currentTextAlignV,
                 textLeading: currentTextLeading,
@@ -127,6 +133,8 @@ extension Canvas2D {
         hasTint = saved.hasTint
         currentTextSize = saved.textSize
         currentFontFamily = saved.fontFamily
+        currentTextStyle = saved.textStyle
+        resolvedFontName = saved.resolvedFontName
         currentTextAlignH = saved.textAlignH
         currentTextAlignV = saved.textAlignV
         currentTextLeading = saved.textLeading

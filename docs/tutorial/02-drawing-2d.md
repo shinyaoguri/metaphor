@@ -881,6 +881,15 @@ let f = try loadFont("assets/Inter.ttf")  // .ttf / .otf を読む
 textFont(f)
 ```
 
+太字・斜体は `textStyle(_:)` でも切り替えられます。`.normal` / `.bold` / `.italic` / `.boldItalic` の 4 つで、**書体はそのままに**その書体の太字面・斜体面を要求します。
+
+```swift
+textFont("Helvetica Neue")
+textStyle(.bold)
+```
+
+上の `textFont("Helvetica Neue Bold")` のように名前へ含める書き方も効きますが、どの名前が使えるかはフォントごとに違い、外した名前は**無警告で Helvetica に化けます**（`"Papyrus Bold"` は太字の Papyrus ではなく Helvetica になります）。`textStyle(_:)` なら、その書体に字面が無いときは**スタイルを当てずに警告を出す**ので、黙って別のフォントで描かれることがありません。Monaco や Papyrus のように太字面も斜体面も持たない書体があります。
+
 字形そのものを素材にしたいときは、輪郭を取り出せます。`textToPoints(_:_:_:)` は輪郭上の点を、`textToShape(_:_:_:)` は穴のあいた形をそのまま塗れる図形を返します。
 
 ```swift
@@ -891,8 +900,8 @@ for p in textToPoints("metaphor", 40, 200) {
 
 まだできないのは次の 2 つです。
 
-- 書体を変えずに太さだけ切り替える（p5 の `textStyle(BOLD)` にあたるもの。上のように名前へ含める形になり、どの名前が使えるかはフォントによります — [#816](https://github.com/shinyaoguri/metaphor/issues/816)）
 - パスに沿って文字を並べる（[#651](https://github.com/shinyaoguri/metaphor/issues/651)）
+- 折り返し規則を選ぶ・描画矩形を測る（p5 の `textWrap()` / `textBounds()` — [#1165](https://github.com/shinyaoguri/metaphor/issues/1165)）
 
 ### 試してみる
 

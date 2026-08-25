@@ -174,7 +174,16 @@ public final class Canvas2D: CanvasStyle {
     // MARK: - テキスト状態
 
     var currentTextSize: Float = 32
+    // ユーザーが `textFont()` に渡した名前そのもの。`textStyle()` の解決はここから毎回やり直す
+    // ので、スタイルを当てたあとにフォントを変えてもスタイルは維持される。
     var currentFontFamily: String = "Helvetica"
+    var currentTextStyle: TextStyle = .normal
+    // `currentFontFamily` × `currentTextStyle` を畳んだ結果で、描画・計測はすべてこちらを見る。
+    // `TextFontResolver` の解説どおり、ここまで解決しておくとキャッシュキーを広げずに済む。
+    var resolvedFontName: String = "Helvetica"
+    // 同じ (family, style) で警告を出したか。`draw()` の中で毎フレーム `textStyle()` を
+    // 呼ぶ書き方でも、警告が 60 回/秒 出ないようにする。
+    var warnedMissingTextStyles: Set<String> = []
     var currentTextAlignH: TextAlignH = .left
     var currentTextAlignV: TextAlignV = .baseline
     /// 明示された行の高さ（ピクセル単位）。nil ならフォントから導出します
@@ -272,6 +281,9 @@ public final class Canvas2D: CanvasStyle {
         var hasTint: Bool
         var textSize: Float
         var fontFamily: String
+        var textStyle: TextStyle
+        // 派生値だが保存する。pop() のたびに Core Text で解決し直すのは無駄なので。
+        var resolvedFontName: String
         var textAlignH: TextAlignH
         var textAlignV: TextAlignV
         var textLeading: Float?

@@ -234,12 +234,12 @@ Angles are **radians** everywhere, as in Processing. There is no `angleMode()`
 | `text("hi", x, y)` | `text(_ string: String, _ x: Float, _ y: Float)` |
 | `text("hi", x, y, w, h)` | `text(_ string: String, _ x: Float, _ y: Float, _ w: Float, _ h: Float)` |
 | `textSize(32)` | `textSize(_ size: Float)` |
-| `textFont(f)` with a `PFont` | `textFont(_ family: String)` — an installed font **family name**, e.g. `textFont("Helvetica Neue")`. A style-qualified name works too: `textFont("Helvetica Neue Bold")` resolves to the bold face |
+| `textFont(f)` with a `PFont` | `textFont(_ family: String)` — an installed font **family name**, e.g. `textFont("Helvetica Neue")`. A style-qualified name works too: `textFont("Helvetica Neue Bold")` resolves to the bold face, but an unresolvable one silently falls back to Helvetica, so prefer `textStyle()` |
 | `createFont("f.ttf", 32)` / `loadFont(…)` | `loadFont(_ path: String, cache: Bool = true) throws -> MFont`, then `textFont(_ font: MFont)` |
 | `PFont` | `MFont` |
 | p5 `font.textToPoints(…)` | `textToPoints(_ string:_ x:_ y:sampleFactor:) -> [Vec2]`, plus `textToContours(…) -> [[Vec2]]` (one closed polyline per contour) and `textToShape(…) -> MShape` (holes included) |
-| p5 `textStyle(BOLD / ITALIC)` | — not implemented ([#816](https://github.com/shinyaoguri/metaphor/issues/816)); use a style-qualified family name as above |
-| p5 `textWrap()` / `textBounds()` | — not implemented ([#816](https://github.com/shinyaoguri/metaphor/issues/816)) |
+| p5 `textStyle(BOLD / ITALIC)` | `textStyle(_ style: TextStyle)` — `.normal` / `.bold` / `.italic` / `.boldItalic`. Keeps the family and asks for that family's face, and **warns** when the font has none (it never substitutes another font) |
+| p5 `textWrap()` / `textBounds()` | — not implemented ([#1165](https://github.com/shinyaoguri/metaphor/issues/1165)) |
 | `textAlign(CENTER, TOP)` | `textAlign(.center, .top)` — `TextAlignH` is `.left/.center/.right`, `TextAlignV` is `.top/.center/.baseline/.bottom` (default `.baseline`) |
 | `textLeading(l)` | `textLeading(_ leading: Float)` — the line height in **pixels**, as in Processing; `textSize()` / `textFont()` reset it, so call it after them |
 | `textWidth(s)` | `textWidth(_ string: String) -> Float` |
@@ -973,7 +973,7 @@ transparent with `fill(255, 0)` — the alpha reaches the glyphs, unlike
 `tint()` does not apply either; it is `image()`'s knob, not a text color
 ([#516](https://github.com/shinyaoguri/metaphor/issues/516)).
 
-### Two ways to name a font, and no `textStyle()`
+### Two ways to name a font, and two ways to ask for bold
 
 `textFont(_ family: String)` takes an installed font by name, and
 `loadFont(_ path:)` reads a `.ttf` / `.otf` from disk and returns an `MFont` for
@@ -986,11 +986,27 @@ let f = try loadFont("assets/Inter.ttf")    // from disk
 textFont(f)
 ```
 
-What is missing is p5's `textStyle(BOLD)` — you cannot keep the family and switch
-the weight, because the style has to be part of the name you pass. Which
-style-qualified names exist depends on the font (`"Helvetica Neue Bold"` works,
-`"Some Font Bold"` may not), so a sketch that switches weights is not portable
-between fonts ([#816](https://github.com/shinyaoguri/metaphor/issues/816)).
+Bold and italic can come from either the name or `textStyle()`, and **the two are
+not equally safe**. As in Processing's `createFont()`, a style-qualified name
+resolves — `textFont("Helvetica Neue Bold")` really does draw bold. But which
+qualified names exist depends on the font, and Core Text answers a name it cannot
+resolve with the system default **without any warning**. That loses the family as
+well as the style: `textFont("Papyrus Bold")` draws in Helvetica, not in an
+unbolded Papyrus.
+
+`textStyle()` keeps the family and asks Core Text for that family's bold or
+italic face, so the same code ports between fonts:
+
+```swift
+textFont("Helvetica Neue")
+textStyle(.bold)                            // .normal / .bold / .italic / .boldItalic
+```
+
+A font with no face for the style requested is drawn **unstyled, with a warning
+naming it** — metaphor never swaps in a different typeface to satisfy the style.
+Monaco, Geneva and Papyrus have no bold or italic face at all. `.normal` means
+"use the face the name selects" rather than "strip bold", so it leaves a
+style-qualified name alone.
 
 Glyph outlines are available: `textToPoints`, `textToContours` and `textToShape`
 turn a string into points, per-contour polylines, or a fillable `MShape`.
@@ -1018,7 +1034,7 @@ sizes, colors) stay unlabelled, optional modifiers get labels (ADR-0007).
 | `PDF` export | Demand-gated, Phase 4 — [Epic #288](https://github.com/shinyaoguri/metaphor/issues/288). `DXF` export likewise has no equivalent. |
 | `blendColor()` | Not implemented — [#1153](https://github.com/shinyaoguri/metaphor/issues/1153). `blendMode()` configures drawing, not a pair of colors. The component extractors (`hue()` / `saturation()` / `brightness()` / `alpha()` / `red()` / `green()` / `blue()`) **do** exist — they return 0–1 and ignore `colorMode`. |
 | `ambient()`, `lightFalloff()`, `lightSpecular()`, `textureMode()`, `textureWrap()`, `beginCamera()` / `endCamera()`, `frustum()` | Not implemented — [#815](https://github.com/shinyaoguri/metaphor/issues/815). |
-| p5 `textStyle()` / `textWrap()` / `textBounds()` | Not implemented — [#816](https://github.com/shinyaoguri/metaphor/issues/816). A style-qualified family name (`textFont("Helvetica Neue Bold")`) covers bold and italic. |
+| p5 `textWrap()` / `textBounds()` | Not implemented — [#1165](https://github.com/shinyaoguri/metaphor/issues/1165). `textStyle()` covers bold and italic, and the rectangle form of `text()` already wraps; what is missing is choosing the wrap rule and measuring the drawn box. |
 | `loadXML()` / `saveXML()` / `XML`, `loadBytes()` / `saveBytes()`, `createReader()` / `createWriter()`, `nf()` / `nfc()` / `nfp()` / `nfs()` / `hex()` / `binary()` | Not implemented. JSON, CSV/TSV and plain strings are covered; the rest is demand-gated. Swift's `String(format:)` replaces the `nf` family. |
 | sound synthesis (`SinOsc`, `Env`, `Reverb`, `Delay`, recording, panning) | Not implemented — playback (`loadSound`) and analysis (`createAudioInput`, FFT, beat) exist, but nothing generates audio. Demand-gated, Phase 4. |
 | `Serial` (Arduino), `Client` / `Server` (TCP) | Not implemented. OSC and MIDI are available instead (`createOSCSender` / `createOSCReceiver` / `createMIDI`), and both exceed Processing's standard set. Demand-gated, Phase 4. |

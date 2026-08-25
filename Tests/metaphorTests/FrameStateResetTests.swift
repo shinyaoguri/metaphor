@@ -353,6 +353,9 @@ struct FrameStateResetTests {
         canvas.strokeWeight(7)
         canvas.blendMode(.additive)
         canvas.textSize(41)
+        // フォントとスタイルもフレームを跨ぐ側（#816）。
+        canvas.textFont("Menlo")
+        canvas.textStyle(.bold)
         canvas.currentStrokeCap = .square
         canvas.currentStrokeJoin = .bevel
         // 曲線の分割数とシェイプの座標解釈もスタイル状態（#813）。
@@ -368,6 +371,10 @@ struct FrameStateResetTests {
         #expect(canvas.currentStrokeWeight == 7)
         #expect(canvas.currentBlendMode == .additive)
         #expect(canvas.currentTextSize == 41)
+        #expect(canvas.currentFontFamily == "Menlo")
+        #expect(canvas.currentTextStyle == .bold)
+        // 解決済み名まで残らないと、絵だけが黙って細字へ戻る。
+        #expect(canvas.resolvedFontName == "Menlo-Bold")
         #expect(canvas.currentStrokeCap == .square)
         #expect(canvas.currentStrokeJoin == .bevel)
         #expect(canvas.bezierDetailCount == 7)
