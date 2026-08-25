@@ -12,9 +12,11 @@ input — are tested directly, with the release workflow's own change set (edite
 files plus deleted `changelog.d/` entries) as the central case.
 
 Since #978 there is a third: the script does not go through `pre-push`, so it
-runs the freshness checks itself before sending. What has to hold is that a
-stale tree stops the send **before a single file is encoded**, and that the two
-ways out (`--skip-freshness`, `--dry-run`) are the only ways out.
+runs the pre-push checks itself before sending — the generated-artifact
+freshness checks, and since #1155 the per-PR CI checks (`make static-check-fast`
+before them, `make docs-check` after). What has to hold is that a failure stops
+the send **before a single file is encoded**, and that the declared ways out
+(`--skip-freshness`, `--skip-ci-checks`, `--dry-run`) are the only ways out.
 """
 
 import base64
@@ -199,6 +201,21 @@ class _RepoTestCase(unittest.TestCase):
             code = sc.main([*args, "--repo-root", str(self.repo)])
         return code, out.getvalue(), err.getvalue()
 
+    def calls_log(self) -> Path:
+        """検査が呼ばれた順を書き足す先（リポジトリの外）。
+
+        中に置くと `git status --porcelain` が拾ってしまい、テストが「変更セットの
+        読み取り」の方を壊す。
+        """
+        if not hasattr(self, "_calls_log"):
+            self._calls_log = Path(tempfile.mkdtemp()) / "calls"
+            self.addCleanup(shutil.rmtree, self._calls_log.parent, True)
+        return self._calls_log
+
+    def calls(self) -> list[str]:
+        log = self.calls_log()
+        return log.read_text(encoding="utf-8").split() if log.is_file() else []
+
     def install_freshness_stub(self, exit_code: int) -> Path:
         """鮮度検査の実体を、呼ばれた印を残すだけのスタブに差し替える。
 
@@ -206,14 +223,15 @@ class _RepoTestCase(unittest.TestCase):
         （実体側の検証は test_check_generated_freshness.py）。返すのは「呼ばれた」
         印のパスで、飛ばす経路のテストはこれが**無い**ことを見る。
         """
-        # 印はリポジトリの外へ置く。中に置くと `git status --porcelain` が拾って
-        # しまい、テストが「変更セットの読み取り」の方を壊す。
         marker = Path(tempfile.mkdtemp()) / "freshness-ran"
         self.addCleanup(shutil.rmtree, marker.parent, True)
         script = self.repo / sc.FRESHNESS_SCRIPT
         script.parent.mkdir(parents=True, exist_ok=True)
         script.write_text(
-            f'#!/bin/sh\ntouch "{marker}"\nexit {exit_code}\n', encoding="utf-8"
+            f'#!/bin/sh\ntouch "{marker}"\n'
+            f'echo freshness >> "{self.calls_log()}"\n'
+            f"exit {exit_code}\n",
+            encoding="utf-8",
         )
         script.chmod(0o755)
         # 実体は本物のリポジトリでも追跡されているファイル。コミットしておかないと
@@ -221,6 +239,22 @@ class _RepoTestCase(unittest.TestCase):
         hermetic_git("add", "scripts", cwd=self.repo)
         hermetic_git("commit", "-q", "-m", "freshness checker", cwd=self.repo)
         return marker
+
+    def install_make_stub(self, failing: str | None = None) -> None:
+        """CI 検査の実体（Makefile の target）を、印を残すだけのスタブに差し替える。
+
+        本物は lint 群と `docc convert` まで走るので、ここで見たいディスパッチには
+        重すぎる。`failing` に target 名を渡すと、その 1 本だけが落ちる。
+        """
+        lines = [".PHONY: static-check-fast docs-check", ""]
+        for target in ("static-check-fast", "docs-check"):
+            lines += [f"{target}:", f'\t@echo "{target}" >> "{self.calls_log()}"']
+            if failing == target:
+                lines.append("\t@exit 1")
+            lines.append("")
+        (self.repo / "Makefile").write_text("\n".join(lines), encoding="utf-8")
+        hermetic_git("add", "Makefile", cwd=self.repo)
+        hermetic_git("commit", "-q", "-m", "make stub", cwd=self.repo)
 
 
 class ResolveHeadTests(_RepoTestCase):
@@ -377,6 +411,7 @@ class FreshnessGateTests(_RepoTestCase):
         self.assertIn(sc.FRESHNESS_SCRIPT, err.getvalue())
 
     def test_a_stale_tree_stops_the_send_before_anything_is_encoded(self):
+        self.install_make_stub()
         marker = self.install_freshness_stub(1)
         (self.repo / "Package.swift").write_text("// v1\n", encoding="utf-8")
 
@@ -393,6 +428,7 @@ class FreshnessGateTests(_RepoTestCase):
     def test_skip_freshness_is_the_way_past_the_gate(self):
         # release.yml が渡す唯一の抜け道。検査が落ちる状態でも素通りし、しかも
         # 検査自体が走らないこと（runner で `make llms-txt` を踏まないこと）まで見る。
+        self.install_make_stub()
         marker = self.install_freshness_stub(1)
         (self.repo / "Package.swift").write_text("// v1\n", encoding="utf-8")
 
@@ -423,6 +459,7 @@ class FreshnessGateTests(_RepoTestCase):
     def test_a_bad_expected_head_still_fails_before_the_build(self):
         # 引数の間違いは `make llms-txt` の数分を待たずに返ってくること（#981 の
         # 「先に読める形で落とす」を鮮度検査が押し戻さない）。
+        self.install_make_stub()
         marker = self.install_freshness_stub(0)
         self.seed()
         (self.repo / "Package.swift").write_text("// v1\n", encoding="utf-8")
@@ -434,6 +471,98 @@ class FreshnessGateTests(_RepoTestCase):
         self.assertEqual(code, 1)
         self.assertIn("--expected-head", err)
         self.assertFalse(marker.is_file())
+        self.assertEqual(self.calls(), [])
+
+
+class CiCheckGateTests(_RepoTestCase):
+    """#1155: 鮮度検査だけでは pre-push との差が埋まらない。
+
+    `make ci-check` は per-PR CI の鏡（#1020）だが、届いていたのは自分で叩いた人
+    だけだった。pre-push が走らせるようになった 2 本（`static-check-fast` /
+    `docs-check`）は、pre-push を通らないこの経路にも同じように要る。
+    """
+
+    def test_check_ci_targets_passes_the_exit_code_through(self):
+        self.install_make_stub(failing="static-check-fast")
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            code = sc.check_ci_targets(self.repo, ["static-check-fast"])
+        self.assertEqual(code, 2)  # make の終了コードがそのまま返る
+
+    def test_a_missing_makefile_is_an_error_not_a_skip(self):
+        # 実体が見つからないときに 0 を返すと、歯止めは黙って外れる — #978 で
+        # 塞いだのと同じ形の失敗なので、ここは必ず落とす。
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            code = sc.check_ci_targets(self.repo, ["static-check-fast"])
+        self.assertEqual(code, 1)
+        self.assertIn("Makefile", err.getvalue())
+
+    def test_it_stops_at_the_first_failing_target(self):
+        self.install_make_stub(failing="static-check-fast")
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            sc.check_ci_targets(self.repo, ["static-check-fast", "docs-check"])
+        self.assertEqual(self.calls(), ["static-check-fast"])
+
+    def test_a_failing_check_stops_the_send_before_anything_is_encoded(self):
+        self.install_make_stub(failing="static-check-fast")
+        self.install_freshness_stub(0)
+        (self.repo / "Package.swift").write_text("// v1\n", encoding="utf-8")
+
+        with mock.patch.object(sc, "encode_file") as encode:
+            code, _, err = self.run_send(
+                "--repo", "o/n", "--branch", "b",
+                "--expected-head", _FULL_SHA, "--message", "m",
+            )
+        self.assertNotEqual(code, 0)
+        self.assertIn("nothing was sent", err)
+        encode.assert_not_called()
+        # ビルド不要な 1 本で落ちたので、鮮度検査（= `make llms-txt`）まで進まない。
+        self.assertEqual(self.calls(), ["static-check-fast"])
+
+    def test_the_order_matches_pre_push(self):
+        # ビルド不要な検査が先、`make llms-txt` を挟んで DocC が最後（ci.yml と同じ
+        # 並び）。逆さまになると、5 秒で分かる失敗をビルドのあとに見ることになる。
+        self.install_make_stub()
+        self.install_freshness_stub(0)
+        (self.repo / "Package.swift").write_text("// v1\n", encoding="utf-8")
+
+        with mock.patch.object(sc, "encode_file", side_effect=RuntimeError("reached")):
+            with self.assertRaises(RuntimeError):
+                self.run_send(
+                    "--repo", "o/n", "--branch", "b",
+                    "--expected-head", _FULL_SHA, "--message", "m",
+                )
+        self.assertEqual(self.calls(), ["static-check-fast", "freshness", "docs-check"])
+
+    def test_skip_ci_checks_is_the_way_past_the_gate(self):
+        # release.yml が渡す抜け道。落ちる状態でも素通りし、しかも検査自体が
+        # 走らないこと（runner で ruff / actionlint の取得を踏まないこと）まで見る。
+        self.install_make_stub(failing="static-check-fast")
+        self.install_freshness_stub(0)
+        (self.repo / "Package.swift").write_text("// v1\n", encoding="utf-8")
+
+        with mock.patch.object(sc, "encode_file", side_effect=RuntimeError("reached")):
+            with self.assertRaises(RuntimeError):
+                self.run_send(
+                    "--repo", "o/n", "--branch", "b",
+                    "--expected-head", _FULL_SHA, "--message", "m",
+                    "--skip-ci-checks",
+                )
+        self.assertEqual(self.calls(), ["freshness"])
+
+    def test_dry_run_does_not_run_the_checks(self):
+        self.install_make_stub(failing="static-check-fast")
+        (self.repo / "Package.swift").write_text("// v1\n", encoding="utf-8")
+
+        code, out, _ = self.run_main(
+            "--repo", "o/n", "--branch", "b",
+            "--expected-head", _FULL_SHA, "--message", "m",
+        )
+        self.assertEqual(code, 0)
+        self.assertIn("Package.swift", out)
+        self.assertEqual(self.calls(), [])
 
 
 if __name__ == "__main__":

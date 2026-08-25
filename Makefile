@@ -1,4 +1,4 @@
-.PHONY: setup build clean clean-examples test test-verbose test-coverage test-lcov ci-check static-check check-binary-targets preflight docs docs-check docs-ja docs-preview examples examples-check examples-list examples-index example-shots tutorial-snippets tutorial-shots tutorial-status reference-shots reference-snippets-check reference-i18n symbol-graphs llms-txt ai-docs-check freshness-check docs-links-check reference-links-check hooks contract-schema lint-workflows lint-python lint-swift format
+.PHONY: setup build clean clean-examples test test-verbose test-coverage test-lcov ci-check static-check static-check-fast check-binary-targets preflight docs docs-check docs-ja docs-preview examples examples-check examples-list examples-index example-shots tutorial-snippets tutorial-shots tutorial-status reference-shots reference-snippets-check reference-i18n symbol-graphs llms-txt ai-docs-check freshness-check docs-links-check reference-links-check hooks contract-schema lint-workflows lint-python lint-swift format
 
 # Default target
 all: setup build
@@ -114,15 +114,28 @@ ci-check: static-check
 #
 # ci-check の先頭で走る。単体でも呼べるので、Swift を触っていない PR
 # （docs / scripts / workflows だけ）はこれだけ通せば足りる — 実測 40 秒弱で、
-# うち 25 秒は scripts/tests のユニットテスト。
+# うち 35 秒は scripts/tests のユニットテスト。
+#
+# 中身は 2 つに割ってある（Issue #1155）。上の 11 本（static-check-fast）は合計
+# 5 秒強で、**pre-push と signed-commit.py がそのまま無条件に走らせる**。scripts/tests
+# だけがここに残るのは、ビルド不要な検査の中で唯一コストがビルドと同じ桁（実測
+# 35.6 秒）で、`git push` の体感を変えてしまうため。パストリガーで絞る案は採らな
+# かった — test_check_ci_parity.py は実物の ci.yml と Makefile を読むので、入力は
+# 「隣にあるファイル」ではなく、リストが 2 箇所に分かれてドリフトする #995 の形を
+# 作る（そこが見ている内容は static-check-fast 側の check-ci-parity.py が独立に見る）。
+static-check: static-check-fast
+	@echo "Running generator script tests (CI parity)..."
+	@python3 -m unittest discover -s scripts/tests
+
+# static-check のうち、秒未満〜2 秒で終わる 11 本（Issue #1155）
 #
 # 並びは**実測の所要時間の昇順**で、CI の並び順とは意図的に変えてある。CI は
 # ステップ単位でログが分かれるので順序が体験に効かないが、手元では 1 本のログに
-# 連なるため、0.1 秒で分かる失敗を 25 秒待たされてから見るのは無駄。
+# 連なるため、0.1 秒で分かる失敗を 2 秒待たされてから見るのは無駄。
 #
 # check-jsonschema は preflight の必須ツールではない（pip 経由）ので、無ければ
 # 断って飛ばす。CI 側は pip install してから無条件に走らせる。
-static-check:
+static-check-fast:
 	@echo "Running build-free CI checks (CI parity)..."
 	@python3 scripts/changelog.py lint
 	@python3 scripts/check-doc-comment-language.py
@@ -139,8 +152,6 @@ static-check:
 	else \
 		echo "wire-schema: SKIPPED — check-jsonschema がありません（pip install check-jsonschema）。CI では必ず走ります。"; \
 	fi
-	@echo "Running generator script tests (CI parity)..."
-	@python3 -m unittest discover -s scripts/tests
 
 # Clean build artifacts (including every per-example .build)
 clean: clean-examples
@@ -415,6 +426,7 @@ help:
 	@echo "  make test-lcov     - Run tests and generate LCOV for CI"
 	@echo "  make ci-check       - Run every per-PR CI check that works locally (run before pushing)"
 	@echo "  make static-check   - The build-free half of ci-check (lints, contract, script tests)"
+	@echo "  make static-check-fast - static-check minus the script tests (what pre-push runs)"
 	@echo "  make clean          - Clean build artifacts (incl. Examples/**/.build)"
 	@echo "  make clean-examples - Remove per-example .build dirs only"
 	@echo "  make check          - Check if setup is complete"

@@ -277,13 +277,13 @@ jobs:
           # (Sources/metaphor/metaphor.docc/**) は .swift ではないので上の判定に
           # 乗らず、カタログだけ直した PR を取りこぼす。取りこぼすと**次に Sources を
           # 触った無関係な PR**が、自分が入れていない警告で落ちる（責めるべき PR が
-          # ずれる）ので、判定はここで分けて持つ。逆に llms.txt / リファレンス
+          # ずれる）ので、判定を分けて `--docc` で足す。逆に llms.txt / リファレンス
           # スニペットの検査はカタログとは無関係なので、上の `changed` には混ぜない。
-          # カタログは symbol graph の入力ではないため changed-llms-inputs.sh にも
-          # 載せず、この 1 箇所だけが足す形にしている。
-          if echo "$changed_files" | grep -q . || \
-             scripts/pr-changed-files.sh "$base" "$head" \
-               -- 'Sources/**/*.docc/**' 2>/dev/null | grep -q .; then
+          # カタログの分を以前はこの 1 箇所が自前で足していたが、pre-push も同じ判定を
+          # 持つことになったので changed-llms-inputs.sh へ寄せた（Issue #1155。同じ
+          # リストを 2 箇所に持つと #995 のドリフトを再生産する）。
+          if scripts/changed-llms-inputs.sh --docc "$base" "$head" 2>/dev/null \
+               | grep -q .; then
             echo "docc=true" >> "$GITHUB_OUTPUT"
             docc=true
           else

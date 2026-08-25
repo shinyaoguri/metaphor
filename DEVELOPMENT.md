@@ -14,7 +14,7 @@ cd metaphor
 make setup
 ```
 
-`make setup` はツールの事前確認（`scripts/preflight-check.sh`）と pre-push フック（生成物の鮮度チェックなど）の導入を行います。サブモジュールもバイナリのビルドもありません — Syphon は v0.12.0 から独立パッケージ [metaphor-syphon](https://github.com/shinyaoguri/metaphor-syphon) が持ち、本体の `Package.swift` は binaryTarget を宣言しません（[ADR-0014](docs/adr/0014-viewer-frame-ipc-and-syphon-plugin.md)。`scripts/check-no-binary-targets.sh` が CI で守ります）。
+`make setup` はツールの事前確認（`scripts/preflight-check.sh`）と pre-push フック（ビルド不要な CI 検査・生成物の鮮度・DocC の警告 0。詳細は下の「push すると一部は勝手に鳴る（pre-push）」）の導入を行います。サブモジュールもバイナリのビルドもありません — Syphon は v0.12.0 から独立パッケージ [metaphor-syphon](https://github.com/shinyaoguri/metaphor-syphon) が持ち、本体の `Package.swift` は binaryTarget を宣言しません（[ADR-0014](docs/adr/0014-viewer-frame-ipc-and-syphon-plugin.md)。`scripts/check-no-binary-targets.sh` が CI で守ります）。
 
 ## Build Commands
 
@@ -24,6 +24,7 @@ make build      # swift build
 make test       # swift test
 make ci-check   # per-PR CI のうち手元で走らせられる検査を全部（push 前に通す）
 make static-check # そのうちビルドが要らない半分だけ（lint / 契約 / スクリプトのテスト）
+make static-check-fast # さらにそのうち生成器スクリプトのテストを除いた 11 本（pre-push が毎回走らせる）
 make clean      # ビルド成果物をクリーン
 make check      # セットアップ状態を確認
 make docs       # DocC ドキュメントをビルド
@@ -53,6 +54,20 @@ Swift を 1 行も触っていない PR（docs / scripts / workflows だけ）�
 ```bash
 make static-check   # lint 群 + 契約 + 生成器スクリプトのユニットテスト（実測 約 40 秒）
 ```
+
+### push すると一部は勝手に鳴る（pre-push）
+
+**叩き忘れても、安いものは pre-push が代わりに鳴らします**（#1155）。`make setup` で入る `scripts/hooks/pre-push` が `git push` のたびに走らせるのは次の 3 つです。
+
+| いつ | 何が走るか | 実測 |
+|---|---|---|
+| 毎回（ブランチ削除の push を除く） | `make static-check-fast`（ビルド不要な CI 検査 11 本） | 約 5 秒 |
+| 生成物の入力を触った push | `scripts/check-generated-freshness.sh`（触ったものだけ選ぶ） | 検査による（`llms` は `swift build` を含む） |
+| `Sources/**/*.swift` か DocC カタログを触った push | `make docs-check`（DocC の警告 0） | 約 3 秒 |
+
+ここが鳴らすのは **per-PR CI の `build-and-test` が required かつ無条件に走らせるステップだけ**で、新しい規則は 1 つも足していません — 失敗を手元へ早めているだけです（同じ判断を #333 の swift-format と #788 のリファレンス画像でも下しています）。`scripts/tests`（実測 35 秒）だけは載せていません。ビルド不要な検査の中で唯一コストがビルドと同じ桁で、`git push` の体感を変えてしまうためです（`make static-check` で回してください）。
+
+降りたいときは `git push --no-verify`。CI が同じ検査を独立に走らせるので、降りても歯止めが消えるわけではありません（早く気付けなくなるだけです）。
 
 doc コメントの ` ``symbol(_:_:)`` ` を書き換えただけ、というときに効くのは次の 2 本です（どちらも `ci-check` に含まれます）。シグネチャは `llms.txt` が正本なので、`grep -nE "func <名前>\(" llms.txt` で先に突き合わせておくと一発で通ります。
 
@@ -176,7 +191,7 @@ CI での検証範囲は 3 段構えです（全 278 本を毎 PR で建てる�
 - 生成器のフィルタ規則は `python3 -m unittest discover -s scripts/tests` で検証します（CI 常設・ビルド不要）。「生成物が最新か」のチェックは規則そのものを守れません — API 面を取りこぼしても出力は自己整合したまま緑になるため、採用・除外の判断を変えたらここにテストを足します。
 - **テストの中で一時リポジトリを `git init` するときは `scripts/tests/_git_helpers.py` の `init_repo()` / `git()` を使います**（#979）。素の `git` は開発機のグローバル設定を継ぐので、コミット署名を設定したマシンではテスト中の `git commit` まで署名を要求され、署名エージェントが使えなければ exit 128、ロック中なら応答待ちで止まります。CI の runner には署名設定が無く常に green なので、**このずれは CI からは永久に見えません**。密封の中身と、それが効いていることの回帰テストは `scripts/tests/test_git_helpers.py`。
 - **鮮度検査は `make freshness-check` で 1 コマンドで回せます**（`make ci-check` からも呼ばれます）。pre-push は push する range から必要な検査だけを選ぶので、**push しない限り一度も鳴りません** — 手元で先に確かめたいときはこちらです。GPU が要る撮影系は `--check`（指紋の照合）だけなので、GPU が無くても通ります。
-- **`scripts/signed-commit.py`（GitHub API 経由の署名コミット）は pre-push を通りません**。`git push` ではなく GraphQL へ直接投げるためで、署名は外れませんが**鮮度検査だけが外れます**（[#978](https://github.com/shinyaoguri/metaphor/issues/978)）。いまは送信の前に同じ検査を自分で走らせ、陳腐化していたら 1 バイトも送らずに止まります。降りられるのは `--skip-freshness` を明示したときだけで、渡しているのは `release.yml` だけです（runner の変更セットに `MetaphorVersion.swift` が入るため `make llms-txt` = `swift build` が丸ごと乗るのと、リリースブランチの PR で CI が同じ検査を独立に回すため）。
+- **`scripts/signed-commit.py`（GitHub API 経由の署名コミット）は pre-push を通りません**。`git push` ではなく GraphQL へ直接投げるためで、署名は外れませんが**pre-push が担っていた検査が外れます**（[#978](https://github.com/shinyaoguri/metaphor/issues/978) / [#1155](https://github.com/shinyaoguri/metaphor/issues/1155)）。いまは送信の前に同じものを自分で走らせ、落ちたら 1 バイトも送らずに止まります（`make static-check-fast` → 鮮度検査 `--all` → `make docs-check` の順。この経路は「push する range」を持たず作業ツリーしか見られないので、pre-push と違って絞り込みができません）。降りられるのは `--skip-freshness` / `--skip-ci-checks` を明示したときだけで、渡しているのは `release.yml` だけです（runner の変更セットに `MetaphorVersion.swift` が入るため `make llms-txt` = `swift build` が丸ごと乗るのと、リリースブランチの PR で CI が同じ検査を独立に回すため）。
 - AI 向けドキュメント（CLAUDE.md / docs/ai/）とコードの整合は `make ai-docs-check` で検証できます。ドキュメント・モジュール一覧・バージョンスニペットを変えたら実行してください。
 - `docs/**` の相対リンクと `docs/adr/README.md` の索引の整合は `make docs-links-check` で検証できます（CI でも毎 PR 走ります）。ドキュメントを移動・改名した、見出しを変えた、ADR を足したときに実行してください。
 - **本文が張るリファレンス URL（`https://shinyaoguri.github.io/metaphor/reference/documentation/…`）は `make reference-links-check` で検証できます**（[#987](https://github.com/shinyaoguri/metaphor/issues/987)。CI では対象の Markdown か公開 API が動いた PR で走ります）。この URL には**シグネチャが焼き込まれている**ので、引数ラベルを 1 つ足しただけで 404 になります（#959 では 4 本が同時に死にました）。照合先は `make docs` のローカル出力なので、公開前の変更でも判定できます。壊れているときは行き先の候補まで出ます。
