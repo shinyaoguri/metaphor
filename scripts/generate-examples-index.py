@@ -174,6 +174,13 @@ THREE_D_CALL = re.compile(
 # 2D lines — reading its comments would have tagged it `3d` for a sphere it never called.
 LINE_COMMENT = re.compile(r"//.*")
 
+# ``cpu-approximation`` の合図。かつては原典サンプルの ``.glsl`` が data/ に残って
+# いるかで判定していたが、その GLSL は MIT 非互換のライセンスを名乗るものが混ざって
+# いて Issue #1190 で全部消えた。合図はソース側の宣言に移してある — 移植した本人が
+# 「原典はシェーダで、こちらは CPU で近似した」と書いた 1 行が正本で、data/ に何が
+# 落ちているかには依存しない。
+CPU_APPROXIMATION_MARKER = re.compile(r"^// NOTE: Original uses .*GLSL", re.MULTILINE)
+
 
 # Directories never scanned for source evidence: build products are gitignored,
 # so reading them would make the generated index depend on local state.
@@ -268,10 +275,11 @@ def source_tags_for(example_dir: Path, status: str) -> set[str]:
     - ``3d``: the sketch calls a 3D-exclusive metaphor API (see
       ``THREE_D_API_CALLS``). No status gate — if the code calls ``box()`` it
       draws a box, whatever the example's lifecycle says.
-    - ``cpu-approximation``: the sketch keeps the original Processing sample's
-      ``.glsl`` beside it but recreates the effect on the CPU. Only meaningful for
-      examples that actually run — a ``stub``/``obsolete`` placeholder implements
-      nothing to approximate with.
+    - ``cpu-approximation``: the sketch's source declares that the original
+      Processing sample was a shader and that this port recreates the effect on
+      the CPU (a leading ``// NOTE: Original uses ... GLSL`` line). Only
+      meaningful for examples that actually run — a ``stub``/``obsolete``
+      placeholder implements nothing to approximate with.
 
     All of them flip on their own as an example is ported, so the index cannot
     drift back out of sync with the code.
@@ -290,7 +298,7 @@ def source_tags_for(example_dir: Path, status: str) -> set[str]:
     if (
         "shader" not in tags
         and status in ("supported", "partial")
-        and _files_in(example_dir, "*.glsl")
+        and any(CPU_APPROXIMATION_MARKER.search(source) for source in sources)
     ):
         tags.add("cpu-approximation")
 

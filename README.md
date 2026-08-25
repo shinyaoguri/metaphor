@@ -252,7 +252,9 @@ metaphor は**個人が単独でメンテナンスしているプロジェクト
 
 ## Acknowledgements
 
-[Examples/](Examples/) ディレクトリの多くのサンプルは、Casey Reas、Ben Fry、Daniel Shiffman による [Processing](https://processing.org/) サンプルスケッチ（public domain）の Swift / Metal 移植です。個別の帰属情報は各ファイルのヘッダーコメントを参照してください。
+[Examples/](Examples/) ディレクトリの多くのサンプルは、[Processing](https://processing.org/) のサンプルスケッチの Swift / Metal 移植です。原典の `.pde` は移植の隣に残してあります。
+
+原典の扱いは一様ではありません。processing-examples の README が述べるとおり、**クレジット行の無いものは Casey Reas / Ben Fry による public domain** ですが、**クレジット行のあるものは著作権が原著者に残り、ライセンスは付与されていません**（`.pde` 314 本のうち 95 本、`.json` 181 本のうち 54 本）。個別の帰属は各ファイルのヘッダーコメントに、全体の内訳と現状の判断は [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) にあります。
 
 - Processing: https://processing.org/
 - Processing examples: https://github.com/processing/processing-examples
