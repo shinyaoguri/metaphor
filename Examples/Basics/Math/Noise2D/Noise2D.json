@@ -1,9 +1,10 @@
 {
   "name": "Noise 2D",
   "title": "Noise2D",
-  "author": "Daniel Shiffman",
   "level": "Beginner",
-  "order": "17",
-  "description": "Using 2D noise to create simple texture.",
-  "featured": ["noise_", "noiseDetail_"]
+  "description": "Fills the window with two-dimensional Perlin noise, writing one gray value per pixel. The cursor's horizontal position sets the noise falloff, moving the result between smooth clouds and fine grain.",
+  "featured": [
+    "noise_",
+    "noiseDetail_"
+  ]
 }

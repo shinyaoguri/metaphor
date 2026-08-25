@@ -1,5 +1,8 @@
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Demos/Performance/CubicGridImmediate
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 @main
 final class CubicGridImmediate: Sketch {
     var config: SketchConfig {

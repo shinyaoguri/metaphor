@@ -1,5 +1,8 @@
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Topics/Fractals%20and%20L-Systems/PenroseTile
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 @main
 final class PenroseTile: Sketch {
     var config: SketchConfig {

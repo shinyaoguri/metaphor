@@ -1,5 +1,8 @@
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Demos/Graphics/Yellowtail
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 // Vec3f - point with pressure
 struct GesturePoint {
     var x: Float = 0

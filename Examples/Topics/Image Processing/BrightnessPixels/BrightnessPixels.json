@@ -1,10 +1,8 @@
 {
   "name": "Brightness Pixels",
   "title": "Brightness pixels",
-  "author": "Daniel Shiffman",
   "level": "Intermediate",
-  "order": "1",
-  "description": "This program adjusts the brightness of a part of the image by\n  calculating the distance of each pixel to the mouse.",
+  "description": "Reads a source image's pixels and redraws them, brightening each pixel by how close it is to the cursor.",
   "featured": [
     "PImage",
     "PImage_loadPixels_",

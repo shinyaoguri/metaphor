@@ -254,7 +254,9 @@ Library development (setup, testing, generated-file management, release procedur
 
 ## Acknowledgements
 
-Most samples in [Examples/](Examples/) are Swift / Metal ports of [Processing](https://processing.org/) sample sketches (public domain) by Casey Reas, Ben Fry, and Daniel Shiffman. See individual file headers for attribution.
+Most samples in [Examples/](Examples/) are Swift / Metal ports of [Processing](https://processing.org/) sample sketches. `Basics/` and `Topics/` mirror Processing's own hierarchy, so each original sits at the matching upstream path.
+
+Upstream ships no license file; one sentence in its README is the whole grant. Sketches **without** a credit line are a public-domain dedication by Casey Reas and Ben Fry, and those ship beside their ports (170 `.pde`). Sketches **with** one keep their author's copyright and were never licensed, so they were removed from Examples in 2026-08 (144 `.pde` across 95 packages, [#1191](https://github.com/shinyaoguri/metaphor/issues/1191)); each port's `App.swift` points at the upstream original instead. The reasoning and the authors of the removed sketches are in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
 
 - Processing: https://processing.org/
 - Processing examples: https://github.com/processing/processing-examples

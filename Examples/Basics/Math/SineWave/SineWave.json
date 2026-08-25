@@ -1,9 +1,9 @@
 {
   "name": "Sine Wave",
   "title": "Sine Wave",
-  "author": "Daniel Shiffman",
   "level": "Beginner",
-  "order": "7",
-  "description": "Render a simple sine wave.",
-  "featured": ["sin_"]
+  "description": "Renders a sine wave as a row of circles, recomputing every y value from sin() each frame so the wave travels sideways.",
+  "featured": [
+    "sin_"
+  ]
 }

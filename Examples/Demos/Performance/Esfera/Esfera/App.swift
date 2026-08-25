@@ -1,5 +1,8 @@
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Demos/Performance/Esfera
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 struct Pelo {
     var z: Float
     var phi: Float

@@ -1,9 +1,12 @@
 {
   "name": "Pentigree",
   "title": "Pentigree L-System",
-  "author": "Geraldine Sarmiento",
   "level": "Advanced",
-  "order": "4",
-  "description": "This code was based on Patrick Dwyer's L-System class.",
-  "featured": ["pushMatrix_", "popMatrix_", "translate_", "rotate_"]
+  "description": "A pentigree curve grown from a single L-system rule, drawn segment by segment with translate() and rotate().",
+  "featured": [
+    "pushMatrix_",
+    "popMatrix_",
+    "translate_",
+    "rotate_"
+  ]
 }

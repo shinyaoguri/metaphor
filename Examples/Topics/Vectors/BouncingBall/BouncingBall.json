@@ -1,9 +1,10 @@
 {
   "name": "Bouncing Ball",
   "title": "Bouncing Ball with Vectors",
-  "author": "Daniel Shiffman",
   "level": "Intermediate",
-  "order": "0",
-  "description": "Demonstration of using vectors to control motion of a body. This example is not object-oriented See AccelerationWithVectors for an example of how to simulate motion using vectors in an object.",
-  "featured": ["PVector", "PVector_add_"]
+  "description": "A ball bounces inside the window with its position, velocity and gravity each held as a vector.",
+  "featured": [
+    "PVector",
+    "PVector_add_"
+  ]
 }

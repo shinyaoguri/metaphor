@@ -1,5 +1,8 @@
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Topics/Advanced%20Data/LoadSaveTable
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 // Loading Tabular Data (by Daniel Shiffman)
 // Load data from a CSV file using loadTable() and generate objects.
 // Click to add bubbles, then save back to data/data.csv with saveTable() and reload.

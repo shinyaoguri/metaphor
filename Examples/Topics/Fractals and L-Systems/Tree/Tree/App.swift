@@ -1,5 +1,8 @@
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Topics/Fractals%20and%20L-Systems/Tree
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 @main
 final class Tree: Sketch {
     var config: SketchConfig {

@@ -1,5 +1,8 @@
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Topics/File%20IO/SaveFrames
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 @main
 final class SaveFrames: Sketch {
     var config: SketchConfig {

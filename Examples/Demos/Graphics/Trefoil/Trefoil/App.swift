@@ -1,5 +1,8 @@
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Demos/Graphics/Trefoil
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 /// Trefoil
 ///
 /// 三葉結び目のパラメトリック曲面を、法線と UV 付きのカスタムシェイプとして

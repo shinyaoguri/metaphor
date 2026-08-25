@@ -2,5 +2,5 @@
   "name": "XMLYahooWeather",
   "title": "XMLYahooWeather",
   "status": "obsolete",
-  "description": "Requires Processing's loadXML plus a long-dead Yahoo Weather feed. metaphor does not clone Processing's XML types; non-goal."
+  "description": "Placeholder for fetching a weather feed as XML. metaphor has neither loadXML() nor the network access this needs, so the sketch draws an explanatory message instead."
 }

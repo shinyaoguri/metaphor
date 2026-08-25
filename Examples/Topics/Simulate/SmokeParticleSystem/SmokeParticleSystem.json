@@ -1,9 +1,14 @@
 {
   "name": "Smoke Particle System",
   "title": "Smoke Particle System",
-  "author": "Daniel Shiffman",
   "level": "Advanced",
-  "order": "3",
-  "description": "A basic smoke effect using a particle system. Each particle\n  is rendered as an alpha masked image.",
-  "featured": ["ArrayList", "class", "PVector", "PImage", "tint_", "image_"]
+  "description": "Textured particles rise like smoke, blown sideways by a wind force that the cursor's horizontal position controls.",
+  "featured": [
+    "ArrayList",
+    "class",
+    "PVector",
+    "PImage",
+    "tint_",
+    "image_"
+  ]
 }

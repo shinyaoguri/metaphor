@@ -177,6 +177,6 @@ Part 9 of the tutorial covers the whole surface with a sketch each —
 
 - **Learn the library in order**: [`docs/tutorial/`](../docs/tutorial/) — the systematic tutorial (Japanese), with its own sketches and rendered output per section.
 - **Full, searchable index**: [`docs/ai/examples-index.md`](../docs/ai/examples-index.md) — every example, with tags, difficulty, and status (`supported` / `partial` / `stub` / `obsolete`).
-- **Processing sample by name**: `Basics/` and `Topics/` mirror the official Processing example structure closely — most examples ship the original `.pde` alongside the Swift port.
+- **Processing sample by name**: `Basics/` and `Topics/` mirror the official Processing example structure closely, so the matching path under [processing-examples](https://github.com/processing/processing-examples) is the original. Many examples also ship that `.pde` alongside the Swift port; where they cannot, the port's `App.swift` opens with the upstream URL (see [NOTICE.md](NOTICE.md)).
 - **Writing your own sketch with AI**: [`docs/ai/for-sketch-authors.md`](../docs/ai/for-sketch-authors.md).
 - **All public API**: [`llms.txt`](../llms.txt) at the repository root, or the [DocC reference](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphor/) if you'd rather browse in a browser.

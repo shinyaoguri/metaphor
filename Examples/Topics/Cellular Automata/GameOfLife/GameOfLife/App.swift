@@ -1,5 +1,8 @@
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Topics/Cellular%20Automata/GameOfLife
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 @main
 final class GameOfLife: Sketch {
     var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Game of Life") }

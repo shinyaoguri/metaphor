@@ -1,9 +1,10 @@
 {
   "name": "Brightness",
   "title": "Brightness",
-  "author": "Rusty Robison",
   "level": "Intermediate",
-  "order": "2",
-  "description": "Brightness is the relative lightness or darkness of a color.\n  Move the cursor vertically over each bar to alter its brightness.",
-  "featured": ["colorMode_", "fill_"]
+  "description": "Moving the cursor vertically over each bar sets that bar's brightness. HSB color mode maps the bar's horizontal position to hue and the cursor's height to brightness.",
+  "featured": [
+    "colorMode_",
+    "fill_"
+  ]
 }

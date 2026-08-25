@@ -2,5 +2,5 @@
   "name": "MultipleWindows",
   "title": "MultipleWindows",
   "status": "obsolete",
-  "description": "Requires Processing's multiple top-level window model. metaphor's single-sketch + offscreen/blit pipeline does not target multi-window sketches; non-goal."
+  "description": "Placeholder for driving several windows from one sketch. metaphor runs a single window per Sketch, so the sketch draws an explanatory message instead."
 }

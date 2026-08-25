@@ -1,9 +1,11 @@
 {
   "name": "Mixture Grid",
-  "title": "Mixture Grid   modified from an example",
-  "author": "Simon Greenwold",
+  "title": "Mixture Grid",
   "level": "Intermediate",
-  "order": "5",
-  "description": "Display a 2D grid of boxes with three different kinds of lights.",
-  "featured": ["pointLight_", "directionalLight_", "spotLight_"]
+  "description": "The same three-light mixture applied to a grid of boxes, showing how point, directional and spot lights fall off differently across a scene.",
+  "featured": [
+    "pointLight_",
+    "directionalLight_",
+    "spotLight_"
+  ]
 }

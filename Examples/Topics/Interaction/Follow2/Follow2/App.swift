@@ -1,5 +1,8 @@
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Topics/Interaction/Follow2
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 @main
 final class Follow2: Sketch {
     var config: SketchConfig {

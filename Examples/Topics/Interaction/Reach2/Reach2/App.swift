@@ -1,5 +1,8 @@
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Topics/Interaction/Reach2
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 @main
 final class Reach2: Sketch {
     var config: SketchConfig {

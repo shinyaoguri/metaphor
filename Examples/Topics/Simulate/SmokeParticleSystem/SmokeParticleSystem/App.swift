@@ -1,5 +1,8 @@
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Topics/Simulate/SmokeParticleSystem
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 struct SmkParticle {
     var px: Float, py: Float
     var vx: Float, vy: Float

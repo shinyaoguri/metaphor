@@ -1,9 +1,9 @@
 {
   "name": "Keyboard Functions",
   "title": "Keyboard Functions",
-  "author": "Martin Gomez",
   "level": "Intermediate",
-  "order": "9",
-  "description": "Click on the window to give it focus and press the letter keys to type colors. The keyboard function keyPressed() is called whenever a key is pressed. keyReleased() is another keyboard function that is called when a key is released. Original 'Color Typewriter' concept by John Maeda.",
-  "featured": ["keyPressed_"]
+  "description": "Pressing a letter key draws a colored bar for that character, wrapping across the window. Each of the 26 letters gets its own hue from HSB color mode.",
+  "featured": [
+    "keyPressed_"
+  ]
 }

@@ -1,5 +1,8 @@
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Basics/Math/Noise2D
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 @main
 final class Noise2D: Sketch {
     let increment: Float = 0.02

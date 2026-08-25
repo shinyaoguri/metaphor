@@ -1,6 +1,9 @@
 import metaphor
 import Foundation
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Topics/File%20IO/DirectoryList
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 @main
 final class DirectoryList: Sketch {
     var config: SketchConfig {

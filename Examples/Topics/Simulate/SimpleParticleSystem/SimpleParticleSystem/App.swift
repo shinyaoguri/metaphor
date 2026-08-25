@@ -1,5 +1,8 @@
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Topics/Simulate/SimpleParticleSystem
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 struct SParticle {
     var px: Float, py: Float
     var vx: Float, vy: Float

@@ -1,5 +1,8 @@
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Topics/Simulate/GravitationalAttraction3D
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 struct Planet {
     var px: Float, py: Float, pz: Float
     var vx: Float = 1, vy: Float = 0, vz: Float = 0

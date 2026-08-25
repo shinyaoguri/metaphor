@@ -1,9 +1,11 @@
 {
   "name": "Load Display SVG",
-  "title": "Load and Display a Shape  Illustration",
-  "author": "George Brower",
+  "title": "Load and Display a Shape",
   "level": "Beginner",
-  "order": "0",
-  "description": "The loadShape() command is used to read simple SVG (Scalable Vector Graphics)\n  files and OBJ (Object) files into a Processing sketch. This example loads an\n  SVG file of a monster robot face and displays it to the screen.",
-  "featured": ["PShape", "loadShape_", "shape_"]
+  "description": "Placeholder for loading and displaying an SVG shape. metaphor has no loadShape() for SVG files, so the sketch draws an explanatory message instead.",
+  "featured": [
+    "PShape",
+    "loadShape_",
+    "shape_"
+  ]
 }

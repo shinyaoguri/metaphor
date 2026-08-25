@@ -1,5 +1,8 @@
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Topics/Animation/Sequential
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 @main
 final class Sequential: Sketch {
     var config: SketchConfig {

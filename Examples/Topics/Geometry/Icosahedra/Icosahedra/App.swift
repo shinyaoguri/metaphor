@@ -1,5 +1,8 @@
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Topics/Geometry/Icosahedra
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 struct Icosahedron {
     var topPoint: (Float, Float, Float) = (0, 0, 0)
     var topPent: [(Float, Float, Float)] = Array(repeating: (0, 0, 0), count: 5)

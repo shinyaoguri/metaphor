@@ -1,9 +1,10 @@
 {
   "name": "Additive Wave",
   "title": "Additive Wave",
-  "author": "Daniel Shiffman",
   "level": "Intermediate",
-  "order": "8",
-  "description": "Create a more complex wave by adding two waves together.",
-  "featured": ["sin_", "cos_"]
+  "description": "Adds four sine and cosine waves with random amplitudes and periods into a single wave, drawn as a band of translucent circles.",
+  "featured": [
+    "sin_",
+    "cos_"
+  ]
 }

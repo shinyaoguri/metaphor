@@ -1,8 +1,10 @@
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Demos/Graphics/MultipleWindows
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 // NOTE: This example requires multiple window support
 // which is not available in metaphor (single window per Sketch instance).
-// Original Processing source: MultipleWindows.pde
 
 @main
 final class MultipleWindows: Sketch {

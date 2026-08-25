@@ -1,9 +1,12 @@
 {
   "name": "Tree",
   "title": "Recursive Tree",
-  "author": "Daniel Shiffman",
   "level": "Intermediate",
-  "order": "1",
-  "description": "Renders a simple tree-like structure via recursion. \n  The branching angle is calculated as a function of \n  the horizontal mouse location. Move the mouse left\n  and right to change the angle.",
-  "featured": ["pushMatrix_", "popMatrix_", "translate_", "rotate_"]
+  "description": "A recursive branching tree. Every branch draws a shorter pair of children on either side, and the cursor's horizontal position sets the branching angle.",
+  "featured": [
+    "pushMatrix_",
+    "popMatrix_",
+    "translate_",
+    "rotate_"
+  ]
 }

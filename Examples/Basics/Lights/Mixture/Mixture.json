@@ -1,9 +1,11 @@
 {
   "name": "Mixture",
-  "title": "Mixtureby Simon Greenwold",
-  "author": "",
+  "title": "Mixture",
   "level": "Intermediate",
-  "order": "4",
-  "description": "Display a box with three different kinds of lights.",
-  "featured": ["pointLight_", "directionalLight_", "spotLight_"]
+  "description": "One box lit by three kinds of light at once: a point light, a directional light and a spot light. Moving the mouse rotates the box so each light's contribution becomes visible.",
+  "featured": [
+    "pointLight_",
+    "directionalLight_",
+    "spotLight_"
+  ]
 }

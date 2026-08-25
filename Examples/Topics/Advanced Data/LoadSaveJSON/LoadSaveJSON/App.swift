@@ -1,5 +1,8 @@
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Topics/Advanced%20Data/LoadSaveJSON
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 // Loading JSON Data (by Daniel Shiffman)
 // Load data from a JSON file using loadJSON() and generate objects.
 // Click to add bubbles, then save back to data/data.json with saveJSON() and reload.

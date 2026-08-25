@@ -1,6 +1,9 @@
 import Foundation
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Topics/Advanced%20Data/HashMapClass
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 struct WordItem {
     var word: String
     var countBook1: Int = 0

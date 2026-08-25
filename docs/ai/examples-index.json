@@ -69,7 +69,7 @@
       "subcategory": "Color",
       "level": "Intermediate",
       "status": "supported",
-      "description": "Brightness is the relative lightness or darkness of a color. Move the cursor vertically over each bar to alter its brightness.",
+      "description": "Moving the cursor vertically over each bar sets that bar's brightness. HSB color mode maps the bar's horizontal position to hue and the cursor's height to brightness.",
       "featured": [
         "colorMode_",
         "fill_"
@@ -210,7 +210,7 @@
       "subcategory": "Control",
       "level": "Intermediate",
       "status": "supported",
-      "description": "The camera lifts up (controlled by mouseY) while looking at the same point.",
+      "description": "The camera's eye lifts as the cursor moves down the window while it keeps looking at the same point. A lit box and three axis lines make the shift in viewpoint visible.",
       "featured": [
         "camera_"
       ],
@@ -219,7 +219,6 @@
         "basics",
         "camera",
         "control",
-        "interaction",
         "moveeye"
       ]
     },
@@ -601,7 +600,7 @@
       "subcategory": "Form",
       "level": "Intermediate",
       "status": "supported",
-      "description": "Generate a closed ring using the vertex() function and beginShape(TRIANGLE_STRIP) mode. The outsideRadius and insideRadius variables control ring's radii respectively.",
+      "description": "Builds a closed ring from a triangle strip whose vertices alternate between an outer and an inner radius. The cursor's horizontal position sets how many segments the ring is divided into.",
       "featured": [
         "beginShape_",
         "endShape_",
@@ -694,7 +693,7 @@
       "subcategory": "Image",
       "level": "Intermediate",
       "status": "supported",
-      "description": "Mouse horizontal location controls size of dots. Creates a simple pointillist effect using ellipses colored according to pixels in an image.",
+      "description": "Redraws a generated image as a field of dots. Each frame samples random pixels and paints ellipses in the sampled color, and the cursor's horizontal position sets the dot size.",
       "featured": [
         "PImage",
         "PImage_get_",
@@ -703,7 +702,6 @@
       "tags": [
         "basics",
         "image",
-        "interaction",
         "pointillism"
       ]
     },
@@ -714,7 +712,7 @@
       "subcategory": "Image",
       "level": "Intermediate",
       "status": "supported",
-      "description": "Shows how to use the requestImage() function with preloader animation. The requestImage() function loads images on a separate thread so that the sketch does not freeze while they load. It's very useful when you are load...",
+      "description": "Loads a sequence of images and shows a spinning loading indicator until every frame has arrived, then draws them in a grid.",
       "featured": [
         "requestImage_",
         "PImage"
@@ -825,7 +823,7 @@
       "subcategory": "Input",
       "level": "Intermediate",
       "status": "supported",
-      "description": "Click on the window to give it focus and press the letter keys to type colors. The keyboard function keyPressed() is called whenever a key is pressed. keyReleased() is another keyboard function that is called when a key...",
+      "description": "Pressing a letter key draws a colored bar for that character, wrapping across the window. Each of the 26 letters gets its own hue from HSB color mode.",
       "featured": [
         "keyPressed_"
       ],
@@ -991,13 +989,13 @@
       ]
     },
     {
-      "title": "Mixtureby Simon Greenwold",
+      "title": "Mixture",
       "path": "Examples/Basics/Lights/Mixture",
       "group": "Basics",
       "subcategory": "Lights",
       "level": "Intermediate",
       "status": "supported",
-      "description": "Display a box with three different kinds of lights.",
+      "description": "One box lit by three kinds of light at once: a point light, a directional light and a spot light. Moving the mouse rotates the box so each light's contribution becomes visible.",
       "featured": [
         "pointLight_",
         "directionalLight_",
@@ -1006,18 +1004,19 @@
       "tags": [
         "3d",
         "basics",
+        "interaction",
         "lights",
         "mixture"
       ]
     },
     {
-      "title": "Mixture Grid modified from an example",
+      "title": "Mixture Grid",
       "path": "Examples/Basics/Lights/MixtureGrid",
       "group": "Basics",
       "subcategory": "Lights",
       "level": "Intermediate",
       "status": "supported",
-      "description": "Display a 2D grid of boxes with three different kinds of lights.",
+      "description": "The same three-light mixture applied to a grid of boxes, showing how point, directional and spot lights fall off differently across a scene.",
       "featured": [
         "pointLight_",
         "directionalLight_",
@@ -1056,7 +1055,7 @@
       "subcategory": "Lights",
       "level": "Intermediate",
       "status": "supported",
-      "description": "Vary the specular reflection component of a material with the horizontal position of the mouse.",
+      "description": "A sphere lit by a directional light. The cursor's horizontal position raises the specular coefficient, tightening the highlight from a broad sheen to a small bright spot.",
       "featured": [
         "lightSpecular_",
         "specular_"
@@ -1064,7 +1063,6 @@
       "tags": [
         "3d",
         "basics",
-        "interaction",
         "lights",
         "reflection"
       ]
@@ -1095,7 +1093,7 @@
       "subcategory": "Math",
       "level": "Intermediate",
       "status": "supported",
-      "description": "Create a more complex wave by adding two waves together.",
+      "description": "Adds four sine and cosine waves with random amplitudes and periods into a single wave, drawn as a band of translucent circles.",
       "featured": [
         "sin_",
         "cos_"
@@ -1166,7 +1164,7 @@
       "subcategory": "Math",
       "level": "Beginner",
       "status": "supported",
-      "description": "Using two random() calls and the point() function to create an irregular sawtooth line.",
+      "description": "Draws a jagged line across the window by accumulating a random walk on top of a per-point random offset, so the spread widens from left to right.",
       "featured": [
         "random_"
       ],
@@ -1183,7 +1181,7 @@
       "subcategory": "Math",
       "level": "Intermediate",
       "status": "supported",
-      "description": "Graphics the following equation: sin(ncos(r) + 5theta) where n is a function of horizontal mouse location.",
+      "description": "Plots a two-variable equation into the pixel buffer, one gray value per pixel. The cursor's horizontal position changes a term in the equation, so the interference pattern morphs as the mouse moves.",
       "featured": [
         "atan2_",
         "sin_",
@@ -1277,13 +1275,14 @@
       "subcategory": "Math",
       "level": "Beginner",
       "status": "supported",
-      "description": "Using 2D noise to create simple texture.",
+      "description": "Fills the window with two-dimensional Perlin noise, writing one gray value per pixel. The cursor's horizontal position sets the noise falloff, moving the result between smooth clouds and fine grain.",
       "featured": [
         "noise_",
         "noiseDetail_"
       ],
       "tags": [
         "basics",
+        "image",
         "math",
         "noise2d"
       ]
@@ -1312,7 +1311,7 @@
       "subcategory": "Math",
       "level": "Intermediate",
       "status": "supported",
-      "description": "Using Perlin Noise to generate a wave-like pattern.",
+      "description": "A wave whose height comes from one-dimensional Perlin noise, drawn as a filled shape that drifts as the noise offset advances.",
       "featured": [
         "noise_"
       ],
@@ -1344,7 +1343,7 @@
       "subcategory": "Math",
       "level": "Intermediate",
       "status": "supported",
-      "description": "Convert a polar coordinate (r,theta) to cartesian (x,y). The calculations are x=r*cos(theta) and y=r*sin(theta).",
+      "description": "Converts polar coordinates to Cartesian ones with cos() and sin(). A circle orbits the center while its angular velocity slowly accelerates.",
       "featured": [
         "cos_",
         "sin_"
@@ -1432,7 +1431,7 @@
       "subcategory": "Math",
       "level": "Beginner",
       "status": "supported",
-      "description": "Render a simple sine wave.",
+      "description": "Renders a sine wave as a row of circles, recomputing every y value from sin() each frame so the wave travels sideways.",
       "featured": [
         "sin_"
       ],
@@ -1501,13 +1500,12 @@
       "subcategory": "Objects",
       "level": "Intermediate",
       "status": "supported",
-      "description": "Move the cursor across the image to change the speed and positions of the geometry. The class MRect defines a group of lines.",
+      "description": "Four objects, each a group of lines with its own width, spacing and damping, follow the cursor at different speeds. Shows how a class keeps per-instance state.",
       "featured": [
         "Object"
       ],
       "tags": [
         "basics",
-        "image",
         "objects"
       ]
     },
@@ -1518,7 +1516,7 @@
       "subcategory": "Shape",
       "level": "Intermediate",
       "status": "supported",
-      "description": "Shapes are loaded with style information that tells them how to draw (e.g. color, stroke weight). The disableStyle() method of PShape turns off this information so functions like stroke() and fill() change the SVGs colo...",
+      "description": "The same retained shape drawn twice. On the left its own fill and stroke are disabled so the sketch's current style applies; on the right it keeps the style it captured when it was built.",
       "featured": [
         "PShape_enableStyle_",
         "PShape_disableStyle_",
@@ -1571,13 +1569,13 @@
       ]
     },
     {
-      "title": "Load and Display a Shape Illustration",
+      "title": "Load and Display a Shape",
       "path": "Examples/Basics/Shape/LoadDisplaySVG",
       "group": "Basics",
       "subcategory": "Shape",
       "level": "Beginner",
       "status": "stub",
-      "description": "The loadShape() command is used to read simple SVG (Scalable Vector Graphics) files and OBJ (Object) files into a Processing sketch. This example loads an SVG file of a monster robot face and displays it to the screen.",
+      "description": "Placeholder for loading and displaying an SVG shape. metaphor has no loadShape() for SVG files, so the sketch draws an explanatory message instead.",
       "featured": [
         "PShape",
         "loadShape_",
@@ -1590,13 +1588,13 @@
       ]
     },
     {
-      "title": "Scale Shape Illustration",
+      "title": "Scale Shape",
       "path": "Examples/Basics/Shape/ScaleShape",
       "group": "Basics",
       "subcategory": "Shape",
       "level": "Beginner",
       "status": "supported",
-      "description": "Move the mouse left and right to zoom the SVG file. This shows how, unlike an imported image, the lines remain smooth at any size.",
+      "description": "Scales a retained star shape by resetting and reapplying its own matrix every frame. The cursor's horizontal position sets the zoom.",
       "featured": [
         "PShape",
         "scale_",
@@ -1604,8 +1602,6 @@
       ],
       "tags": [
         "basics",
-        "image",
-        "interaction",
         "scaleshape",
         "shape"
       ]
@@ -1885,7 +1881,7 @@
       "subcategory": "Transform",
       "level": "Beginner",
       "status": "supported",
-      "description": "Paramenters for the scale() function are values specified as decimal percentages. For example, the method call scale(2.0) will increase the dimension of the shape by 200 percent. Objects always scale from the origin.",
+      "description": "Two squares scaled by a cosine that swings through zero. Shows that scale() multiplies with the current transform and that shapes scale away from the origin.",
       "featured": [
         "scale_"
       ],
@@ -2060,7 +2056,7 @@
       "subcategory": "Graphics",
       "level": "",
       "status": "obsolete",
-      "description": "Requires Processing's PShape tessellation-introspection API (getTessellation). metaphor does not expose tessellated-geometry introspection; non-goal.",
+      "description": "Placeholder for reading back a shape's tessellation. metaphor has no getTessellation() API, so the sketch draws an explanatory message instead.",
       "featured": [],
       "tags": [
         "demos",
@@ -2120,7 +2116,7 @@
       "subcategory": "Graphics",
       "level": "",
       "status": "obsolete",
-      "description": "Requires Processing's multiple top-level window model. metaphor's single-sketch + offscreen/blit pipeline does not target multi-window sketches; non-goal.",
+      "description": "Placeholder for driving several windows from one sketch. metaphor runs a single window per Sketch, so the sketch draws an explanatory message instead.",
       "featured": [],
       "tags": [
         "demos",
@@ -2182,7 +2178,7 @@
       "subcategory": "Graphics",
       "level": "",
       "status": "obsolete",
-      "description": "Requires a PDB (molecular structure) file parser, a specialized data format outside metaphor's scope; non-goal.",
+      "description": "Placeholder for rendering a protein backbone as ribbons. metaphor has no parser for the PDB molecular data format, so the sketch draws an explanatory message instead.",
       "featured": [],
       "tags": [
         "demos",
@@ -2213,7 +2209,7 @@
       "subcategory": "Graphics",
       "level": "",
       "status": "obsolete",
-      "description": "Requires Processing's PShape tessellation API (setVertex on tessellated shapes). metaphor does not expose tessellated-geometry introspection; non-goal.",
+      "description": "Placeholder for updating vertices on an already tessellated shape. metaphor has no setVertex() for tessellated shapes, so the sketch draws an explanatory message instead.",
       "featured": [],
       "tags": [
         "demos",
@@ -2878,7 +2874,7 @@
       "subcategory": "Advanced Data",
       "level": "Advanced",
       "status": "supported",
-      "description": "This example demonstrates how to use a Java ArrayList to store a variable number of objects. Items can be added and removed from the ArrayList. Click the mouse to add bouncing balls.",
+      "description": "Balls are appended to an array as they are created and removed once their life runs out, showing how to grow and shrink a collection while iterating over it.",
       "featured": [
         "class",
         "ArrayList"
@@ -2886,7 +2882,6 @@
       "tags": [
         "advanced-data",
         "arraylistclass",
-        "interaction",
         "topics"
       ]
     },
@@ -2921,13 +2916,13 @@
       ]
     },
     {
-      "title": "IntList Lottery example",
+      "title": "IntList Lottery",
       "path": "Examples/Topics/Advanced Data/IntListLottery",
       "group": "Topics",
       "subcategory": "Advanced Data",
       "level": "Advanced",
       "status": "supported",
-      "description": "This example demonstrates an IntList can be used to store a list of numbers. While an array of integers serves a similar purpose it is of fixed size. The An IntList can easily have values added or deleted and it can als...",
+      "description": "A lottery drawn from a shuffled list of integers. Numbers move from the pool into the results, and the ones matching the ticket are highlighted.",
       "featured": [
         "IntList_append_",
         "IntList_size_",
@@ -2948,7 +2943,7 @@
       "subcategory": "Advanced Data",
       "level": "Advanced",
       "status": "supported",
-      "description": "This example demonstrates how to use loadJSON() to retrieve data from a JSON file and make objects from that data. Here is what the JSON looks like (partial): { \"bubbles\": [ { \"position\": { \"x\": 160, \"y\": 103 }, \"diamet...",
+      "description": "Loads bubbles from a JSON file and rebuilds them as objects. Clicking adds a bubble, writes the file back out and reloads it.",
       "featured": [
         "JSONObject",
         "loadJSONObject_",
@@ -2970,7 +2965,7 @@
       "subcategory": "Advanced Data",
       "level": "Advanced",
       "status": "supported",
-      "description": "This example demonstrates how to use loadTable() to retrieve data from a CSV file and make objects from that data. Here is what the CSV looks like: x,y,diameter,name 160,103,43.19838,Happy 372,137,52.42526,Sad 273,235,6...",
+      "description": "Loads bubbles from a CSV table and rebuilds them as objects. Clicking adds a row, writes the table back out and reloads it.",
       "featured": [
         "Table",
         "loadTable_",
@@ -2992,7 +2987,7 @@
       "subcategory": "Advanced Data",
       "level": "",
       "status": "obsolete",
-      "description": "Requires Processing's loadXML/saveXML. metaphor does not clone Processing's XML types; the planned data path is Codable JSON / CSV (see LoadSaveJSON). XML is non-goal.",
+      "description": "Placeholder for reading and writing XML. metaphor has no loadXML() or saveXML(), so the sketch draws an explanatory message instead.",
       "featured": [],
       "tags": [
         "advanced-data",
@@ -3037,7 +3032,7 @@
       "subcategory": "Advanced Data",
       "level": "",
       "status": "obsolete",
-      "description": "Requires Processing's loadXML plus a long-dead Yahoo Weather feed. metaphor does not clone Processing's XML types; non-goal.",
+      "description": "Placeholder for fetching a weather feed as XML. metaphor has neither loadXML() nor the network access this needs, so the sketch draws an explanatory message instead.",
       "featured": [],
       "tags": [
         "advanced-data",
@@ -3052,7 +3047,7 @@
       "subcategory": "Animation",
       "level": "Intermediate",
       "status": "supported",
-      "description": "Press the mouse button to change animations. Demonstrates loading, displaying, and animating GIF images. It would be easy to write a program to display animated GIFs, but would not allow as much control over the display...",
+      "description": "Two sprite animations play at once from arrays of generated frames. One follows the cursor with drag while the other advances in place.",
       "featured": [
         "PImage",
         "Array",
@@ -3061,7 +3056,6 @@
       "tags": [
         "animatedsprite",
         "animation",
-        "export",
         "image",
         "interaction",
         "topics"
@@ -3074,7 +3068,7 @@
       "subcategory": "Animation",
       "level": "Intermediate",
       "status": "supported",
-      "description": "Displaying a sequence of images creates the illusion of motion. Twelve images are loaded and each is displayed individually in a loop.",
+      "description": "Plays a generated twelve-frame sequence by drawing one image per frame, the simplest form of sequential animation.",
       "featured": [
         "PImage",
         "Array",
@@ -3089,13 +3083,13 @@
       ]
     },
     {
-      "title": "A Processing implementation of Game of Life",
+      "title": "Game of Life",
       "path": "Examples/Topics/Cellular Automata/GameOfLife",
       "group": "Topics",
       "subcategory": "Cellular Automata",
       "level": "Advanced",
       "status": "supported",
-      "description": "Press SPACE BAR to pause and change the cell's values with the mouse. On pause, click to activate/deactivate cells. Press 'R' to randomly reset the cells' grid. Press 'C' to clear the cells' grid. The original Game of L...",
+      "description": "Conway's Game of Life on a grid of cells. The space bar pauses so cells can be toggled with the mouse, 'r' randomizes the grid and 'c' clears it.",
       "featured": [
         "Array",
         "random_",
@@ -3147,13 +3141,13 @@
       "subcategory": "Cellular Automata",
       "level": "Advanced",
       "status": "supported",
-      "description": "Simple demonstration of a Wolfram's 1-dimensional cellular automata. When the system reaches bottom of the window, it restarts with a new ruleset. Mouse click restarts as well.",
+      "description": "A one-dimensional Wolfram cellular automaton. Each generation is drawn as one row of pixels, and a new rule set is picked once the rows fill the window.",
       "featured": [
         "Array"
       ],
       "tags": [
         "cellular-automata",
-        "interaction",
+        "image",
         "topics",
         "wolfram"
       ]
@@ -3556,7 +3550,7 @@
       "subcategory": "Fractals and L-Systems",
       "level": "Advanced",
       "status": "supported",
-      "description": "Renders a simple fractal, the Koch snowflake. Each recursive level is drawn in sequence.",
+      "description": "Builds the Koch curve by repeatedly replacing every line segment with four shorter ones.",
       "featured": [
         "PVector",
         "PVector_copy_",
@@ -3578,7 +3572,7 @@
       "subcategory": "Fractals and L-Systems",
       "level": "Intermediate",
       "status": "supported",
-      "description": "Simple rendering of the Mandelbrot set.",
+      "description": "Renders the Mandelbrot set once into the pixel buffer, iterating each pixel's complex coordinate until it escapes.",
       "featured": [
         "loadPixels_",
         "updatePixels_",
@@ -3598,7 +3592,7 @@
       "subcategory": "Fractals and L-Systems",
       "level": "Advanced",
       "status": "supported",
-      "description": "This code was based on Patrick Dwyer's L-System class.",
+      "description": "Draws a Penrose snowflake from an L-system. A production string is expanded through four generations, then walked with translate() and rotate().",
       "featured": [
         "pushMatrix_",
         "popMatrix_",
@@ -3618,7 +3612,7 @@
       "subcategory": "Fractals and L-Systems",
       "level": "Advanced",
       "status": "supported",
-      "description": "This code was based on Patrick Dwyer's L-System class.",
+      "description": "A Penrose tiling grown from a four-rule L-system, drawn by walking the expanded production string with translate() and rotate().",
       "featured": [
         "pushMatrix_",
         "popMatrix_",
@@ -3638,7 +3632,7 @@
       "subcategory": "Fractals and L-Systems",
       "level": "Advanced",
       "status": "supported",
-      "description": "This code was based on Patrick Dwyer's L-System class.",
+      "description": "A pentigree curve grown from a single L-system rule, drawn segment by segment with translate() and rotate().",
       "featured": [
         "pushMatrix_",
         "popMatrix_",
@@ -3658,7 +3652,7 @@
       "subcategory": "Fractals and L-Systems",
       "level": "Intermediate",
       "status": "supported",
-      "description": "Renders a simple tree-like structure via recursion. The branching angle is calculated as a function of the horizontal mouse location. Move the mouse left and right to change the angle.",
+      "description": "A recursive branching tree. Every branch draws a shorter pair of children on either side, and the cursor's horizontal position sets the branching angle.",
       "featured": [
         "pushMatrix_",
         "popMatrix_",
@@ -3667,7 +3661,6 @@
       ],
       "tags": [
         "fractals-and-l-systems",
-        "interaction",
         "topics",
         "tree"
       ]
@@ -3913,7 +3906,7 @@
       "subcategory": "Image Processing",
       "level": "Intermediate",
       "status": "supported",
-      "description": "This program adjusts the brightness of a part of the image by calculating the distance of each pixel to the mouse.",
+      "description": "Reads a source image's pixels and redraws them, brightening each pixel by how close it is to the cursor.",
       "featured": [
         "PImage",
         "PImage_loadPixels_",
@@ -3926,7 +3919,6 @@
         "brightnesspixels",
         "image",
         "image-processing",
-        "interaction",
         "topics"
       ]
     },
@@ -3937,7 +3929,7 @@
       "subcategory": "Image Processing",
       "level": "Advanced",
       "status": "supported",
-      "description": "Applies a convolution matrix to a portion of an image. Move mouse to apply filter to different parts of the image.",
+      "description": "Applies a 3x3 convolution kernel to a square region of an image that follows the cursor. Clicking cycles through blur, sharpen, edge detection and other kernels.",
       "featured": [
         "PImage_",
         "Array",
@@ -3950,7 +3942,6 @@
         "convolution",
         "image",
         "image-processing",
-        "interaction",
         "topics"
       ]
     },
@@ -4112,7 +4103,7 @@
       "subcategory": "Interaction",
       "level": "Intermediate",
       "status": "supported",
-      "description": "A line segment is pushed and pulled by the cursor.",
+      "description": "A single segment follows the cursor, its angle solved with atan2().",
       "featured": [
         "atan2_",
         "cos_",
@@ -4133,7 +4124,7 @@
       "subcategory": "Interaction",
       "level": "Intermediate",
       "status": "supported",
-      "description": "A two-segmented arm follows the cursor position. The relative angle between the segments is calculated with atan2() and the position calculated with sin() and cos().",
+      "description": "Two segments follow the cursor in a chain, each one dragging the next along by its own length.",
       "featured": [
         "Array",
         "atan2_",
@@ -4155,7 +4146,7 @@
       "subcategory": "Interaction",
       "level": "Intermediate",
       "status": "supported",
-      "description": "A segmented line follows the mouse. The relative angle from each segment to the next is calculated with atan2() and the position of the next is calculated with sin() and cos().",
+      "description": "Twenty short segments trail the cursor, each dragged along by the one before it.",
       "featured": [
         "Array",
         "atan2_",
@@ -4177,7 +4168,7 @@
       "subcategory": "Interaction",
       "level": "Intermediate",
       "status": "supported",
-      "description": "The arm follows the position of the mouse by calculating the angles with atan2().",
+      "description": "A two-segment arm reaches toward the cursor, with the angles solved by atan2() and the base pinned in place.",
       "featured": [
         "atan2_",
         "cos_",
@@ -4199,7 +4190,7 @@
       "subcategory": "Interaction",
       "level": "Intermediate",
       "status": "supported",
-      "description": "The arm follows the position of the mouse by calculating the angles with atan2().",
+      "description": "A ten-segment arm anchored at the bottom of the window reaches for the cursor.",
       "featured": [
         "Array",
         "cos_",
@@ -4221,7 +4212,7 @@
       "subcategory": "Interaction",
       "level": "Intermediate",
       "status": "supported",
-      "description": "The arm follows the position of the ball by calculating the angles with atan2().",
+      "description": "An eight-segment arm reaches for a ball that bounces around the window on its own.",
       "featured": [
         "Array",
         "atan2_",
@@ -4232,6 +4223,7 @@
       ],
       "tags": [
         "interaction",
+        "physics",
         "reach3",
         "topics"
       ]
@@ -4285,7 +4277,7 @@
       "subcategory": "Motion",
       "level": "Intermediate",
       "status": "supported",
-      "description": "Multiple-object collision.",
+      "description": "Twelve circles fall under gravity and push each other apart with a spring force wherever they overlap.",
       "featured": [
         "class",
         "random_",
@@ -4328,7 +4320,7 @@
       "subcategory": "Motion",
       "level": "Advanced",
       "status": "supported",
-      "description": "Based on Keith Peter's Solution in Foundation Actionscript Animation: Making Things Move!",
+      "description": "Circles collide elastically, swapping velocities along the axis between their centers with each circle's mass taken from its radius.",
       "featured": [
         "PVector",
         "PVector_random2D_",
@@ -4423,7 +4415,7 @@
       "subcategory": "Motion",
       "level": "Advanced",
       "status": "supported",
-      "description": "Based on the equation (R = 2N(NL)-L) where R is the reflection vector, N is the normal, and L is the incident vector.",
+      "description": "A particle bounces off a single sloped ground line, reflecting its velocity around the surface normal.",
       "featured": [
         "PVector",
         "PVector_random2D_",
@@ -4434,6 +4426,8 @@
       ],
       "tags": [
         "motion",
+        "particles",
+        "physics",
         "reflection1",
         "topics"
       ]
@@ -4445,7 +4439,7 @@
       "subcategory": "Motion",
       "level": "Advanced",
       "status": "supported",
-      "description": "Based on Keith Peter's Solution in Foundation Actionscript Animation: Making Things Move!",
+      "description": "A particle bounces across a ground built from many sloped segments, reflecting off whichever segment it lands on.",
       "featured": [
         "PVector",
         "Array",
@@ -4455,6 +4449,7 @@
       ],
       "tags": [
         "motion",
+        "particles",
         "physics",
         "reflection2",
         "topics"
@@ -4734,7 +4729,7 @@
       "subcategory": "Simulate",
       "level": "Advanced",
       "status": "supported",
-      "description": "An implementation of Craig Reynold's Boids program to simulate the flocking behavior of birds. Each boid steers itself based on rules of avoidance, alignment, and coherence. Click the mouse to add a new boid.",
+      "description": "150 boids steer by three rules at once, separation, alignment and cohesion, which together produce flocking motion.",
       "featured": [
         "PVector",
         "ArrayList",
@@ -4745,7 +4740,6 @@
       ],
       "tags": [
         "flocking",
-        "interaction",
         "simulate",
         "topics"
       ]
@@ -4757,7 +4751,7 @@
       "subcategory": "Simulate",
       "level": "Advanced",
       "status": "supported",
-      "description": "Demonstration of multiple forces acting on bodies. Bodies experience gravity continuously and fluid resistance when in simulated water.",
+      "description": "Movers fall under gravity and slow down when they enter the liquid at the bottom, where fluid resistance grows with the square of their speed.",
       "featured": [
         "class",
         "PVector",
@@ -4796,14 +4790,13 @@
       "subcategory": "Simulate",
       "level": "Advanced",
       "status": "supported",
-      "description": "Click the mouse to generate a burst of particles at the mouse position. Each burst is one instance of a particle system with Particles and CrazyParticles (a subclass of Particle). Note use of Inheritance and Polymorphis...",
+      "description": "Clicking spawns another particle system. Each one emits its own particles, some of which wander off along a noisy path.",
       "featured": [
         "ArrayList",
         "class",
         "PVector"
       ],
       "tags": [
-        "interaction",
         "multipleparticlesystems",
         "particles",
         "simulate",
@@ -4817,7 +4810,7 @@
       "subcategory": "Simulate",
       "level": "Intermediate",
       "status": "supported",
-      "description": "Particles are generated each cycle through draw(), fall with gravity and fade out over time. A ParticleSystem object manages a variable size (ArrayList) list of particles.",
+      "description": "One emitter releases particles that fall under gravity and fade out as their lifespan runs down.",
       "featured": [
         "ArrayList",
         "class",
@@ -4840,7 +4833,7 @@
       "subcategory": "Simulate",
       "level": "Advanced",
       "status": "supported",
-      "description": "A basic smoke effect using a particle system. Each particle is rendered as an alpha masked image.",
+      "description": "Textured particles rise like smoke, blown sideways by a wind force that the cursor's horizontal position controls.",
       "featured": [
         "ArrayList",
         "class",
@@ -5005,7 +4998,7 @@
       "subcategory": "Vectors",
       "level": "Advanced",
       "status": "supported",
-      "description": "Demonstration of the basics of motion with vector. A 'Mover' object stores location, velocity, and acceleration as vectors. The motion is controlled by affecting the acceleration (in this case towards the mouse).",
+      "description": "A circle accelerates toward the cursor. The vector from its position to the mouse is rescaled with setMag(), and the resulting velocity is capped with limit().",
       "featured": [
         "PVector",
         "PVector_add_",
@@ -5026,13 +5019,14 @@
       "subcategory": "Vectors",
       "level": "Intermediate",
       "status": "supported",
-      "description": "Demonstration of using vectors to control motion of a body. This example is not object-oriented See AccelerationWithVectors for an example of how to simulate motion using vectors in an object.",
+      "description": "A ball bounces inside the window with its position, velocity and gravity each held as a vector.",
       "featured": [
         "PVector",
         "PVector_add_"
       ],
       "tags": [
         "bouncingball",
+        "physics",
         "topics",
         "vectors"
       ]
@@ -5044,7 +5038,7 @@
       "subcategory": "Vectors",
       "level": "Intermediate",
       "status": "supported",
-      "description": "Demonstration of some basic vector math: subtraction, normalization, scaling. Normalizing a vector sets its length to 1.",
+      "description": "Draws a vector from the center of the window toward the cursor, rescaled to a fixed length with setMag().",
       "featured": [
         "PVector",
         "PVector_sub",

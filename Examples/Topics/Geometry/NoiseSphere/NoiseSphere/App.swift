@@ -1,5 +1,8 @@
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Topics/Geometry/NoiseSphere
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 struct Pelo {
     var zVal: Float
     var phi: Float

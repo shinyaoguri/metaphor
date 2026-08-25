@@ -1,8 +1,10 @@
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Demos/Graphics/GetTessGroups
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 // NOTE: This example requires PShape tessellation API (getTessellation)
 // which is not available in metaphor.
-// Original Processing source: GetTessGroups.pde
 
 @main
 final class GetTessGroups: Sketch {

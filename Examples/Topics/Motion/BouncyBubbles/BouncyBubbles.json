@@ -2,8 +2,11 @@
   "name": "Bouncy Bubbles",
   "title": "Bouncy Bubbles",
   "level": "Intermediate",
-  "order": "2",
-  "author": "based on code from Keith Peters",
-  "description": "Multiple-object collision.",
-  "featured": ["class", "random_", "Array", "atan2_"]
+  "description": "Twelve circles fall under gravity and push each other apart with a spring force wherever they overlap.",
+  "featured": [
+    "class",
+    "random_",
+    "Array",
+    "atan2_"
+  ]
 }
