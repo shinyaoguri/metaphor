@@ -40,7 +40,7 @@ struct DynamicMeshBufferTests {
 
     @Test("頂点を書き換えてもインデックスバッファは作り直されない")
     func indexBufferSurvivesVertexUpdates() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let mesh = makeTriangle(device)
         mesh.ensureBuffers()
         let firstIndexBuffer = try #require(mesh.indexBuffer)
@@ -56,7 +56,7 @@ struct DynamicMeshBufferTests {
 
     @Test("インデックスを足したときはインデックスバッファが更新される")
     func indexBufferUpdatesWhenIndicesChange() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let mesh = makeTriangle(device)
         mesh.ensureBuffers()
         #expect(mesh.indexCount == 3)
@@ -75,7 +75,7 @@ struct DynamicMeshBufferTests {
 
     @Test("頂点バッファは高々 3 枚を巡回する（確保し直さない）")
     func vertexBuffersCycleThroughRing() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let mesh = makeTriangle(device)
 
         var seen: [ObjectIdentifier] = []
@@ -93,7 +93,7 @@ struct DynamicMeshBufferTests {
 
     @Test("使い回したバッファの中身は毎回そのフレームの頂点になる")
     func reusedBufferHoldsCurrentVertices() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let mesh = makeTriangle(device)
 
         for frame in 0..<8 {
@@ -106,7 +106,7 @@ struct DynamicMeshBufferTests {
 
     @Test("頂点が増えて容量を超えたら確保し直して全頂点が載る")
     func growingBeyondCapacityReallocates() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let mesh = DynamicMesh(device: device)
         mesh.addVertex(0, 0, 0)
         mesh.ensureBuffers()
@@ -126,7 +126,7 @@ struct DynamicMeshBufferTests {
 
     @Test("clear() でバッファを手放し、再構築できる")
     func clearReleasesAndRebuilds() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let mesh = makeTriangle(device)
         mesh.ensureBuffers()
         #expect(mesh.vertexBuffer != nil)
@@ -150,7 +150,7 @@ struct DynamicMeshBufferTests {
 
     @Test("UV を宣言したメッシュは頂点の移動で UV 付き頂点列も追随する")
     func uvVerticesFollowVertexMoves() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let mesh = DynamicMesh(device: device)
         mesh.addNormal(SIMD3(0, 0, 1))
         for (index, uv) in [SIMD2<Float>(0, 0), SIMD2(1, 0), SIMD2(0.5, 1)].enumerated() {

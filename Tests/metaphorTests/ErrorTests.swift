@@ -176,7 +176,7 @@ struct ErrorThrowingTests {
 
     @Test("ComputeKernel with invalid function name throws")
     func invalidKernelFunction() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         #expect(throws: MetaphorError.self) {
             _ = try ComputeKernel(
                 device: device,
@@ -263,7 +263,7 @@ struct ErrorContractTests {
 
     @Test("ComputeKernel wraps Metal compile errors as shaderCompilationFailed")
     func computeKernelWrapsCompileError() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         expectMetaphorError(
             {
                 _ = try ComputeKernel(
@@ -277,7 +277,7 @@ struct ErrorContractTests {
 
     @Test("MImage wraps MetalKit loader errors as image(.loadFailed)")
     func imageWrapsLoaderError() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let missing = "/nonexistent/metaphor-test/never.png"
         expectMetaphorError(
             {
@@ -291,7 +291,7 @@ struct ErrorContractTests {
 
     @Test("Mesh.loadOBJ wraps Foundation IO errors as mesh(.loadFailed)")
     func meshWrapsIOError() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let missing = URL(fileURLWithPath: "/nonexistent/metaphor-test/never.obj")
         expectMetaphorError(
             {
@@ -305,7 +305,7 @@ struct ErrorContractTests {
 
     @Test("ResourceLoader wraps MetalKit loader errors as image(.loadFailed)")
     func resourceLoaderWrapsLoaderError() async throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let loader = ResourceLoader(device: device)
         let missing = "/nonexistent/metaphor-test/never.png"
         do {

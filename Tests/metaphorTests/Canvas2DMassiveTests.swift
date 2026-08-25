@@ -195,7 +195,7 @@ struct Canvas2DMassiveShaderTests {
 
     @Test("source shader compiles and exposes expected functions")
     func sourceShaderCompiles() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let source = try #require(ShaderLibrary.loadShaderSource("canvas2DMassive"))
         let lib = try device.makeLibrary(source: source, options: nil)
 

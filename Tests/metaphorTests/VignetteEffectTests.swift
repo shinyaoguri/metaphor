@@ -49,7 +49,7 @@ struct VignetteEffectTests {
 
     /// `VignetteEffect` を 1 回だけ通した結果を読み戻します。
     private func applyVignette(_ effect: VignetteEffect?) throws -> GoldenImage {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let commandQueue = device.makeCommandQueue()!
         let shaderLibrary = try ShaderLibrary(device: device)
         let pipeline = try PostProcessPipeline(
