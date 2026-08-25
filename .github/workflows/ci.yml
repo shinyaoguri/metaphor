@@ -784,6 +784,15 @@ jobs:
             exit 1
           fi
           echo "OK: every upstream job succeeded or was skipped."
+      # このジョブは本来チェックアウトを要らないので、ブリッジが走る run でだけ
+      # `scripts/gh-retry.sh` を取りに行く（Issue #1132）。sparse checkout の 1 ファイル
+      # なので、PR の run（大多数）にはコストが 1 秒も乗らない。
+      - uses: actions/checkout@v7
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'merge_group'
+        with:
+          sparse-checkout: scripts/gh-retry.sh
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
       - name: Bridge to legacy status (workflow_dispatch / merge_group)
         # Repository rulesets on personal repos evaluate required_status_checks
         # against the legacy Statuses API. pull_request runs satisfy it through
@@ -797,7 +806,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh api -X POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+          # 一過性の失敗で落ちると、CI が全部 green なのに `ci-gate` の legacy
+          # Status が立たずマージできなくなるので gh-retry.sh 経由（Issue #1132）。
+          # Statuses API は同じ context へ何度 POST しても combined status が
+          # 最後の 1 件になるだけなので、リトライで二重になる副作用が無い。
+          # budget は既定の 3 回のまま: ここが落ちても `gh run rerun --failed` で
+          # このジョブだけを回し直せば同じ SHA に立て直せる（ci.yml の PR ゲートと
+          # 同じ「やり直しが安い」側。Issue #1006 の考え方）。
+          scripts/gh-retry.sh api -X POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=success \
             -f context=ci-gate \
             -f description="CI passed via ${{ github.event_name }} run"

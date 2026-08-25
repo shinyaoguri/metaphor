@@ -348,7 +348,10 @@ jobs:
           # は GraphQL なので、2026-08-17 の GraphQL 503 障害にそのまま刺さる。
           # 一過性の失敗だけをリトライし、403/404 のような定義的な失敗は即落とす。
           PR_SHA=$(scripts/gh-retry.sh pr view "$PR_NUMBER" --json headRefOid --jq '.headRefOid')
-          gh api -X POST "repos/${GITHUB_REPOSITORY}/statuses/${PR_SHA}" \
+          # POST も同じ経路で包む（Issue #1132）。Statuses API は同じ context へ
+          # 何度 POST しても combined status が最後の 1 件になるだけなので、
+          # リトライで二重になる副作用が無い。
+          scripts/gh-retry.sh api -X POST "repos/${GITHUB_REPOSITORY}/statuses/${PR_SHA}" \
             -f state=success \
             -f context=ci-gate \
             -f description="CI passed via workflow_dispatch run"
@@ -356,7 +359,22 @@ jobs:
       - name: Squash-merge release PR
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh pr merge "$PR_NUMBER" --squash --delete-branch
+          # 前後のステップと同じ 6 回（Issue #1132）。ここから先はやり直しが
+          # 効かない: release ブランチ push と PR 作成が済んでいるので、単純な
+          # 再実行は `gh pr create` が二重になって通らず、人手でマージして
+          # `git tag` を打つしかない。
+          GH_RETRY_ATTEMPTS: '6'
+        # リトライで二重マージにはならない（Issue #1132 で gh 2.98 の実装を確認）。
+        # `gh pr merge` は PR を引いた時点で state==MERGED なら `merge()` を
+        # 早期 return し、`canMerge()` も `deleteRemoteBranch()` も同じ印で畳む
+        # ので、マージ済みの PR へ打ち直すと **API を叩かずに exit 0** になる。
+        # つまり「mutation は通ったが応答が落ちた」ときこそリトライが救う。
+        #
+        # 直前のステップで legacy Status を立てたばかりなので、GitHub 側の
+        # mergeStateStatus がまだ BLOCKED のことがある。これは HTTP ステータスの
+        # 付かない失敗として gh-retry.sh のリトライ側に落ちるので、伝播待ちも
+        # ここで吸収される。
+        run: scripts/gh-retry.sh pr merge "$PR_NUMBER" --squash --delete-branch
 
       # --- Tag the merged commit on main ---
       - name: Tag the merged commit
