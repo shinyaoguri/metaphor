@@ -30,6 +30,34 @@ import Testing
 /// つまり環境差はごく小さいが、**1 画素でもズレたらハッシュは不一致**になる。
 /// ハッシュ完全一致を合否条件にすると環境ごとにゴールデンを持つしかなくなり、
 /// 意図した見た目変更のたびに全環境ぶんの更新が必要になって保守が破綻する。
+/// `curves-2d` の検出力検査で回す「曲線のつまみ」1 つぶん（#1160）。
+///
+/// `@Test(arguments:)` は Suite の外（nonisolated）で評価されるため、`@MainActor` な
+/// ``GoldenScenes/curves2DDraw(bezierDetail:curveDetail:curveTightness:)`` をここで
+/// 呼んで描画クロージャを作ることはできない。**値だけ**を渡し、クロージャの生成は
+/// テスト本体（`@MainActor`）で行う。
+struct CurveGoldenKnob: Sendable, CustomStringConvertible {
+    let label: String
+    let bezierDetail: Int?
+    let curveDetail: Int?
+    let curveTightness: Float?
+
+    var description: String { label }
+}
+
+/// 検出力検査で回すつまみ。既定値からずらす方向は「実際に踏まれた退行」に寄せてある。
+let curveGoldenKnobs: [CurveGoldenKnob] = [
+    CurveGoldenKnob(
+        label: "bezierDetail 20→24（#813 以前の固定値）",
+        bezierDetail: 24, curveDetail: nil, curveTightness: nil),
+    CurveGoldenKnob(
+        label: "curveDetail 20→12",
+        bezierDetail: nil, curveDetail: 12, curveTightness: nil),
+    CurveGoldenKnob(
+        label: "curveTightness 0.0→0.3",
+        bezierDetail: nil, curveDetail: nil, curveTightness: 0.3),
+]
+
 @Suite("Golden Image Regression", .enabled(if: MetalTestHelper.isGPUAvailable))
 @MainActor
 struct GoldenImageTests {
@@ -155,6 +183,51 @@ struct GoldenImageTests {
         #expect(
             diff.exceedingRatio > scene.tolerance.maxExceedingRatio,
             "鏡面ローブの変化が許容ピクセル比率に飲まれる（\(diff.summary)）"
+        )
+    }
+
+    /// `curves-2d` は**曲線の既定値に意図的に依存している**（シーン側で `bezierDetail()` /
+    /// `curveDetail()` / `curveTightness()` を設定しない）ので、既定が動けば赤くなる——
+    /// はずだが、その主張は絵を見ても分からない。#535 と同じ形で、
+    /// 「そのつまみを回すと許容差を超えて絵が動く」ことを毎回測っておく。
+    ///
+    /// これが緑を返せなくなったら、曲線がキャンバスの外へ出た・線が細くなりすぎた等で
+    /// シーンの検出力が落ちている。構図を直すこと（#1160）。
+    ///
+    /// `bezierDetail: 24` は **#813 以前の `bezier()` の固定値**そのもので、この検査は
+    /// 「あのとき curves-2d があれば赤くなったか」の実測でもある。
+    @Test("曲線のゴールデンが分割数・tightness の変化を検出できる", arguments: curveGoldenKnobs)
+    func curveGoldenDetectsCurveParameterChanges(_ knob: CurveGoldenKnob) throws {
+        let scene = try GoldenScenes.scene(named: "curves-2d")
+        let base = try OffscreenSketchHarness.render(
+            size: scene.size, mode: scene.goldenMode,
+            effects: scene.makeEffects(), draw: scene.draw
+        )
+        let changed = try OffscreenSketchHarness.render(
+            size: scene.size, mode: scene.goldenMode,
+            effects: scene.makeEffects(),
+            draw: GoldenScenes.curves2DDraw(
+                bezierDetail: knob.bezierDetail,
+                curveDetail: knob.curveDetail,
+                curveTightness: knob.curveTightness
+            )
+        )
+
+        let diff = base.compare(to: changed, channelTolerance: scene.tolerance.maxChannelDiff)
+        print("[golden-power] curves-2d \(knob.label): \(diff.summary)")
+        #expect(
+            diff.maxChannelDiff > scene.tolerance.maxChannelDiff,
+            """
+            \(knob.label) を変えても許容差を超えて絵が動かない（\(diff.summary)）。
+            curves-2d はこのつまみの退行を検出できていない。まず**つまみの値がライブラリの
+            既定と同じになっていないか**を疑うこと（既定を変えたなら ``curveGoldenKnobs``
+            も動かす）。そうでなければ曲線がキャンバス外へ出た等で構図の検出力が
+            落ちているので、曲線を大きく・曲率を高く取り直すこと（#1160）。
+            """
+        )
+        #expect(
+            diff.exceedingRatio > scene.tolerance.maxExceedingRatio,
+            "\(knob.label) の変化が許容ピクセル比率に飲まれる（\(diff.summary)）"
         )
     }
 
