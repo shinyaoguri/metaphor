@@ -22,9 +22,19 @@ here.
   `Sources/MetaphorCore/Sketch/` or bridge extensions in `Sources/metaphor/`.
 - `SketchContext` is the routing layer. It owns user-visible state and delegates
   rendering calls to `Canvas2D`, `Canvas3D`, exporters, compute helpers, and
-  optional subsystem bridges.
+  optional subsystem bridges. The `Sketch` extension and the context method are
+  the same call — `circle(400, 300, 100)` is `ctx.circle(400, 300, 100)` with the
+  active context resolved implicitly — so a fix belongs in `SketchContext` unless
+  the wrapper itself is wrong.
 - `Canvas2D` / `Canvas3D` are the Metal backends. They should keep public API
   behavior Processing-like while preserving GPU batching and resource reuse.
+- Shaders are Metal Shading Language sources embedded as Swift strings
+  (`Shaders/ShaderSources/*.txt`, generated from `Shaders/Metal/*.metal`) and
+  compiled at runtime by `ShaderLibrary`, which caches the resulting `MTLLibrary`
+  and `MTLFunction` per key. Custom shaders join the same cache through
+  `ShaderLibrary.register(source:as:)` / `register(library:as:)` /
+  `registerFromFile(path:as:)` — the file variant is what shader hot reload
+  re-reads.
 - `MetaphorRenderer` owns the frame lifecycle: compute, render, shadow,
   RenderGraph, post-process, then plugin `post()` (output phase), then blit.
 - Frame output (Syphon etc.) is a plugin via `MetaphorOutputPlugin.post()`, not

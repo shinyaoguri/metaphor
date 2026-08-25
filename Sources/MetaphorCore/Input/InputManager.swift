@@ -90,6 +90,23 @@ public final class InputManager {
     /// ユーザーが ``onFileDrop`` を直接設定しても衝突しないよう独立させている。
     var onFileDropInternal: (([String]) -> Void)?
 
+    // MARK: - Frame-local Press State (#1100)
+
+    // 「このフレームで押下イベントが届いたか」と「その押下位置」。押下は移動では
+    // ないので、押下位置へカーソルが飛んだぶんをドラッグとして読みたくない側
+    // （orbitControl()）が、pmouse の代わりにこの位置を起点として使います。
+    //
+    // 印を落とすのはフレーム頭の updateFrame() ではなく、フレーム末の endFrame()。
+    // AppKit はフレームとフレームの間で押下を処理するため、フレーム頭で落とすと
+    // draw() が見る前に消えてしまいます（pmouse の保存を endFrame() へ置いた
+    // #522 と同じ理由）。
+    //
+    // pmouseX/pmouseY 自体には触れません。「1 フレーム前の位置」という契約を曲げると、
+    // pmouse を直接読んでいるスケッチの見え方まで変わってしまいます。
+    private(set) var isMousePressedThisFrame: Bool = false
+    private(set) var mousePressX: Float = 0
+    private(set) var mousePressY: Float = 0
+
     // MARK: - Private State
 
     // 「前フレームの draw が見ていたマウス位置」。フレーム末の endFrame() で保存し、
@@ -146,6 +163,9 @@ public final class InputManager {
     func endFrame() {
         _savedMouseX = mouseX
         _savedMouseY = mouseY
+        // 押下の印はこのフレーム限り（#1100）。フレーム頭で落とすと、フレーム間で
+        // 押下が届く AppKit 経路で draw() が見る前に消える。
+        isMousePressedThisFrame = false
     }
 
     // MARK: - Event Handlers (called from MetaphorMTKView)
@@ -157,6 +177,9 @@ public final class InputManager {
         isMouseDown = true
         mouseButton = button
         _didDragSinceMouseDown = false
+        isMousePressedThisFrame = true
+        mousePressX = x
+        mousePressY = y
         onMousePressed?(x, y, button)
     }
 

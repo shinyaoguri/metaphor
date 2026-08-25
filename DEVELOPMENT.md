@@ -14,7 +14,7 @@ cd metaphor
 make setup
 ```
 
-`make setup` はツールの事前確認（`scripts/preflight-check.sh`）と pre-push フック（生成物の鮮度チェックなど）の導入を行います。サブモジュールもバイナリのビルドもありません — Syphon は v0.12.0 から独立パッケージ [metaphor-syphon](https://github.com/shinyaoguri/metaphor-syphon) が持ち、本体の `Package.swift` は binaryTarget を宣言しません（[ADR-0014](docs/adr/0014-viewer-frame-ipc-and-syphon-plugin.md)。`scripts/check-no-binary-targets.sh` が CI で守ります）。
+`make setup` はツールの事前確認（`scripts/preflight-check.sh`）と pre-push フック（ビルド不要な CI 検査・生成物の鮮度・DocC の警告 0。詳細は下の「push すると一部は勝手に鳴る（pre-push）」）の導入を行います。サブモジュールもバイナリのビルドもありません — Syphon は v0.12.0 から独立パッケージ [metaphor-syphon](https://github.com/shinyaoguri/metaphor-syphon) が持ち、本体の `Package.swift` は binaryTarget を宣言しません（[ADR-0014](docs/adr/0014-viewer-frame-ipc-and-syphon-plugin.md)。`scripts/check-no-binary-targets.sh` が CI で守ります）。
 
 ## Build Commands
 
@@ -22,7 +22,9 @@ make setup
 make setup      # ツールの事前確認 + git hooks の導入
 make build      # swift build
 make test       # swift test
-make ci-check   # CI と同条件（-warnings-as-errors）で整形検査 + build + test
+make ci-check   # per-PR CI のうち手元で走らせられる検査を全部（push 前に通す）
+make static-check # そのうちビルドが要らない半分だけ（lint / 契約 / スクリプトのテスト）
+make static-check-fast # さらにそのうち生成器スクリプトのテストを除いた 12 本（pre-push が毎回走らせる）
 make clean      # ビルド成果物をクリーン
 make check      # セットアップ状態を確認
 make docs       # DocC ドキュメントをビルド
@@ -38,7 +40,40 @@ make llms-txt   # AI-readable API reference を生成
 日常のターゲットは試行錯誤しやすいよう緩いまま残し、CI と同じ厳しさは `make ci-check` に集約しています。push / PR の前にこれを通してください。
 
 ```bash
-make ci-check   # swift-format の検査 + swift build / swift test を -Xswiftc -warnings-as-errors 付きで（METAPHOR_REQUIRE_GPU=1 も CI に合わせる）
+make ci-check   # per-PR CI（build-and-test）のうち、手元で走らせられる検査を全部
+```
+
+**`make ci-check` は per-PR CI の `build-and-test` ジョブの鏡です**（#1020）。ビルドとテストだけでなく、lint 群（actionlint / ruff / swift-format）・クロスリポ契約・生成物の鮮度・DocC の警告 0・リファレンス URL・doc コメントのスニペットのコンパイルまで、**そのジョブが走らせるステップのうち手元で再現できるものを全部**走らせます（実測 104 秒 / warm な `.build`・Apple Silicon）。
+
+以前はここに build + test + 整形検査しか無く、**「`make ci-check` が green なのに CI が赤い」が繰り返し起きていました**（起票時点の取りこぼしは 14 ステップ。DocC の警告検査はそのうちの 1 本でしかなく、[#334](https://github.com/shinyaoguri/metaphor/issues/334) の doc コメント言語ラチェットや `scripts/tests` のユニットテストも同じ穴に落ちていました）。
+
+対応づけは `scripts/check-ci-parity.py` の台帳が正本で、**ズレたら CI と `make static-check` の両方が落ちます**。`ci.yml` の `build-and-test` にステップを足す人は、「`ci-check` に入れる」か「CI 専用である理由を書く」かを必ず一度は決めることになります。
+
+Swift を 1 行も触っていない PR（docs / scripts / workflows だけ）なら、ビルドの要らない半分だけで足ります。
+
+```bash
+make static-check   # lint 群 + 契約 + 生成器スクリプトのユニットテスト（実測 約 40 秒）
+```
+
+### push すると一部は勝手に鳴る（pre-push）
+
+**叩き忘れても、安いものは pre-push が代わりに鳴らします**（#1155）。`make setup` で入る `scripts/hooks/pre-push` が `git push` のたびに走らせるのは次の 3 つです。
+
+| いつ | 何が走るか | 実測 |
+|---|---|---|
+| 毎回（ブランチ削除の push を除く） | `make static-check-fast`（ビルド不要な CI 検査 12 本） | 約 5 秒 |
+| 生成物の入力を触った push | `scripts/check-generated-freshness.sh`（触ったものだけ選ぶ） | 検査による（`llms` は `swift build` を含む） |
+| `Sources/**/*.swift` か DocC カタログを触った push | `make docs-check`（DocC の警告 0） | 約 3 秒 |
+
+ここが鳴らすのは **per-PR CI の `build-and-test` が required かつ無条件に走らせるステップだけ**で、新しい規則は 1 つも足していません — 失敗を手元へ早めているだけです（同じ判断を #333 の swift-format と #788 のリファレンス画像でも下しています）。`scripts/tests`（実測 35 秒）だけは載せていません。ビルド不要な検査の中で唯一コストがビルドと同じ桁で、`git push` の体感を変えてしまうためです（`make static-check` で回してください）。
+
+降りたいときは `git push --no-verify`。CI が同じ検査を独立に走らせるので、降りても歯止めが消えるわけではありません（早く気付けなくなるだけです）。
+
+doc コメントの ` ``symbol(_:_:)`` ` を書き換えただけ、というときに効くのは次の 2 本です（どちらも `ci-check` に含まれます）。シグネチャは `llms.txt` が正本なので、`grep -nE "func <名前>\(" llms.txt` で先に突き合わせておくと一発で通ります。
+
+```bash
+make docs-check              # DocC の警告 0（解決できないシンボルリンクはここで落ちる。実測 3 秒）
+make reference-links-check   # docs/** が外部リンクしている DocC リファレンス URL（実測 4 秒）
 ```
 
 ### 整形は swift-format に任せる
@@ -64,13 +99,16 @@ CI（`build-and-test` の `Check Swift formatting`）と pre-push フックの�
 
 対象は `Sources/` と `Tests/` です。`Examples/` と生成物（`BuiltinShaders+Generated.swift`）は外してあります（理由は `scripts/lint-swift.sh` の冒頭）。
 
-`make ci-check` で再現できないものは次の 4 つです。
+`make ci-check` を通しても**まだ残る乖離**は次の 5 つです（全数は `scripts/check-ci-parity.py` の `LEDGER` / `JOB_LEDGER` が正本で、ここはその読み下しです）。
 
+- **PR のメタデータを読む 3 ステップ** — PR タイトルの Conventional Commits 検査 / `changelog.d` エントリの要求 / 描画変更への視覚的証跡の要求。いずれも GitHub API から PR のタイトル・本文・ラベルを読むので、PR ができるまで走りません。落ちても**再 push は要らず** `gh run rerun --failed <run-id>` で通ります
+- **`CONTRACT.md` のクロスリポ byte-identity** — metaphor-cli の既定ブランチを GitHub API で引くため CI のみ（`scripts/check-contract-identity.sh`）
 - **Swift 5.10 / Xcode 15.4 でのビルド** — CI の `build-swift-5-10` が担当（このジョブでしか出ない警告が実在します。#328）
 - **`website/` の Astro ビルド** — CI の `website-build` が担当（#491）。手元で見るなら `cd website && npm ci && npm run build`
   - 公開サイトは Astro（LP + `/tutorial/`）と DocC（`/reference/`）の 2 つのビルドを**並べた**ものです。両方そろった状態を手元で見るには、`make docs` の後に下記の「公開サイトの構成を手元で確認する」を実行します（構成のずれで公開側だけ壊れた前科があります — #529）
-- **`CONTRACT.md` のクロスリポ byte-identity** — GitHub API を叩くため CI のみ（`scripts/check-contract-identity.sh`）
-- **生成物の鮮度**（`llms.txt` / examples index / shader sources / tutorial snippets）— `make setup` が入れる pre-push フックが見ます
+- **変更された example のビルド** — CI の `examples-diff-build` が担当。手元は `make examples-check`（全数）か `./scripts/run-examples.sh --build-only --smoke`（代表セット）で、`Examples/` を触った PR では通しておくと安心です
+
+`make contract-schema`（wire-schema 検査）だけは `check-jsonschema` が要ります（`pip install check-jsonschema`）。preflight の必須ツールではないので、無ければ `make ci-check` は**その 1 本だけ断って飛ばします**（CI は pip install してから無条件に走らせます）。`contract/` を触るときは入れておいてください。
 
 動作を切り替える環境変数（いずれも既定 OFF。ローカルでは通常不要）:
 
@@ -82,7 +120,7 @@ CI（`build-and-test` の `Check Swift formatting`）と pre-push フックの�
 
 ### ワークフローを触ったら `make lint-workflows`
 
-`.github/workflows/*.yml` は actionlint で検証します（#460）。CI の `build-and-test` が同じスクリプトを呼ぶので、手元で通れば CI でも通ります。
+`.github/workflows/*.yml` は actionlint で検証します（#460）。CI の `build-and-test` が同じスクリプトを呼ぶので、手元で通れば CI でも通ります（`make static-check` / `make ci-check` からも走ります）。ワークフローだけを直したときの最短経路として単体でも呼べます。
 
 ```bash
 make lint-workflows   # .github/workflows/*.yml を actionlint にかける
@@ -98,11 +136,11 @@ make lint-workflows   # .github/workflows/*.yml を actionlint にかける
 
 ### CI が赤いまま終わらせない（Stop hook）
 
-`make ci-check` を通しても CI だけが赤くなることはあります（上の 3 つ、あるいは単なる見落とし）。push しっぱなしで気付かないのを防ぐため、Claude Code のセッションが**赤い CI を残して終われない**ようにしています。`git push` を見たら見届け対象の印を置き、セッションを終えようとしたときに PR のチェック状況を見て、実行中なら見届けを促し、赤なら失敗ジョブ名とログ取得コマンドを添えて差し戻す Stop hook です（自動修正は 3 回・待機は 6 回で打ち切り、以降は人間の判断に返します）。
+`make ci-check` を通しても CI だけが赤くなることはあります（上の「まだ残る乖離」の 5 つ、あるいは単なる見落とし）。push しっぱなしで気付かないのを防ぐため、Claude Code のセッションが**赤い CI を残して終われない**ようにしています。`git push` を見たら見届け対象の印を置き、セッションを終えようとしたときに PR のチェック状況を見て、実行中なら見届けを促し、赤なら失敗ジョブ名とログ取得コマンドを添えて差し戻す Stop hook です（自動修正は 3 回・待機は 6 回で打ち切り、以降は人間の判断に返します）。
 
 この仕掛けは**このリポジトリには同梱していません**。守る対象がリポジトリの構成ではなく Claude の振る舞いなので、開発者個人の Claude 環境（[shinyaoguri/claude-plugins](https://github.com/shinyaoguri/claude-plugins) の `repo-standards` プラグイン）が全プロジェクト向けに供給しています（経緯は同リポの [ADR 0016](https://github.com/shinyaoguri/claude-plugins/blob/main/docs/decisions/0016-agent-behavior-hooks-in-plugin.md)）。外部のコントリビュータの手元では動かないので、このリポジトリのセットアップとしては何も要りません。
 
-差し戻されたときの直し方は通常のローカル検証と同じで、`make ci-check` を CI と同条件で通してから追加コミットしてください。
+差し戻されたときの直し方は通常のローカル検証と同じで、`make ci-check` を通してから追加コミットしてください。
 
 カバレッジのモジュール別サマリは CI の artifact（`coverage-report`）とジョブ要約で確認できます。手元で見るには:
 
@@ -128,12 +166,13 @@ swift run
 CI での検証範囲は 3 段構えです（全 278 本を毎 PR で建てるのはコストが見合わないため）:
 
 - **PR が `Examples/` を触ったとき** — 触った example だけを `ci.yml` の `examples-diff-build` がビルド（対象の列挙は `./scripts/changed-examples.sh`）
-- **週次 + リリース前** — 代表セット（~19 本）を `examples-sweep.yml` と `release.yml` がビルド
-- **全数** — `examples-sweep.yml` の workflow_dispatch（`full=true`）、または手元で `make examples-check`
+- **週次** — **全数**を `examples-sweep.yml` が 5 シャードに分けてビルド（1 シャード 52〜56 分の実測。GitHub-hosted の**ジョブ上限 6 時間**に 1 ジョブでは収まらないため分割している）。同時に走らせるのは 4 本まで（`max-parallel`）で、Free プランの macOS 同時実行上限 5 に対して**枠を 1 つ空ける**ためです — 5 並列にするとスイープ中は他の PR の CI が 1 つも動けません
+- **リリース前** — 代表セット（~19 本）を `release.yml` がビルド
+- **手元** — `make examples-check`（全数）／ `./scripts/run-examples.sh --build-only --smoke`（代表セット）
 
 ## 生成物の管理（重要）
 
-以下のファイルはチェックインされていますが**生成物**です。手で編集せず、入力を変えたら再生成してコミットします。pre-push フックと CI が陳腐化を検出します。
+以下のファイルはチェックインされていますが**生成物**です。手で編集せず、入力を変えたら再生成してコミットします。陳腐化は pre-push フック・`make freshness-check`・CI の 3 つが検出します（実体は `scripts/check-generated-freshness.sh` の 1 本）。
 
 | 出力 | 入力 | 再生成コマンド |
 |---|---|---|
@@ -151,7 +190,11 @@ CI での検証範囲は 3 段構えです（全 278 本を毎 PR で建てる�
 - **前文（カスタムシェーダーへ配る MSL の頭）は 2D / 3D / postFX とも `.h` からの生成物**です（3D は #707、postFX は #718、2D は #714）。構造体を直すときは `Shaders/Metal/Metaphor{Canvas2D,Canvas3D,PostProcess}Types.h` を直して再生成します — Swift 側に前文の文字列を書き足さないでください。組み込みシェーダーも同じ `.h` を include するので、片方だけ直して食い違うことがありません（`ShaderPreludeTests` が Swift 側とのレイアウト一致まで見ます）。
 - 生成器のフィルタ規則は `python3 -m unittest discover -s scripts/tests` で検証します（CI 常設・ビルド不要）。「生成物が最新か」のチェックは規則そのものを守れません — API 面を取りこぼしても出力は自己整合したまま緑になるため、採用・除外の判断を変えたらここにテストを足します。
 - **テストの中で一時リポジトリを `git init` するときは `scripts/tests/_git_helpers.py` の `init_repo()` / `git()` を使います**（#979）。素の `git` は開発機のグローバル設定を継ぐので、コミット署名を設定したマシンではテスト中の `git commit` まで署名を要求され、署名エージェントが使えなければ exit 128、ロック中なら応答待ちで止まります。CI の runner には署名設定が無く常に green なので、**このずれは CI からは永久に見えません**。密封の中身と、それが効いていることの回帰テストは `scripts/tests/test_git_helpers.py`。
+- **鮮度検査は `make freshness-check` で 1 コマンドで回せます**（`make ci-check` からも呼ばれます）。pre-push は push する range から必要な検査だけを選ぶので、**push しない限り一度も鳴りません** — 手元で先に確かめたいときはこちらです。GPU が要る撮影系は `--check`（指紋の照合）だけなので、GPU が無くても通ります。
+- **`scripts/signed-commit.py`（GitHub API 経由の署名コミット）は pre-push を通りません**。`git push` ではなく GraphQL へ直接投げるためで、署名は外れませんが**pre-push が担っていた検査が外れます**（[#978](https://github.com/shinyaoguri/metaphor/issues/978) / [#1155](https://github.com/shinyaoguri/metaphor/issues/1155)）。いまは送信の前に同じものを自分で走らせ、落ちたら 1 バイトも送らずに止まります（`make static-check-fast` → 鮮度検査 `--all` → `make docs-check` の順。この経路は「push する range」を持たず作業ツリーしか見られないので、pre-push と違って絞り込みができません）。降りられるのは `--skip-freshness` / `--skip-ci-checks` を明示したときだけで、渡しているのは `release.yml` だけです（runner の変更セットに `MetaphorVersion.swift` が入るため `make llms-txt` = `swift build` が丸ごと乗るのと、リリースブランチの PR で CI が同じ検査を独立に回すため）。
 - AI 向けドキュメント（CLAUDE.md / docs/ai/）とコードの整合は `make ai-docs-check` で検証できます。ドキュメント・モジュール一覧・バージョンスニペットを変えたら実行してください。
+- `docs/**` の相対リンクと `docs/adr/README.md` の索引の整合は `make docs-links-check` で検証できます（CI でも毎 PR 走ります）。ドキュメントを移動・改名した、見出しを変えた、ADR を足したときに実行してください。
+- **本文が張るリファレンス URL（`https://shinyaoguri.github.io/metaphor/reference/documentation/…`）は `make reference-links-check` で検証できます**（[#987](https://github.com/shinyaoguri/metaphor/issues/987)。CI では対象の Markdown か公開 API が動いた PR で走ります）。この URL には**シグネチャが焼き込まれている**ので、引数ラベルを 1 つ足しただけで 404 になります（#959 では 4 本が同時に死にました）。照合先は `make docs` のローカル出力なので、公開前の変更でも判定できます。壊れているときは行き先の候補まで出ます。
 
 ## 公開サイトの構成を手元で確認する
 
@@ -336,7 +379,7 @@ dependabot の PR は PR head だけで CI が回ります。ルールセット�
 |---|---|
 | `website/**` | `npm ci && npm run build`（CI の `website-build` ジョブと同じコマンド） |
 | `.github/workflows/**` | ローカル検証は無し（PR の checks が正）。runner 一覧だけ出して、Node 版縛りのある `actions/*` bump の判断材料にする |
-| `Sources/**` · `Package.swift` | `swift build` + `swift test`（`-warnings-as-errors` と `METAPHOR_REQUIRE_GPU=1` 付き = `make ci-check` 相当。CI の `build-and-test` ジョブと同じコマンド） |
+| `Sources/**` · `Package.swift` | `swift build` + `swift test`（`-warnings-as-errors` と `METAPHOR_REQUIRE_GPU=1` 付き = `make ci-check` のビルド / テスト部分と同条件。CI の `build-and-test` ジョブと同じコマンド） |
 
 領域を指定して回すこともできます（`--only website`）。PR 以外の ref も `--ref <git-ref> --only website` で同じ検証にかけられます。
 

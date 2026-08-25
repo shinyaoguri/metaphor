@@ -89,7 +89,7 @@ ADR は既に「1.0 前にやる」と自ら宣言した項目を持つ。**v1.0
 1. **GPU skip の可視化(G5)** — CI に `isGPUAvailable` の明示アサート、または skip 件数レポートを追加。ランナー変更で Metal が消えても現状は誰も気付かない
 2. **ゴールデンイメージ回帰(G6)** — 決定論レンダリング(#70)+ 既存の `RenderTestHelper` 読み戻しを全フレームハッシュ比較に拡張するだけで基盤が成立する。レンダリングライブラリの 1.0 として、シェーダ/パイプライン変更の見た目退行を検出する最重要ゲート
 3. **`Sketch/` のテスト増強(G7)** — 凍結対象の中心が最薄という逆転の解消
-4. **v1.0 タグ前の Examples 全数スイープ(G18)** — `examples-sweep.yml` の `full=true` を一度 green にすることを 1.0 のリリース条件に含める
+4. **v1.0 タグ前の Examples 全数スイープ(G18)** — `examples-sweep.yml`（週次で全数を 5 シャード）を一度 green にすることを 1.0 のリリース条件に含める
 5. **最小サポート環境でのテスト実行(G17)** — macos-14 ジョブをビルドのみ→テストありへ(Swift Testing が 5.10 に無い制約があるため、実現方法は要検討。少なくとも `build-swift-5-10` の必須チェック昇格)
 6. カバレッジのモジュール別可視化、`ci.yml` への `timeout-minutes`、壁時計アサーション(`ObservabilityOverheadTests`)の #149 基準での隔離
 
@@ -226,7 +226,7 @@ ADR は既に「1.0 前にやる」と自ら宣言した項目を持つ。**v1.0
 **技術条件**(readiness — すべて必須):
 
 - [ ] **既知の設計上の宿題が片付いている**(2026-08-13 差し替え — 旧条件「0.9 系で breaking なしの実績」は凍結撤回により判定材料にならなくなった。ADR-0009)。昇格時点で open な API 設計課題がゼロであること。現時点の中身 = #519・#523(Processing 互換の意味論)。片付いた分: #322 フェーズ 2(旧名削除)は 2026-08-14 に完了、#339(契約フリーズ点・旧 W4-2)は 2026-08-18 に完了(フリーズ点と `schemaVersion` bump 規則を CONTRACT.md へ明記)。#504(矩形版 `text()` の反転)は 2026-08-13 に実装バグと判明し修正済み — 意味論の選択ではなかった
-- [ ] Examples の全数スイープ green(`examples-sweep.yml` full=true)。本数は `docs/ai/examples-index.json` の `count` が正典(#490)
+- [ ] Examples の全数スイープ green(`examples-sweep.yml`。週次で全数)。本数は `docs/ai/examples-index.json` の `count` が正典(#490)
 - [ ] API doc コメント英語化(W3-1)完了
 - [ ] metaphor-sketches での実運用検証を通過（具体化 = リファレンス作品 Epic [#414](https://github.com/shinyaoguri/metaphor/issues/414)。要件は [roadmap-processing-unity.md](roadmap-processing-unity.md) の「作品トラック」— 複数シーン + 複数入力 + 30 分無人稼働。2026-08-07 追記）
   - 2026-08-15: **1 本目 `0815-strata` が要件を満たして完走**（所見と起票は roadmap の「J の所見」）。ここで見つかった穴（#684〜#688 / cli#133）の解消と、2 本目（シーンがリソースを持つ型 — #571 の寿命境界の要否を判定する）をもって条件充足とするかは未判断

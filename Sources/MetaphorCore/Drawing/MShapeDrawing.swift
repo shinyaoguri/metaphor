@@ -31,11 +31,35 @@ extension SketchContext {
     ///
     /// プリミティブシェイプの場合、サイズは元の寸法を上書きします。
     /// カスタムシェイプの場合、指定範囲に収まるようスケーリングされます。
+    ///
+    /// How the arguments are read follows ``Canvas2D/shapeMode(_:)``, for a 2D shape only (3D is
+    /// out of scope, as it is for `rectMode` and its siblings; ADR-0005).
     public func shape(_ s: MShape, _ x: Float, _ y: Float, _ w: Float, _ h: Float) {
         if s.is3D {
             drawShape3DWithSize(s, tx: x, ty: y, tz: 0, w: w, h: h)
         } else {
-            drawShape2DWithSize(s, tx: x, ty: y, w: w, h: h)
+            let r = Self.resolveShapePosition(canvas.currentShapePositionMode, x, y, w, h)
+            drawShape2DWithSize(s, tx: r.x, ty: r.y, w: r.w, h: r.h)
+        }
+    }
+
+    /// Normalizes the arguments of `shape(_:_:_:_:_:)` to `.corner` (upper-left plus a size)
+    /// according to ``Canvas2D/shapeMode(_:)``.
+    ///
+    /// Drawing only ever sees the normalized values, so the default `.corner` is the identity and
+    /// nothing that used to be drawn moves by a pixel. Same formula as Processing's
+    /// `PGraphics.shape()`.
+    static func resolveShapePosition(
+        _ mode: ShapePositionMode, _ x: Float, _ y: Float, _ w: Float, _ h: Float
+    ) -> (x: Float, y: Float, w: Float, h: Float) {
+        switch mode {
+        case .corner:
+            return (x, y, w, h)
+        case .corners:
+            // w, h は右下隅の座標
+            return (x, y, w - x, h - y)
+        case .center:
+            return (x - w / 2, y - h / 2, w, h)
         }
     }
 

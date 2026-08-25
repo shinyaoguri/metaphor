@@ -70,12 +70,12 @@ Phase 1 完了・Epic A/E/F の消化から時間が経ったため、**「標�
 
 | 群 | 内容 | 受け皿 |
 |---|---|---|
-| 色の分解 | `hue()` / `saturation()` / `brightness()` / `alpha()` / `blendColor()`。`Color` は HSB→RGB の一方向のみで逆変換が無い | [#811](https://github.com/shinyaoguri/metaphor/issues/811)（新規） |
+| 色の分解 | `hue()` / `saturation()` / `brightness()` / `alpha()` / `red()` / `green()` / `blue()`。`Color` は HSB→RGB の一方向のみで逆変換が無かった | [#811](https://github.com/shinyaoguri/metaphor/issues/811) **解決済み**（戻り値は 0–1・`colorMode` 非依存。根拠は Issue のコメント）。`blendColor()` は [#1153](https://github.com/shinyaoguri/metaphor/issues/1153) へ分離 |
 | キャンバスのピクセル | `get(x,y)` / `get(x,y,w,h)` / `set(x,y,c)`。`MImage` にはあるがキャンバス版が無い | [#812](https://github.com/shinyaoguri/metaphor/issues/812)（新規） |
 | 2D 形状 | `quadraticVertex` / `bezierDetail` / `shapeMode`。調査中に **`bezier()` だけ分割数 24 固定・`bezierVertex()` は `curveDetail`(20) 依存**という食い違いも判明 | [#813](https://github.com/shinyaoguri/metaphor/issues/813)（新規） |
 | 3D の逆変換 | `modelX/Y/Z`。ADR-0007 が Follow-up に明記したまま未起票だった | [#814](https://github.com/shinyaoguri/metaphor/issues/814)（新規） |
 | 3D のパリティ残り | `ambient()` / `textureMode` / `textureWrap` / `lightFalloff` / `lightSpecular` / `beginCamera` / `frustum`。`ambient()` は uniform 側（`currentMaterial.ambientColor`）が既にあり口を開けるだけ | [#815](https://github.com/shinyaoguri/metaphor/issues/815)（新規） |
-| テキストのスタイル | p5 の `textStyle` / `textWrap` / `textBounds`。太字は `textFont("Helvetica Neue Bold")` で**実は出せる**（実測）が未文書 | [#816](https://github.com/shinyaoguri/metaphor/issues/816)（新規） |
+| テキストのスタイル | p5 の `textStyle` / `textWrap` / `textBounds`。太字は `textFont("Helvetica Neue Bold")` で**実は出せる**（実測）が未文書 | [#816](https://github.com/shinyaoguri/metaphor/issues/816) **解決済み**（`textStyle(_:)` を追加。名前の連結ではなくトレイト合成で、字面が無ければ警告 — 根拠は Issue のコメント）。`textWrap` / `textBounds` は [#1165](https://github.com/shinyaoguri/metaphor/issues/1165) へ分離し、そちらも **解決済み**（`textWrap(_:)` は既定 `.word` = 従来の挙動、`textBounds(_:_:_:)` は advance ベース = `textWidth()` と同じ物差し — 根拠は Issue のコメント） |
 | canvas 全体の `filter()` / `blend()` | 現状は `filter(_ image:_ type:)`（画像単体）と postFX のみ | Phase 2 に既載・**未起票** |
 | データ IO の小物 | `loadXML`/`saveXML`・`loadBytes`/`saveBytes`・`createReader`/`createWriter`・`nf`/`nfc`/`nfp`/`nfs`/`hex`/`binary` | 需要待ち（JSON/Table/Strings は Phase 1 #278 で充足） |
 | 画像からの IBL | p5 の `imageLight()` / `panorama()` 相当。`environment()` はプリセット 3 種のみ（G3b #710） | Epic G の残り（G2/G4 と同じ「AI が届く絵の天井」側） |
@@ -108,6 +108,9 @@ Phase 1 完了・Epic A/E/F の消化から時間が経ったため、**「標�
 4. **英語ドキュメントは並行トラックで in scope**（README/Getting Started → 公開 API doc コメント → website #74）。ADR 全訳は非目標
 5. **glTF は採用（Phase 3・import のみ・skins/animations なし）。3D 物理は Jolt 等のラップを Phase 4 需要ゲートに置く**。2D Verlet ソルバの剛体拡張はしない（角度状態を持たない土台のため不適）
 6. **作品駆動（2026-08-07 追加）**: 構造化支援（Epic K）・現場運用（Epic L）の子 Issue は、リファレンス作品（Epic J）の実需から逆算して起票する。抽象論で SceneManager を先に設計しない — ライブラリを Unity の劣化コピーへ向かわせないための規律。作品の完走は v1.0 昇格条件「metaphor-sketches での実運用検証」の具体化を兼ねる
+   - **適用範囲（2026-08-24 追記）**: このゲートが縛るのは **Epic K / L の子 Issue だけ**。次の 2 種は対象外なので、検討 Issue が並んでいても一緒に凍らせない
+     - **決定 7 の推進項目**（[#563](https://github.com/shinyaoguri/metaphor/issues/563) / [#564](https://github.com/shinyaoguri/metaphor/issues/564) / [#567](https://github.com/shinyaoguri/metaphor/issues/567) / [#568](https://github.com/shinyaoguri/metaphor/issues/568) / [#608](https://github.com/shinyaoguri/metaphor/issues/608)）— 決定 7 が「実行・観測ループの優位を伸ばす」ために名指ししたもの。作品の実需ではなく中心目標が起票の根拠
+     - **ゲートの上流**（[#573](https://github.com/shinyaoguri/metaphor/issues/573) `.app` 配布）— Epic L 自身が「`.app` 化は本 Epic の前提条件」と判定している。ゲートを開ける鍵をゲートの内側に置かない
 7. **AI 制作能力を中心目標に置く（2026-08-15 追加・オーナー合意）**: 「AI が metaphor でゲーム・3DCG アニメーション・シミュレーションを作り切れる」を技術目標とする。付随する判断:
    - **Unity 移行者獲得の市場仮説は降ろす**。Phase 3 の実装項目（PBR maps / IBL / glTF）は 1 つも捨てず、目的を「AI が到達できる絵の天井を Three.js 相当へ引き上げる」に差し替える（glTF は「AI がアセットを調達する経路」として必然）。Unity 概念の移植（#294 H1 の GameObject/Component 等）は AI 制作実験の実需が出るまで起票しない
    - **スケルタルアニメーション・3D 物理の非目標/ 需要ゲートは維持**し、ゲートの「需要」に「**AI 制作実験で実際に詰まった**」を含める（下記 Phase 4）
@@ -193,9 +196,9 @@ Phase 1 完了・Epic A/E/F の消化から時間が経ったため、**「標�
 
 | Epic | 内容 | ゲート |
 |---|---|---|
-| [#414](https://github.com/shinyaoguri/metaphor/issues/414) J: 作品駆動検証（リファレンス作品） | 作品を 1 本作り切り、踏んだ穴を都度 Issue 化。v1.0 昇格条件「実運用検証を通過」の具体化を兼ねる | **1 本目 `0815-strata` / 2 本目 `0815-salvage` 完走（2026-08-15）**。下記「J の所見」 |
-| [#415](https://github.com/shinyaoguri/metaphor/issues/415) K: 構造化支援の最小セット | Scene プロトコル + 遷移 / cue リスト / `after()`/`every()`。既存 tween/easing の上に薄く載せる | 子 Issue は J の所見後に起票（Phase 2.5 相当）。1 本目の所見は出た |
-| [#416](https://github.com/shinyaoguri/metaphor/issues/416) L: 現場運用束 | マルチディスプレイ配置（NSScreen 指定）・キオスク（常時最前面/スリープ抑止/自動復帰）・自己監視の公開 API（#273 吸収）・GPU エラー検知 | 優先度は J の運用要件で確定。単体アプリ常設をやると決めるまで着手しない |
+| [#414](https://github.com/shinyaoguri/metaphor/issues/414) J: 作品駆動検証（リファレンス作品） | 作品を 1 本作り切り、踏んだ穴を都度 Issue 化。v1.0 昇格条件「実運用検証を通過」の具体化を兼ねる | **1 本目 `0815-strata` / 2 本目 `0815-salvage` 完走（2026-08-15）**。**3 本目は「常設の現場に置いて運用する 1 本」へ再定義（2026-08-24）** — 下記「J の所見」と「3 本目の切り口」 |
+| [#415](https://github.com/shinyaoguri/metaphor/issues/415) K: 構造化支援の最小セット | Scene プロトコル + 遷移 / cue リスト / `after()`/`every()`。既存 tween/easing の上に薄く載せる | 子 Issue は J の所見後に起票（Phase 2.5 相当）。**土台（Tween の再演・異常値耐性）は #838 / #839 / #840 の修正で 2026-08-16〜17 に整った** — ゲートを塞ぐものは無い |
+| [#416](https://github.com/shinyaoguri/metaphor/issues/416) L: 現場運用束 | マルチディスプレイ配置（NSScreen 指定）・キオスク（常時最前面/スリープ抑止/自動復帰）・自己監視の公開 API（#273 吸収）・GPU エラー検知 | 優先度は J の運用要件で確定。**マルチディスプレイは実需が出た**（[#837](https://github.com/shinyaoguri/metaphor/issues/837) を triptych / darkroom が 2 回踏んだ）。キオスク・自動復帰・GPU エラー検知は 3 本目（常設）待ち |
 
 #### J の所見: 1 本目 `0815-strata`（2026-08-15）
 
@@ -290,6 +293,57 @@ Scene プロトコル自体は作品側で 130 行、しかも描画 API が `Sk
 スケルタルアニメと 3D 物理は**実需が出ていない**（当たり判定は球の距離だけで足りた）ため、
 Phase 4 の需要ゲートは開かない。
 
+#### トラック外スケッチからの逆流（2026-08-24）
+
+2026-08-16 以降、metaphor-sketches に **14 本**（atelier / encore / triptych / marionette / prism / gamut /
+galley / emulsion / sounding / escapement / darkroom / switchboard / duet / insignia）が作られ、
+上流へ多数の穴を返している（#743–#745 / #782–#786 / #793–#801 / #835–#842 / #846 / #1090–#1098 ほか）。
+これらは J のリファレンス作品ではなく、`0816-adversary` と同じ**面ごとの検査盤**の系譜にある。
+
+| | 撃つもの | 例 |
+|---|---|---|
+| 検査盤・面ごとの作品（14 本） | **単体 API の仕様逸脱**。1 面を集中的に踏み抜く | encore = Tween の状態機械 / duet = GPU compute / galley = テキスト計量 / gamut = アルファ |
+| J のリファレンス作品 | **統合と運用**。複数系統が同時に動き続けたときだけ出る穴 | strata = 4 シーン + 2 入力 + 30 分 / salvage = AI 単独制作 |
+
+**両輪で回っているが、Epic への逆流だけが 2026-08-15 から止まっていた**（上流への起票は機能していた）。
+棚卸しの結果、K / L と検討 Issue へ返した所見:
+
+- **K**: `0816-encore` が Tween だけで舞台を組み、土台の穴 [#838](https://github.com/shinyaoguri/metaphor/issues/838)（完了後に再演できない）/ [#839](https://github.com/shinyaoguri/metaphor/issues/839)（NaN・負の `deltaTime` が恒久破壊）/ [#840](https://github.com/shinyaoguri/metaphor/issues/840) を出した。**いずれも 8/16〜17 に修正済み**。他の 14 本で `Tween` はほぼ未使用だったので、K の土台は encore が触るまで実質未検証だった
+- **L**: [#837](https://github.com/shinyaoguri/metaphor/issues/837)（ウィンドウ位置指定なし）を triptych・darkroom が 2 回踏み、**マルチディスプレイの実需は出た**。背面稼働（darkroom `D7`: 3 窓すべて 60fps を維持）と SIGTERM 後の後始末（`D9`）は PASS で押さえられている
+- **#571**: marionette が「シーンごとに physics world を持つ」2 例目だが、**寿命境界は要らなかった**（反証 3 例目）
+- **#563 / #564 / #608**: atelier（100 検査・連続 2 回がバイト同一）・adversary（6 面 55 検査）・duet（CPU で解ける期待値と GPU の差を数値で `probe()` へ）が、**外部モデルなしで「作品自身が oracle を持つ」形**を実装した。既存の `loadPixels()` と `probe()` だけで足りている
+
+逆流が止まらないよう、metaphor-sketches の検証記録テンプレートに「Epic への含意」欄を設けた（空欄で終われない）。
+
+#### 3 本目の切り口: 常設の現場に置く（2026-08-24）
+
+2026-08-15 に立てた「G3 実装後に `0815-salvage` を作り直して差分を測る」は**取り下げる**。G3 は
+[#706](https://github.com/shinyaoguri/metaphor/issues/706) / [#710](https://github.com/shinyaoguri/metaphor/issues/710) で実装され **v0.10.0（2026-08-17）でリリース済み**だが、
+salvage は v0.9.0 依存で作られており、いま作り直すと 1 本目の穴 7 件の修正・`directionalLight(intensity:)`・
+`METAPHOR_STATE_DIR`・`VignetteEffect` の意味反転・#792 の出力経路刷新が全部混ざる。**G3 単独の効きは測れない**。
+
+代わりに 3 本目は **L（#416）の唯一のゲート開放手段**を要件にする:
+
+- 実際に常設の現場（展示・据え置き）に置いて、**無人で複数日**運用する
+- キオスク・自動復帰・GPU エラー検知の要否を実測で判定する（作品を何本作っても開かない項目）
+- 前提として [#573](https://github.com/shinyaoguri/metaphor/issues/573)（`.app` 配布）が要る。方針は
+  [ADR-0015](../adr/0015-app-bundle-runtime-resolution-vs-assembly.md) で決着済みなので、残るのは
+  Level 1+2 の実装（[#1107](https://github.com/shinyaoguri/metaphor/issues/1107) / [cli#190](https://github.com/shinyaoguri/metaphor-cli/issues/190) / [cli#191](https://github.com/shinyaoguri/metaphor-cli/issues/191)）
+- G3（IBL / skybox）は作り直しではなく**新作の中で**使い、表現力の天井の効きを観測する
+
+なお 1 本目 `0815-strata` は要件（複数シーン + 複数入力 + 30 分無人稼働）を満たしているので、
+Epic J の完了条件そのものは 3 本目を待たずに満たされている。3 本目が足すのは「現場に置く」段だけ。
+
+#### 検討 Issue 8 本の分類（2026-08-24）
+
+2026-08-12〜14 に立てた検討 8 本は、実需ゲートの適用範囲（規律 6 の「適用範囲」）に照らして 3 群に分かれる。
+
+| 群 | Issue | 起票・着手の根拠 |
+|---|---|---|
+| ゲートの**上流** | [#573](https://github.com/shinyaoguri/metaphor/issues/573) `.app` 配布 | L の前提条件。**2026-08-24 に決着**（[ADR-0015](../adr/0015-app-bundle-runtime-resolution-vs-assembly.md)・責務分担は「本体 = 実行時のファイル解決 / cli = bundle の組み立て」、保証範囲は Level 1+2）。実装は子 Issue [#1107](https://github.com/shinyaoguri/metaphor/issues/1107) / [#1108](https://github.com/shinyaoguri/metaphor/issues/1108) / [#1109](https://github.com/shinyaoguri/metaphor/issues/1109) / [cli#190](https://github.com/shinyaoguri/metaphor-cli/issues/190) / [cli#191](https://github.com/shinyaoguri/metaphor-cli/issues/191) |
+| 決定 7 の**推進項目** | [#563](https://github.com/shinyaoguri/metaphor/issues/563) / [#564](https://github.com/shinyaoguri/metaphor/issues/564) / [#567](https://github.com/shinyaoguri/metaphor/issues/567) / [#568](https://github.com/shinyaoguri/metaphor/issues/568) / [#608](https://github.com/shinyaoguri/metaphor/issues/608) | 実行・観測ループの優位を伸ばす中心目標。**ゲート対象外**（#563 は入力リプレイへスコープ縮小可 / #564・#608 は「oracle を書けない作品」へ論点が絞れた / #567 は実需未発生） |
+| 実需**待ちが正しい** | [#570](https://github.com/shinyaoguri/metaphor/issues/570) Take / [#571](https://github.com/shinyaoguri/metaphor/issues/571) Scene の寿命境界 | K の設計に直結。起きる条件を各 Issue 本文から読める形にした（#570 = 候補比較を繰り返す探索的制作 / #571 = リソースを手放さないと破綻する規模） |
+
 ## 非目標
 
 - クロスプラットフォーム（Windows/Linux/iOS/web）— macOS 14+/Apple Silicon の契約は維持
@@ -318,9 +372,9 @@ Epic はテーマ別（フェーズ跨ぎ可）。子 Issue は「S は同一レ
 | [#293](https://github.com/shinyaoguri/metaphor/issues/293) G: モダン 3D | PBR/glTF/IBL | G0 Canvas3D 分割 #439（**完了**）/ G1 UV #433・#435（**完了**）/ G2 PBR maps / G3a トーンマッピング [#706](https://github.com/shinyaoguri/metaphor/issues/706)（**完了**）/ G3b skybox・IBL [#710](https://github.com/shinyaoguri/metaphor/issues/710)（**完了**）/ G4 glTF / G5 drawInstanced |
 | [#294](https://github.com/shinyaoguri/metaphor/issues/294) H: SceneGraph インタラクティビティ | コンポーネント/ピッキング | H1 コンポーネント / H2 ピッキング / H3 インスペクタ（= D6） |
 | [#295](https://github.com/shinyaoguri/metaphor/issues/295) I: 英語 & website | 国際化 | **クローズ済み**（2026-08-16・I2 / I3 を移管して役目を終えた）: I1 README/GS 英語化 #286（**完了**・境界は [docs/README.md](../README.md) に明記）/ I2 API doc コメント [#334](https://github.com/shinyaoguri/metaphor/issues/334)（**Epic #314 の W3-1 が管轄**）/ I3 website（i18n 構成は #487・#491 で導入済み。残る LP 英語文言の見直しは [#740](https://github.com/shinyaoguri/metaphor/issues/740)） |
-| [#414](https://github.com/shinyaoguri/metaphor/issues/414) J: 作品駆動検証 | 作品トラックのリファレンス作品 | 作品本体は metaphor-sketches 側。**1 本目 `0815-strata` / 2 本目 `0815-salvage`（AI 単独制作実験）完走**（所見は「J の所見」節、起票は #684〜#688 / cli#133 / #700〜#702） |
-| [#415](https://github.com/shinyaoguri/metaphor/issues/415) K: 構造化支援 | Scene 遷移 / cue / スケジューラ | 子 Issue は J の所見後に起票。1 本目の所見では**補間の自動化**が最優先 |
-| [#416](https://github.com/shinyaoguri/metaphor/issues/416) L: 現場運用束 | マルチディスプレイ / キオスク / 自己監視 | #273 を吸収。着手は常設判断とセット。1 本目では**自己監視の不在**のみ実需として確認 |
+| [#414](https://github.com/shinyaoguri/metaphor/issues/414) J: 作品駆動検証 | 作品トラックのリファレンス作品 | 作品本体は metaphor-sketches 側。**1 本目 `0815-strata` / 2 本目 `0815-salvage`（AI 単独制作実験）完走**（所見は「J の所見」節、起票は #684〜#688 / cli#133 / #700〜#702）。**3 本目 = 常設の現場に置く 1 本**（2026-08-24 再定義） |
+| [#415](https://github.com/shinyaoguri/metaphor/issues/415) K: 構造化支援 | Scene 遷移 / cue / スケジューラ | 子 Issue は J の所見後に起票。1 本目の所見では**補間の自動化**が最優先。土台（Tween）の穴は #838〜#840 で解消済み |
+| [#416](https://github.com/shinyaoguri/metaphor/issues/416) L: 現場運用束 | マルチディスプレイ / キオスク / 自己監視 | #273 を吸収。着手は常設判断とセット。1 本目では**自己監視の不在**、その後 [#837](https://github.com/shinyaoguri/metaphor/issues/837) で**マルチディスプレイ**も実需として確認 |
 
 既存 Issue との関係: #268（バルク頂点 API）は Epic A/G から参照（重複起票しない）。#87 は Epic D が吸収。#275 は Epic D の schema 変更に同乗。#273 は Epic L が吸収（2026-08-07 変更。Probe schema に触れる部分のみ Epic D の schema 変更に同乗）。cli #86 は API doc コメント英語化 #334（Epic #314 の W3-1）と相乗。
 

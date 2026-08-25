@@ -159,11 +159,11 @@ free functions noted as such.
 | `beginShape(TRIANGLES)` etc. | `beginShape(.triangles)`, `.triangleStrip`, `.triangleFan`, `.lines`, `.points`, `.polygon` |
 | `vertex(x, y)` / `vertex(x, y, u, v)` | `vertex(x, y)` / `vertex(x, y, u, v)`, plus `vertex(x, y, color)` |
 | `bezierVertex(…)` / `curveVertex(x, y)` | `bezierVertex(cx1, cy1, cx2, cy2, x, y)` / `curveVertex(x, y)` |
-| `quadraticVertex(…)` | — not implemented ([#813](https://github.com/shinyaoguri/metaphor/issues/813)) |
-| `bezierDetail(n)` | — not implemented ([#813](https://github.com/shinyaoguri/metaphor/issues/813)). Note `bezier()` uses a fixed 24 segments while `bezierVertex()` follows `curveDetail()` (20 by default), so the same curve differs between the two |
-| `shapeMode(…)` | — not implemented ([#813](https://github.com/shinyaoguri/metaphor/issues/813)); `shape(s, x, y, w, h)` always interprets its arguments one way |
+| `quadraticVertex(…)` | `quadraticVertex(cx, cy, x, y)` — promoted to the equivalent cubic, as in Processing |
+| `bezierDetail(n)` | `bezierDetail(_ n: Int)` — default 20, the same as `curveDetail()` and Processing. It drives `bezier()`, `bezierVertex()` and `quadraticVertex()` alike; until [#813](https://github.com/shinyaoguri/metaphor/issues/813) `bezier()` was fixed at 24 segments while `bezierVertex()` followed `curveDetail()`, so the same curve came out at two resolutions |
+| `shapeMode(…)` | `shapeMode(.corner)` / `.corners` / `.center` — default `.corner`, for `shape(s, x, y, w, h)` on a 2D shape (the sibling of `rectMode()` / `ellipseMode()` / `imageMode()`). The enum is `ShapePositionMode`, because `ShapeMode` already names the primitive kind passed to `beginShape()` |
 | `beginContour()` / `endContour()` | `beginContour()` / `endContour()` — 2D shapes only; on a 3D shape they warn and do nothing ([#736](https://github.com/shinyaoguri/metaphor/issues/736)) |
-| `curveDetail()` / `curveTightness()` | `curveDetail(_ n: Int)` / `curveTightness(_ t: Float)` |
+| `curveDetail()` / `curveTightness()` | `curveDetail(_ n: Int)` / `curveTightness(_ t: Float)` — as in Processing, `curveDetail()` is for `curve()` / `curveVertex()` only; Bézier curves follow `bezierDetail()` |
 | `rectMode(CORNER/CORNERS/CENTER/RADIUS)` | `rectMode(.corner)` / `.corners` / `.center` / `.radius` — default `.corner` |
 | `ellipseMode(…)` | `ellipseMode(.center)` / `.radius` / `.corner` / `.corners` — default `.center` |
 | `strokeWeight(w)` | `strokeWeight(_ weight: Float)` |
@@ -193,8 +193,9 @@ The default color mode is **RGB with a 0–255 range, exactly like Processing**,
 | `color(…)` packed into `pixels[]` | `color(_ r: Float, _ g: Float, _ b: Float) -> UInt32` (free function, 0–255 in, packed `0xAARRGGBB` out) |
 | `tint(…)` / `noTint()` | `tint(…)` (same overloads as `fill`) / `noTint()` |
 | `blendMode(ADD)` | `blendMode(.additive)`; also `.alpha` `.multiply` `.screen` `.subtract` `.darkest` `.lightest` `.difference` `.exclusion` `.opaque` |
-| `red(c)` / `green(c)` / `hue(c)` … | `c.r` / `c.g` / `c.b` / `c.a` (always 0–1, ignoring `colorMode`) — there are **no `hue()`/`saturation()`/`brightness()`/`alpha()` extractors** and no RGB→HSB conversion ([#811](https://github.com/shinyaoguri/metaphor/issues/811)) |
-| `blendColor(c1, c2, MULTIPLY)` | — not implemented ([#811](https://github.com/shinyaoguri/metaphor/issues/811)); `blendMode()` applies to drawing, not to a pair of colors |
+| `red(c)` / `green(c)` / `blue(c)` / `alpha(c)` | `red(_ c: Color) -> Float` / `green(…)` / `blue(…)` / `alpha(…)` (free functions), or the `c.r` / `c.g` / `c.b` / `c.a` properties. **The result is 0–1 and ignores `colorMode`** — see [Two color ranges](#two-color-ranges-0255-numbers-01-color) |
+| `hue(c)` / `saturation(c)` / `brightness(c)` | `hue(_ c: Color) -> Float` / `saturation(…)` / `brightness(…)` (free functions), or the `c.hue` / `c.saturation` / `c.brightness` properties. **0–1, ignoring `colorMode`**: under `colorMode(HSB, 360, 100, 100)` write `hue(c) * 360` |
+| `blendColor(c1, c2, MULTIPLY)` | — not implemented ([#1153](https://github.com/shinyaoguri/metaphor/issues/1153)); `blendMode()` applies to drawing, not to a pair of colors |
 
 Note the two distinct color entry points — see
 [Two color ranges](#two-color-ranges-0255-numbers-01-color) in the pitfalls.
@@ -233,12 +234,13 @@ Angles are **radians** everywhere, as in Processing. There is no `angleMode()`
 | `text("hi", x, y)` | `text(_ string: String, _ x: Float, _ y: Float)` |
 | `text("hi", x, y, w, h)` | `text(_ string: String, _ x: Float, _ y: Float, _ w: Float, _ h: Float)` |
 | `textSize(32)` | `textSize(_ size: Float)` |
-| `textFont(f)` with a `PFont` | `textFont(_ family: String)` — an installed font **family name**, e.g. `textFont("Helvetica Neue")`. A style-qualified name works too: `textFont("Helvetica Neue Bold")` resolves to the bold face |
+| `textFont(f)` with a `PFont` | `textFont(_ family: String)` — an installed font **family name**, e.g. `textFont("Helvetica Neue")`. A style-qualified name works too: `textFont("Helvetica Neue Bold")` resolves to the bold face, but an unresolvable one silently falls back to Helvetica, so prefer `textStyle()` |
 | `createFont("f.ttf", 32)` / `loadFont(…)` | `loadFont(_ path: String, cache: Bool = true) throws -> MFont`, then `textFont(_ font: MFont)` |
 | `PFont` | `MFont` |
 | p5 `font.textToPoints(…)` | `textToPoints(_ string:_ x:_ y:sampleFactor:) -> [Vec2]`, plus `textToContours(…) -> [[Vec2]]` (one closed polyline per contour) and `textToShape(…) -> MShape` (holes included) |
-| p5 `textStyle(BOLD / ITALIC)` | — not implemented ([#816](https://github.com/shinyaoguri/metaphor/issues/816)); use a style-qualified family name as above |
-| p5 `textWrap()` / `textBounds()` | — not implemented ([#816](https://github.com/shinyaoguri/metaphor/issues/816)) |
+| p5 `textStyle(BOLD / ITALIC)` | `textStyle(_ style: TextStyle)` — `.normal` / `.bold` / `.italic` / `.boldItalic`. Keeps the family and asks for that family's face, and **warns** when the font has none (it never substitutes another font) |
+| p5 `textWrap(WORD / CHAR)` | `textWrap(_ mode: TextWrap)` — `.word` (the default, as in p5) / `.char`. It applies to the rectangle form of `text()` only; the three-argument form breaks at newlines and nothing else |
+| p5 `font.textBounds(str, x, y)` | `textBounds(_ string: String, _ x: Float, _ y: Float) -> TextBounds` — the box `text()` would fill, already accounting for `textAlign()`. **The width is the advance sum `textWidth()` reports, not the extent of the ink**, so it agrees with where the glyphs land rather than with p5's slightly tighter ink box |
 | `textAlign(CENTER, TOP)` | `textAlign(.center, .top)` — `TextAlignH` is `.left/.center/.right`, `TextAlignV` is `.top/.center/.baseline/.bottom` (default `.baseline`) |
 | `textLeading(l)` | `textLeading(_ leading: Float)` — the line height in **pixels**, as in Processing; `textSize()` / `textFont()` reset it, so call it after them |
 | `textWidth(s)` | `textWidth(_ string: String) -> Float` |
@@ -266,7 +268,7 @@ Processing, `noFill()` does not make it disappear. See
 | `img.resize(w, h)` | `MImage.resize(_ width: Int, _ height: Int)` |
 | `img.mask(m)` | `MImage.mask(_ maskImage: MImage)` |
 | `blend(…)` | — not implemented |
-| `createGraphics(w, h)` / `PGraphics` | `createGraphics(_ w: Int, _ h: Int) -> Graphics?`, plus `createGraphics3D(_:_:) -> Graphics3D?` |
+| `createGraphics(w, h)` / `PGraphics` | `createGraphics(_ w: Int, _ h: Int) -> Graphics?`, plus `createGraphics3D(_:_:) -> Graphics3D?`. Both start out **transparent**, as in Processing — call `background()` inside `beginDraw()` / `endDraw()` for an opaque backdrop |
 | `pg.beginDraw()` / `pg.endDraw()` | `Graphics.beginDraw()` / `Graphics.endDraw(wait: Bool = false)`; draw it with `image(pg, x, y)` |
 
 ### Pixels
@@ -607,6 +609,36 @@ they are always normalized. The numeric `fill` / `stroke` / `background` /
 with `fill(.white)` in the same sketch is the classic way to confuse yourself;
 pick one convention per sketch.
 
+**The extractors sit on the normalized side.** `hue(c)`, `saturation(c)`,
+`brightness(c)`, `alpha(c)`, `red(c)`, `green(c)` and `blue(c)` take a `Color`
+and are the exact inverse of `Color(hue:saturation:brightness:alpha:)`, so they
+return 0–1 and ignore `colorMode()` — unlike Processing, where they follow the
+current mode. Two consequences worth memorizing:
+
+```swift
+colorMode(.hsb, 360, 100, 100)
+let c = Color(hue: 0.5, saturation: 1, brightness: 1)   // cyan
+
+hue(c)                       // 0.5, not 180
+hue(c) * 360                 // 180 — scale by hand when porting
+
+fill(red(c), green(c), blue(c))   // ⚠️ compiles, draws almost black:
+                                  //    fill() wants 0–255 here
+fill(c)                           // ✅ pass the Color straight through
+```
+
+`red(c)` / `green(c)` / `blue(c)` / `alpha(c)` are exact aliases of `c.r` / `c.g`
+/ `c.b` / `c.a`, out-of-range components included. The HSB three clamp the RGB
+components into 0–1 before converting (the same guard
+`Color(hue:saturation:brightness:)` applies on the way in), so they report the
+color **as it is drawn**.
+
+One Swift-specific gotcha: Swift does not keep functions and variables in
+separate namespaces the way Java does, so a local named `hue` (or `red`,
+`alpha`, …) shadows the free function inside its scope. Processing code like
+`float hue = hue(c);` therefore does not port literally — use the `c.hue`
+property there, or rename the local.
+
 ### `Sketch` is `@MainActor`
 
 The `Sketch` protocol is annotated `@MainActor`, so `setup()`, `draw()` and the
@@ -942,7 +974,7 @@ transparent with `fill(255, 0)` — the alpha reaches the glyphs, unlike
 `tint()` does not apply either; it is `image()`'s knob, not a text color
 ([#516](https://github.com/shinyaoguri/metaphor/issues/516)).
 
-### Two ways to name a font, and no `textStyle()`
+### Two ways to name a font, and two ways to ask for bold
 
 `textFont(_ family: String)` takes an installed font by name, and
 `loadFont(_ path:)` reads a `.ttf` / `.otf` from disk and returns an `MFont` for
@@ -955,11 +987,27 @@ let f = try loadFont("assets/Inter.ttf")    // from disk
 textFont(f)
 ```
 
-What is missing is p5's `textStyle(BOLD)` — you cannot keep the family and switch
-the weight, because the style has to be part of the name you pass. Which
-style-qualified names exist depends on the font (`"Helvetica Neue Bold"` works,
-`"Some Font Bold"` may not), so a sketch that switches weights is not portable
-between fonts ([#816](https://github.com/shinyaoguri/metaphor/issues/816)).
+Bold and italic can come from either the name or `textStyle()`, and **the two are
+not equally safe**. As in Processing's `createFont()`, a style-qualified name
+resolves — `textFont("Helvetica Neue Bold")` really does draw bold. But which
+qualified names exist depends on the font, and Core Text answers a name it cannot
+resolve with the system default **without any warning**. That loses the family as
+well as the style: `textFont("Papyrus Bold")` draws in Helvetica, not in an
+unbolded Papyrus.
+
+`textStyle()` keeps the family and asks Core Text for that family's bold or
+italic face, so the same code ports between fonts:
+
+```swift
+textFont("Helvetica Neue")
+textStyle(.bold)                            // .normal / .bold / .italic / .boldItalic
+```
+
+A font with no face for the style requested is drawn **unstyled, with a warning
+naming it** — metaphor never swaps in a different typeface to satisfy the style.
+Monaco, Geneva and Papyrus have no bold or italic face at all. `.normal` means
+"use the face the name selects" rather than "strip bold", so it leaves a
+style-qualified name alone.
 
 Glyph outlines are available: `textToPoints`, `textToContours` and `textToShape`
 turn a string into points, per-contour polylines, or a fillable `MShape`.
@@ -985,10 +1033,8 @@ sizes, colors) stay unlabelled, optional modifiers get labels (ADR-0007).
 | `loadShape()` (SVG as `PShape`) | Planned, Phase 2 — [Epic #288](https://github.com/shinyaoguri/metaphor/issues/288). Today: `loadModel()` reads OBJ / USDZ / ABC into a `Mesh`; SVG is export-only. |
 | canvas-wide `filter()` and `blend()` | Planned, Phase 2. Today `filter(_ image: MImage, _ type: FilterType)` filters an image, and post-process effects (`addPostEffect`) cover the whole frame. |
 | `PDF` export | Demand-gated, Phase 4 — [Epic #288](https://github.com/shinyaoguri/metaphor/issues/288). `DXF` export likewise has no equivalent. |
-| `hue()` / `saturation()` / `brightness()` / `alpha()` / `blendColor()` | Not implemented — [#811](https://github.com/shinyaoguri/metaphor/issues/811). `Color` converts HSB→RGB but not back. |
-| `quadraticVertex()`, `bezierDetail()`, `shapeMode()` | Not implemented — [#813](https://github.com/shinyaoguri/metaphor/issues/813). |
+| `blendColor()` | Not implemented — [#1153](https://github.com/shinyaoguri/metaphor/issues/1153). `blendMode()` configures drawing, not a pair of colors. The component extractors (`hue()` / `saturation()` / `brightness()` / `alpha()` / `red()` / `green()` / `blue()`) **do** exist — they return 0–1 and ignore `colorMode`. |
 | `ambient()`, `lightFalloff()`, `lightSpecular()`, `textureMode()`, `textureWrap()`, `beginCamera()` / `endCamera()`, `frustum()` | Not implemented — [#815](https://github.com/shinyaoguri/metaphor/issues/815). |
-| p5 `textStyle()` / `textWrap()` / `textBounds()` | Not implemented — [#816](https://github.com/shinyaoguri/metaphor/issues/816). A style-qualified family name (`textFont("Helvetica Neue Bold")`) covers bold and italic. |
 | `loadXML()` / `saveXML()` / `XML`, `loadBytes()` / `saveBytes()`, `createReader()` / `createWriter()`, `nf()` / `nfc()` / `nfp()` / `nfs()` / `hex()` / `binary()` | Not implemented. JSON, CSV/TSV and plain strings are covered; the rest is demand-gated. Swift's `String(format:)` replaces the `nf` family. |
 | sound synthesis (`SinOsc`, `Env`, `Reverb`, `Delay`, recording, panning) | Not implemented — playback (`loadSound`) and analysis (`createAudioInput`, FFT, beat) exist, but nothing generates audio. Demand-gated, Phase 4. |
 | `Serial` (Arduino), `Client` / `Server` (TCP) | Not implemented. OSC and MIDI are available instead (`createOSCSender` / `createOSCReceiver` / `createMIDI`), and both exceed Processing's standard set. Demand-gated, Phase 4. |

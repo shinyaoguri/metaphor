@@ -685,6 +685,13 @@ extension Sketch {
     /// - Note: Affects **2D only** (the 3D batch draw is ``drawInstanced(_:transforms:)``.
     ///   ADR-0005).
     ///
+    /// - Important: The buffer is drawn byte for byte, so a compute kernel that fills it has to
+    ///   declare the struct in ``CircleInstance``'s memory order — `position` at 0, `diameter`
+    ///   at 8, padding at 12, `color` at 16, stride 32 — not in the alphabetical order the
+    ///   properties are documented in. The wrong order compiles without a warning and draws
+    ///   nothing at all; the MSL definition to paste is in the documentation for
+    ///   ``CircleInstance``.
+    ///
     /// - Parameters:
     ///   - instances: The GPU buffer holding the ``CircleInstance`` values.
     ///   - count: The number of instances to draw. The whole buffer when omitted.
@@ -948,7 +955,7 @@ extension Sketch {
     /// point(340, 320)
     /// ```
     ///
-    /// ![bezier(_:_:_:_:_:_:_:_:) の実行結果](https://i.gyazo.com/0b721460f802e496b860f974378c500c.png)
+    /// ![bezier(_:_:_:_:_:_:_:_:) の実行結果](https://i.gyazo.com/0e8ef156ed3da2f80f4fde037eb70ffa.png)
     public func bezier(
         _ x1: Float, _ y1: Float,
         _ cx1: Float, _ cy1: Float,
@@ -1147,6 +1154,61 @@ extension Sketch {
         context.bezierVertex(cx1, cy1, cx2, cy2, x, y)
     }
 
+    /// Adds a quadratic Bézier vertex to the current shape.
+    ///
+    /// - Note: Affects **2D only** (a 3D shape has no Bézier vertices; ADR-0005).
+    ///
+    /// - Note: A quadratic is the cubic whose control points are `P0 + 2/3 (Q - P0)` and
+    ///   `P2 + 2/3 (Q - P2)`, so this is promoted and drawn through
+    ///   ``bezierVertex(_:_:_:_:_:_:)``. Processing and p5.js do the same, and the number of
+    ///   segments therefore follows ``bezierDetail(_:)``.
+    ///
+    /// - Important: The preceding vertex is the start point, so place one ``vertex(_:_:)`` before
+    ///   calling it. With no preceding vertex the origin `(0, 0)` is used, the same as
+    ///   ``bezierVertex(_:_:_:_:_:_:)``.
+    ///
+    /// - Parameters:
+    ///   - cx: The x coordinate of the control point.
+    ///   - cy: The y coordinate of the control point.
+    ///   - x: The x coordinate of the anchor point.
+    ///   - y: The y coordinate of the anchor point.
+    ///
+    /// ### Result
+    ///
+    /// One control point pulls the whole curve, instead of the two that
+    /// ``bezierVertex(_:_:_:_:_:_:)`` takes.
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![quadraticVertex(_:_:_:_:) の実行結果](https://i.gyazo.com/aca0246c261f339dfc55e49dcb270782.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(24)
+    ///       noFill()
+    ///       stroke(120, 230, 180)
+    ///       strokeWeight(4)
+    ///       beginShape()
+    ///       vertex(60, 300)
+    ///       quadraticVertex(150, 40, 420, 240)
+    ///       endShape()
+    ///
+    ///       // one control point, off the curve
+    ///       stroke(130)
+    ///       strokeWeight(1)
+    ///       line(60, 300, 150, 40)
+    ///       line(420, 240, 150, 40)
+    ///       strokeWeight(12)
+    ///       point(150, 40)
+    ///       ```
+    ///    }
+    /// }
+    public func quadraticVertex(_ cx: Float, _ cy: Float, _ x: Float, _ y: Float) {
+        context.quadraticVertex(cx, cy, x, y)
+    }
+
     /// Adds a Catmull-Rom spline vertex to the current shape.
     ///
     /// - Note: Affects **2D only** (a 3D shape has no spline vertices; ADR-0005).
@@ -1195,6 +1257,66 @@ extension Sketch {
     /// - Parameter n: The curve detail.
     public func curveDetail(_ n: Int) {
         context.curveDetail(n)
+    }
+
+    /// Sets the number of segments used to approximate a cubic Bézier.
+    ///
+    /// - Note: Affects **2D only** (it is for ``bezier(_:_:_:_:_:_:_:_:)`` /
+    ///   ``bezierVertex(_:_:_:_:_:_:)`` / ``quadraticVertex(_:_:_:_:)`` and has no effect on 3D.
+    ///   ADR-0005).
+    ///
+    /// - Note: The default is **20 segments**, the same as ``curveDetail(_:)`` and Processing.
+    ///   Until Issue #813 the one-shot ``bezier(_:_:_:_:_:_:_:_:)`` was fixed at 24 segments while
+    ///   ``bezierVertex(_:_:_:_:_:_:)`` followed ``curveDetail(_:)``, so the same curve came out at
+    ///   two different resolutions depending on how it was drawn. Both now follow this setting, and
+    ///   ``curveDetail(_:)`` is left to ``curve(_:_:_:_:_:_:_:_:)`` / ``curveVertex(_:_:)`` as in
+    ///   Processing.
+    ///
+    /// - Note: **Survives across frames.** Like the rest of the 2D style state it is **not** reset
+    ///   at the start of a frame, so a value set in `setup()` still applies in `draw()`. It is
+    ///   saved and restored by ``push()`` / ``pop()``.
+    ///
+    /// - Important: Values below 1 are rounded up to 1, as in ``curveDetail(_:)``.
+    ///
+    /// - Parameter n: The number of segments.
+    ///
+    /// ### Result
+    ///
+    /// The same curve at two detail levels. Below about 8 segments the polyline the curve is
+    /// really made of becomes visible.
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![bezierDetail(_:) の実行結果](https://i.gyazo.com/2a330815fa8b3de2c0a3e2cd1244d37e.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(24)
+    ///       noFill()
+    ///       strokeWeight(3)
+    ///
+    ///       // 4 segments: the polyline shows
+    ///       bezierDetail(4)
+    ///       stroke(255, 190, 60)
+    ///       bezier(
+    ///           40, 300, 110, 40,
+    ///           250, 40, 330, 300
+    ///       )
+    ///
+    ///       // 20 segments (the default)
+    ///       bezierDetail(20)
+    ///       stroke(80, 170, 255)
+    ///       bezier(
+    ///           120, 330, 190, 70,
+    ///           330, 70, 410, 330
+    ///       )
+    ///       ```
+    ///    }
+    /// }
+    public func bezierDetail(_ n: Int) {
+        context.bezierDetail(n)
     }
 
     /// Sets how tightly Catmull-Rom spline curves are drawn.

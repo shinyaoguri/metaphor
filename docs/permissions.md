@@ -100,15 +100,50 @@ scoped form with the terminal app's bundle identifier (find it with
 -r /Applications/iTerm.app`, or check **System Settings → Privacy & Security**
 directly — it lists exactly what's currently granted).
 
-## Info.plist usage strings and Xcode-packaged apps
+## Info.plist usage strings and `.app` bundles
 
 The `NSMicrophoneUsageDescription` / `NSCameraUsageDescription` Info.plist keys
 that supply the custom explanation text on the permission dialog only apply to
 apps that *have* an Info.plist — i.e., a proper `.app` bundle. A bare
 `swift run` / `swift build` executable target has none, so macOS falls back to
 its generic system wording attributed to the responsible process described
-above. There is nothing to configure on the metaphor or example-package side to
-change this.
+above.
+
+### Wrap the sketch with `metaphor bundle`
+
+[`metaphor-cli`](https://github.com/shinyaoguri/metaphor-cli) assembles the
+`.app` for you: `metaphor bundle` runs a release build, lays the executable and
+its resource bundles out in a signable layout, generates the Info.plist, and
+ad-hoc signs the result. Declare the usage strings in `metaphor-app.json` next
+to `Package.swift`:
+
+```json
+{
+  "displayName": "MySketch",
+  "bundleIdentifier": "dev.example.mysketch",
+  "capabilities": {
+    "camera": { "usageDescription": "Drives the terrain from what the camera sees.", "continuityCamera": true },
+    "microphone": { "usageDescription": "Reacts to sound in the room." }
+  }
+}
+```
+
+```console
+$ metaphor bundle --check      # what is missing, before assembling
+$ metaphor bundle              # → .build/MySketch.app
+$ open .build/MySketch.app     # macOS now prompts with your own wording
+```
+
+Only what you declare in `capabilities` becomes a usage string — the CLI does
+not guess from your source. Declaring a capability *without* a
+`usageDescription` is rejected by `--check`, because a bundle missing the string
+never gets a permission dialog and fails silently.
+
+The bundle identifier is what TCC attaches the decision to, so give each piece
+its own. Without `metaphor-app.json` the CLI falls back to a placeholder
+identifier (`local.metaphor.<executable>`) and `--check` says so.
+
+### Embedding in an Xcode app target instead
 
 If you embed a metaphor sketch inside an Xcode app target (see [SwiftPM as a
 dependency](../README.en.md#swiftpm-as-a-dependency) in the main README) rather
@@ -117,12 +152,15 @@ than running it via `swift run`, the usual Xcode rules apply: add
 Info.plist yourself for a friendlier, sketch-specific prompt, and code-sign the
 app so TCC attributes the request to it directly instead of to a terminal.
 
+### Continuity Camera
+
 This also matters for **Continuity Camera** (using an iPhone/iPad as a webcam):
 `CaptureDevice.list()` only discovers Continuity Camera devices when the
 `NSCameraUseContinuityCameraDeviceType` Info.plist key is present, which — for
 the same reason — a plain `swift run` executable doesn't have. Continuity
 Camera shows up once you package the sketch as a proper `.app` with that key
-set; built-in and external (USB) cameras work either way.
+set (`"continuityCamera": true` in the `camera` capability above); built-in and
+external (USB) cameras work either way.
 
 ## Microphone input from an example
 

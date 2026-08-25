@@ -19,11 +19,11 @@ extension RenderLoopMode {
     /// 要求されたモードと、プラグイン / 出力 provider が宣言した要件から、実際に使うモードを決めます
     /// （純粋関数。`SketchRunner` とセカンダリの `SketchWindow` が同じ規則を共有する）。
     ///
-    /// - ヘッドレス（ウィンドウ無し）は `MTKView` が無くディスプレイリンクを駆動できないため常にタイマー。
+    /// - 明示的な ``timer(fps:)`` はそのまま（ヘッドレスでも `fps` 引数には潰さない）。
+    /// - ヘッドレス（ウィンドウ無し）は `MTKView` が無くディスプレイリンクを駆動できないため、
+    ///   明示の指定が無ければタイマー。
     /// - ``displayLink`` が要求されていても、``PluginRequirements/externalRenderLoop`` を宣言する
-    ///   プラグインか出力があればタイマーへ切り替える（ウィンドウが隠れても出力を止めない。従来の
-    ///   「Syphon ありなら timer」と同じ規則を一般化したもの）。
-    /// - 明示的な ``timer(fps:)`` はそのまま。
+    ///   プラグインか出力があればタイマーへ（従来の「Syphon ありなら timer」を一般化したもの）。
     ///
     /// - Parameters:
     ///   - requested: 設定で要求されたモード。
@@ -37,6 +37,7 @@ extension RenderLoopMode {
         requirements: PluginRequirements,
         isHeadless: Bool
     ) -> RenderLoopMode {
+        if case .timer = requested { return requested }
         if isHeadless { return .timer(fps: fps) }
         if requested == .displayLink, requirements.contains(.externalRenderLoop) {
             return .timer(fps: fps)

@@ -65,12 +65,12 @@ extension Canvas2D {
     ) -> [[Vec2]] {
         guard !string.isEmpty else { return [] }
         let contours = textRenderer.glyphContours(
-            string: string, fontSize: currentTextSize, fontFamily: currentFontFamily,
+            string: string, fontSize: currentTextSize, fontFamily: resolvedFontName,
             sampleFactor: sampleFactor)
         guard !contours.isEmpty else { return [] }
 
         let width = textRenderer.textWidth(
-            string: string, fontSize: currentTextSize, fontFamily: currentFontFamily)
+            string: string, fontSize: currentTextSize, fontFamily: resolvedFontName)
         let origin = textBaselineOrigin(x: x, y: y, width: width)
         let offset = Vec2(origin.x, origin.y)
         return contours.map { $0.map { $0 + offset } }

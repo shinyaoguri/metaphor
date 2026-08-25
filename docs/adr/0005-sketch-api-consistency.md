@@ -463,7 +463,7 @@ Epic 級。1.0 のスコープ外。**A を採用しても D への道は塞が�
   >
   > **スタイル系も列挙は網羅的でない。** `colorMode` / `background` / `strokeCap` /
   > `strokeJoin` / `tint` 系は載っていないので、
-  > [Amendment（2026-08-18b）§1](#1-決定-規範表をスタイル系の全数へ広げるtint-は-2d-のみ) が足す。
+  > [Amendment（2026-08-18b）§1](#1-決定-規範表をスタイル系の全数へ広げるtint-は2d-のみ) が足す。
   >
   > **2D の描画プリミティブも載っていない。** `rect` / `ellipse` / `line` / `beginShape` /
   > `vertex` 系・クリップ・コンターは

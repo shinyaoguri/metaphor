@@ -51,6 +51,52 @@ final class MySketch: Sketch {
 - For export or deterministic rendering, prefer offline-render APIs rather than
   wall-clock timing.
 
+## What Survives A Frame Boundary
+
+Some state is reset to its default at the start of every frame, and some carries
+over. Getting this wrong is silent: nothing warns, no error is raised, and the
+sketch simply draws with the default. Setting a telephoto `perspective(fov:)` in
+`setup()`, for example, renders at the default 60° instead.
+
+**Rule of thumb: style carries over, the scene does not.** Anything that
+describes *how* to draw (colors, weights, modes) is set once and stays. Anything
+that describes *the scene being drawn* (projection, camera, lights, materials,
+transforms) is rebuilt from scratch each frame — set it in `draw()`.
+
+`setup()` runs **before the first frame begins**, so a frame-local call made
+there is discarded before anything is drawn.
+
+### Reset at the start of every frame — call these from `draw()`
+
+| What | APIs |
+|---|---|
+| Projection | `perspective`, `ortho` (back to a 60° perspective) |
+| Camera | `camera` (back to the default pixel-space view) |
+| Lights | `lights`, `noLights`, `directionalLight`, `pointLight`, `spotLight` (back to no lights) |
+| Ambient light | `ambientLight` |
+| Material | `specular`, `shininess`, `emissive`, `metallic`, `roughness`, `ambientOcclusion`, `pbr` (back to `roughness` 0.5, PBR off) |
+| 3D texture | `texture`, `noTexture` |
+| Custom material | `material`, `noMaterial` |
+| Transform matrix (2D and 3D) | `translate`, `rotate`, `rotateX/Y/Z`, `scale`, `shearX`, `shearY` |
+| Matrix / style stacks | an unbalanced `push()` / `pushStyle()` / `pushMatrix()` cannot leak into the next frame |
+| Clipping region | `beginClip`, `endClip` |
+
+### Carried over between frames — setting these once in `setup()` is enough
+
+| What | APIs |
+|---|---|
+| Fill and stroke | `fill`, `noFill`, `stroke`, `noStroke`, `strokeWeight`, `strokeCap`, `strokeJoin` |
+| Color and blending | `colorMode`, `blendMode`, `tint`, `noTint` |
+| Shape and image modes | `rectMode`, `ellipseMode`, `imageMode`, `curveDetail`, `curveTightness` |
+| Text | `textFont`, `textStyle`, `textSize`, `textAlign`, `textLeading`, `textWrap` |
+| Shadows | `enableShadows`, `disableShadows`, `shadowBias` |
+| Environment (IBL / skybox) | `environment`, `noEnvironment` |
+| Tone mapping | `toneMapping`, `exposure` |
+
+The last row is the easy one to misread: `toneMapping` and `exposure` are carried
+on the material internally, yet they are treated as properties of the whole
+screen and are **not** rolled back when the material resets.
+
 ## Tunable Values (`@Param`)
 
 Declare values you expect to tune — radii, counts, speeds, colors, modes — with
@@ -135,7 +181,9 @@ objects per frame; reuse arrays.
 ### 3D Scene
 
 In `draw()`, call `background`, configure lights, then draw primitives.
-Use `push()` / `pop()` around each object transform.
+Use `push()` / `pop()` around each object transform. Lights, camera, projection,
+and materials all reset every frame, so they belong in `draw()`, not `setup()`
+(see "What Survives A Frame Boundary" above).
 
 The default camera is pixel space, like Processing's `P3D`: one world unit is
 one pixel, the origin is the top-left corner, and `+y` points down. So size 3D
@@ -204,6 +252,10 @@ a full custom shader.
 - If a symbol is unknown, search `llms.txt` before inventing an API.
 - If a sketch is blank, check that `background`, `fill`/`stroke`, camera, and
   object positions are sensible for the canvas.
+- If a 3D scene renders unlit, at the default field of view, or from the default
+  viewpoint even though you configured it, the call is probably in `setup()`.
+  Lights, camera, projection, and materials reset every frame — move them into
+  `draw()` (see "What Survives A Frame Boundary").
 - If performance is poor, move resource creation out of `draw()` and reduce CPU
   per-frame allocations.
 - If assets fail to load, prefer explicit file paths or bundle resources and

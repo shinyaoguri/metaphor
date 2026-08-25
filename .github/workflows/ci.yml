@@ -156,7 +156,7 @@ jobs:
                 ${LABEL_ARGS[@]+"${LABEL_ARGS[@]}"}
       - name: Require visual evidence for drawing changes
         # CLAUDE.md の「描画結果が変わる PR には before/after 画像を、動きが
-        # 変わる PR には GIF も」を機械で守る（Issue #631）。squash マージなので
+        # 変わる PR にはアニメーション WebP も」を機械で守る（Issue #631）。squash マージなので
         # ブランチは消え、**PR 本文がそのまま履歴に残る唯一の記録**になる。
         # merge 時に書かれなかった証跡は後から復元できない。
         #
@@ -206,6 +206,16 @@ jobs:
         # 落とす — macOS ランナーには入っておらず、「あれば使う」にすると
         # `run:` の中身の検証が CI でだけ黙って外れる）。
         run: ./scripts/lint-workflows.sh
+      - name: Check CI parity
+        # このジョブのステップが `make ci-check` に載っているかを台帳で固定する
+        # （Issue #1020）。CLAUDE.md / DEVELOPMENT.md は「push 前に make ci-check」を
+        # 案内しているのに、ステップを足すたびに対応づけを直す工程が誰の担当でもなく、
+        # 起票時点で 14 本が取りこぼされていた（DocC はそのうちの 1 本）。文章では
+        # 止まらない形の失敗なので、決定論的に落とす。ここへステップを足す人は
+        # 「ci-check に入れる / CI 専用と宣言する」のどちらかを必ず一度は決めることに
+        # なる。台帳は scripts/check-ci-parity.py が正本（scripts/tests/ に
+        # ユニットテストがある）。ビルド不要なので手前に置く。
+        run: python3 scripts/check-ci-parity.py
       - name: Test generator scripts
         # scripts/ 配下の Python 生成器のユニットテスト。llms.txt の中身は
         # 「生成物が最新か」のチェック（下）では守れない — 生成器が API 面を
@@ -235,22 +245,29 @@ jobs:
           fi
           # Initial push (no prior tip) — assume Sources may have changed.
           if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ]; then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-            echo "docc=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "changed=true"
+              echo "docc=true"
+              echo "reference_links=true"
+            } >> "$GITHUB_OUTPUT"
             exit 0
           fi
           # After a force push the old tip can be unreachable; fall back to
           # assuming Sources changed rather than failing the whole job.
           # merge-base 起点で取る（Issue #642）。ここは PR 以外も通るが、base が
           # head の祖先なら 3 点表記は 2 点間と同じ結果になるので挙動は変わらない。
-          if ! changed_files=$(scripts/pr-changed-files.sh "$base" "$head" \
-              -- 'Sources/**/*.swift' 'scripts/generate-llms-txt.py' 2>/dev/null); then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-            echo "docc=true" >> "$GITHUB_OUTPUT"
+          if ! changed_files=$(scripts/changed-llms-inputs.sh "$base" "$head" 2>/dev/null); then
+            {
+              echo "changed=true"
+              echo "docc=true"
+              echo "reference_links=true"
+            } >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          # Trigger the llms.txt staleness check when either the inputs
-          # (Sources/) or the generator script change.
+          # llms.txt の入力（Sources/ / 生成器 / `symbol-graphs` レシピを持つ
+          # Makefile）が変わったら鮮度検査を回す。リストは
+          # scripts/changed-llms-inputs.sh が正本で、pre-push フックも同じものを
+          # 呼ぶ（別々に持っていた頃は片方だけ直すとドリフトした — Issue #995）。
           if echo "$changed_files" | grep -q .; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
@@ -260,14 +277,38 @@ jobs:
           # (Sources/metaphor/metaphor.docc/**) は .swift ではないので上の判定に
           # 乗らず、カタログだけ直した PR を取りこぼす。取りこぼすと**次に Sources を
           # 触った無関係な PR**が、自分が入れていない警告で落ちる（責めるべき PR が
-          # ずれる）ので、判定はここで分けて持つ。逆に llms.txt / リファレンス
+          # ずれる）ので、判定を分けて `--docc` で足す。逆に llms.txt / リファレンス
           # スニペットの検査はカタログとは無関係なので、上の `changed` には混ぜない。
-          if echo "$changed_files" | grep -q . || \
-             scripts/pr-changed-files.sh "$base" "$head" \
-               -- 'Sources/**/*.docc/**' 2>/dev/null | grep -q .; then
+          # カタログの分を以前はこの 1 箇所が自前で足していたが、pre-push も同じ判定を
+          # 持つことになったので changed-llms-inputs.sh へ寄せた（Issue #1155。同じ
+          # リストを 2 箇所に持つと #995 のドリフトを再生産する）。
+          if scripts/changed-llms-inputs.sh --docc "$base" "$head" 2>/dev/null \
+               | grep -q .; then
             echo "docc=true" >> "$GITHUB_OUTPUT"
+            docc=true
           else
             echo "docc=false" >> "$GITHUB_OUTPUT"
+            docc=false
+          fi
+          # リファレンス URL の検査（下）の入力は 2 つある。「リンクを書く側」の
+          # Markdown と、「リンク先の集合を決める側」の公開 API。後者は上の docc
+          # 判定がそのまま使える（シグネチャが動けばページ名も動く）ので、足すのは
+          # 前者だけ。パターンは**スクリプトの走査対象より広く**取ってある — 広い分
+          # には数秒余計に走るだけだが、取りこぼすと**次に Sources を触った無関係な
+          # PR**が自分の入れていない 404 で落ちる（責めるべき PR がずれる）。
+          # 検査そのものを直した PR でも走らせたいので、スクリプト自身も入れる。
+          # markdown_common.py も入力（コードを落とす前処理の実体。#1183 で 3 本の
+          # 検査から寄せた）。共有部品を入力に足し忘れると、そこを直した PR で検査が
+          # 走らず素通りする — #788 で shots_common.py を足し忘れて撮り直し漏れが
+          # 通ったのと同じ失敗。
+          if [ "$docc" = true ] || \
+             scripts/pr-changed-files.sh "$base" "$head" \
+               -- 'docs/**' 'Examples/**' 'website/**' 'changelog.d/**' '*.md' \
+                  'scripts/check-reference-links.py' 'scripts/markdown_common.py' \
+                  2>/dev/null | grep -q .; then
+            echo "reference_links=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "reference_links=false" >> "$GITHUB_OUTPUT"
           fi
       - name: Check cross-repo contract
         run: ./scripts/check-contract.sh
@@ -318,6 +359,18 @@ jobs:
       # 正本（scripts/tests/ にユニットテストがある）。ビルド不要なので手前に置く。
       - name: Check for raw print() in Sources
         run: python3 scripts/check-no-raw-print.py
+      # GPU テストの `!` が nil を踏むとテストプロセスごと落ち、同時に走っていた
+      # 59 件が 1 件も判定を出さずに全滅する（#1003 の実測。`gh run rerun --failed`
+      # も効かない）。#1172 が 119 箇所を潰し、commandQueue() は非 Optional になって
+      # 型で再発が止まったが、`MetalTestHelper.device` の Optional は
+      # `isGPUAvailable`（= `device != nil`）というゲートそのものなので非 Optional に
+      # できず、`device!` は型では止まらない（Issue #1171）。
+      # `.swift-format` の NeverForceUnwrap では代われない — swift-format は
+      # **`@Test` 属性の付いた関数の本体を対象から外す**（6.3.0 で実測）ので、
+      # まさに止めたい場所を素通りする。判定規則と例外はスクリプト側が正本
+      # （scripts/tests/ にユニットテストがある）。ビルド不要なので手前に置く。
+      - name: Check for force unwraps of MetalTestHelper in Tests
+        run: python3 scripts/check-no-force-unwrap-tests.py
       # doc コメントは llms.txt（AI 向け API 正典）と DocC の入力で、日本語版
       # /reference/ja/ は英語版から生成される（ADR-0011）＝ 英語が上流。PR #361 /
       # #365 が周辺モジュールを英語化したのに検査が無く、93 行が静かに戻っていた
@@ -327,6 +380,15 @@ jobs:
       # ビルド不要なので手前に置く。
       - name: Check doc comment language
         run: python3 scripts/check-doc-comment-language.py
+      # docs/** の相対リンクと ADR 索引の整合（Issue #1044）。docs/adr は append-only で
+      # 相互参照が増え続けるのに、リンクが切れても踏んだ人が現れるまで誰も気付けない
+      # （make docs-check は DocC の警告検査で Markdown を見ない）。#1035 では手元の
+      # 使い捨てスクリプトで代替した。外部 URL は対象外 — ネットワーク依存の flaky を
+      # 持ち込まない（DocC の URL は #987、Gyazo 画像は asset-health.yml が担当）。
+      # 判定規則はスクリプト側が正本（scripts/tests/ にユニットテストがある）。
+      # ビルド不要なので手前に置く。
+      - name: Check docs links
+        run: python3 scripts/check-docs-links.py
       # root manifest に binaryTarget を置かない（#792 / ADR-0014）。使わない product 経由でも
       # 消費者が artifact を download してしまうので、Syphon は metaphor-syphon へ出した。
       # 一時 consumer の resolve を含むが数秒で終わるので build の手前に置く。
@@ -378,9 +440,12 @@ jobs:
       # 戻さない。公開済みの部への導線の有無もここで見る。
       - name: Verify tutorial publication status is up to date
         run: python3 scripts/generate-tutorial-status.py --check
-      # 画像そのものは比較しない（GPU 出力はビット単位で再現しない）。
-      # manifest に記録した撮影時のソース指紋と現在のソースを突き合わせ、
+      # 画像そのものは比較しない（撮り直しには GPU と、スニペット 1 本ごとの起動
+      # 時間が要る）。manifest に記録した撮影時のソース指紋と現在のソースを突き合わせ、
       # 「スケッチを変えたのに撮り直していない」だけを捕まえる（#486）。
+      # なお「GPU 出力が非決定だからバイト比較できない」わけではない — 同じマシン・
+      # 同じ実装・同じ OS ならバイト単位で一致する（#586 / #784）。別マシン・別 GPU を
+      # またいだ再現性は shot-reproducibility.yml が実測する。
       - name: Verify tutorial result images are up to date
         run: python3 scripts/generate-tutorial-shots.py --check
       # リファレンス（DocC）の実行結果画像。台帳との突き合わせはチュートリアルと
@@ -416,6 +481,23 @@ jobs:
       - name: Verify DocC builds without warnings
         if: steps.source-changed.outputs.docc == 'true'
         run: make docs-check
+      # ドキュメントが外部リンクしている DocC リファレンス URL（218 本）が実在する
+      # ページを指しているか（Issue #987）。URL にはシグネチャが焼き込まれているので、
+      # 引数ラベルが 1 つ増えただけで 404 になる — #959 では 4 本が同時に死んでいて、
+      # 気付けたのは別件で全数照合したときだった。上の docs-check が Markdown を
+      # 見ないのと、check-docs-links.py が外部 URL を対象外にしているのとで、
+      # ここが空白だった。
+      #
+      # 公開サイトへ HTTP は投げない。ネットワーク依存の flaky を持ち込むうえ、
+      # 見に行く先が公開済みのリファレンスでは **main へ入る前の変更**（＝ まさに
+      # 止めたいタイミング）を検知できない。ローカルの DocC 出力に当てる。
+      #
+      # コストは軽い。手前の docs-check が .build/docs を出していれば docc convert
+      # を回し直すだけ（実測 4 秒）で、出していない PR でもここが素の swift build を
+      # 一度通るだけで済む。ローカルの `make reference-links-check` と同じ実体。
+      - name: Check reference links in docs
+        if: steps.source-changed.outputs.reference_links == 'true'
+        run: make reference-links-check
       - name: Auto-regenerate examples index (PR only)
         # Only run for PRs from the same repository — fork PRs can't push back
         # because the GITHUB_TOKEN is restricted to read-only on forks.
@@ -596,9 +678,9 @@ jobs:
   # 見合わない（macOS ランナーは 10 倍課金）。分担は次のとおり:
   #   - PR が Examples/ を触ったとき → 触った example だけを下の 2 ジョブが建てる
   #     （Issue #329 / W2-7。壊れた example が最も入りやすい瞬間を押さえる）
-  #   - 週次 + リリース前 → 代表セット（~19 本）を examples-sweep.yml と
-  #     release.yml が建てて公開 API ドリフトを検出する（Issue #147）
-  #   - 全数スイープ → examples-sweep.yml の workflow_dispatch（full=true）
+  #   - 週次 → **全数**を examples-sweep.yml が 5 シャードに分けて建て、公開 API
+  #     ドリフトを検出する（Issue #147。1 ジョブではジョブ上限 6 時間に収まらない）
+  #   - リリース前 → 代表セット（~19 本）を release.yml が建てる
   # 手元での確認: `make examples-check`（全数）/
   # `./scripts/run-examples.sh --build-only --smoke`（代表セット）。
   #
@@ -719,6 +801,15 @@ jobs:
             exit 1
           fi
           echo "OK: every upstream job succeeded or was skipped."
+      # このジョブは本来チェックアウトを要らないので、ブリッジが走る run でだけ
+      # `scripts/gh-retry.sh` を取りに行く（Issue #1132）。sparse checkout の 1 ファイル
+      # なので、PR の run（大多数）にはコストが 1 秒も乗らない。
+      - uses: actions/checkout@v7
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'merge_group'
+        with:
+          sparse-checkout: scripts/gh-retry.sh
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
       - name: Bridge to legacy status (workflow_dispatch / merge_group)
         # Repository rulesets on personal repos evaluate required_status_checks
         # against the legacy Statuses API. pull_request runs satisfy it through
@@ -732,7 +823,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh api -X POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+          # 一過性の失敗で落ちると、CI が全部 green なのに `ci-gate` の legacy
+          # Status が立たずマージできなくなるので gh-retry.sh 経由（Issue #1132）。
+          # Statuses API は同じ context へ何度 POST しても combined status が
+          # 最後の 1 件になるだけなので、リトライで二重になる副作用が無い。
+          # budget は既定の 3 回のまま: ここが落ちても `gh run rerun --failed` で
+          # このジョブだけを回し直せば同じ SHA に立て直せる（ci.yml の PR ゲートと
+          # 同じ「やり直しが安い」側。Issue #1006 の考え方）。
+          scripts/gh-retry.sh api -X POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=success \
             -f context=ci-gate \
             -f description="CI passed via ${{ github.event_name }} run"

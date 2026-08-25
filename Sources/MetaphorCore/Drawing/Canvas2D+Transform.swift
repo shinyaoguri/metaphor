@@ -20,15 +20,20 @@ extension Canvas2D {
                 rectMode: currentRectMode,
                 ellipseMode: currentEllipseMode,
                 imageMode: currentImageMode,
+                shapePositionMode: currentShapePositionMode,
                 colorModeConfig: colorModeConfig,
                 tintColor: tintColor,
                 hasTint: hasTint,
                 textSize: currentTextSize,
                 fontFamily: currentFontFamily,
+                textStyle: currentTextStyle,
+                resolvedFontName: resolvedFontName,
                 textAlignH: currentTextAlignH,
                 textAlignV: currentTextAlignV,
                 textLeading: currentTextLeading,
+                textWrap: currentTextWrap,
                 curveDetail: curveDetailCount,
+                bezierDetail: bezierDetailCount,
                 curveTightness: curveTightnessValue,
                 strokeCap: currentStrokeCap,
                 strokeJoin: currentStrokeJoin
@@ -56,15 +61,20 @@ extension Canvas2D {
         currentRectMode = saved.rectMode
         currentEllipseMode = saved.ellipseMode
         currentImageMode = saved.imageMode
+        currentShapePositionMode = saved.shapePositionMode
         colorModeConfig = saved.colorModeConfig
         tintColor = saved.tintColor
         hasTint = saved.hasTint
         currentTextSize = saved.textSize
         currentFontFamily = saved.fontFamily
+        currentTextStyle = saved.textStyle
+        resolvedFontName = saved.resolvedFontName
         currentTextAlignH = saved.textAlignH
         currentTextAlignV = saved.textAlignV
         currentTextLeading = saved.textLeading
+        currentTextWrap = saved.textWrap
         curveDetailCount = saved.curveDetail
+        bezierDetailCount = saved.bezierDetail
         curveTightnessValue = saved.curveTightness
         currentStrokeCap = saved.strokeCap
         currentStrokeJoin = saved.strokeJoin
@@ -84,15 +94,20 @@ extension Canvas2D {
                 rectMode: currentRectMode,
                 ellipseMode: currentEllipseMode,
                 imageMode: currentImageMode,
+                shapePositionMode: currentShapePositionMode,
                 colorModeConfig: colorModeConfig,
                 tintColor: tintColor,
                 hasTint: hasTint,
                 textSize: currentTextSize,
                 fontFamily: currentFontFamily,
+                textStyle: currentTextStyle,
+                resolvedFontName: resolvedFontName,
                 textAlignH: currentTextAlignH,
                 textAlignV: currentTextAlignV,
                 textLeading: currentTextLeading,
+                textWrap: currentTextWrap,
                 curveDetail: curveDetailCount,
+                bezierDetail: bezierDetailCount,
                 curveTightness: curveTightnessValue,
                 strokeCap: currentStrokeCap,
                 strokeJoin: currentStrokeJoin
@@ -115,15 +130,20 @@ extension Canvas2D {
         currentRectMode = saved.rectMode
         currentEllipseMode = saved.ellipseMode
         currentImageMode = saved.imageMode
+        currentShapePositionMode = saved.shapePositionMode
         colorModeConfig = saved.colorModeConfig
         tintColor = saved.tintColor
         hasTint = saved.hasTint
         currentTextSize = saved.textSize
         currentFontFamily = saved.fontFamily
+        currentTextStyle = saved.textStyle
+        resolvedFontName = saved.resolvedFontName
         currentTextAlignH = saved.textAlignH
         currentTextAlignV = saved.textAlignV
         currentTextLeading = saved.textLeading
+        currentTextWrap = saved.textWrap
         curveDetailCount = saved.curveDetail
+        bezierDetailCount = saved.bezierDetail
         curveTightnessValue = saved.curveTightness
         currentStrokeCap = saved.strokeCap
         currentStrokeJoin = saved.strokeJoin

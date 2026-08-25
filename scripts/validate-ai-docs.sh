@@ -11,6 +11,7 @@
 #   6. SPM dependency snippets use the stable version from README.md
 #   7. Generated examples index is up to date
 #   8. Example counts written in prose match the generated index
+#   9. DocC catalogs hold API reference only (no prose articles)
 #
 # Exit code: 0 if all checks pass, 1 if any fail.
 
@@ -165,7 +166,7 @@ else
     # there is bumped but nothing stops it drifting back out of sync.
     version_docs=(
         README.en.md
-        Sources/metaphor/metaphor.docc/GettingStarted.md
+        Sources/metaphor/metaphor.docc/metaphor.md
         llms.txt
         website/src/components/Hero.astro
     )
@@ -263,6 +264,34 @@ else
             fi
         done
     done
+fi
+
+# --------------------------------------------------------------------------
+# 9. DocC catalogs hold API reference only
+# --------------------------------------------------------------------------
+# Issue #533: DocC cannot lay out prose the way the tutorial can, so articles
+# belong in docs/tutorial/ and the catalog is kept to "look up a symbol". The
+# only Markdown allowed under a `.docc` is a landing page: `metaphor.md` for the
+# umbrella, and `<Module>.md` for a library product declared in Package.swift
+# (see docs/README.md「真実の在処」). Anything else is an article, which is what
+# `GettingStarted.md` / `Architecture.md` were before they were removed.
+echo "Checking DocC catalogs hold reference only..."
+
+docc_landings=$(printf '%s\nmetaphor\n' "$pkg_modules" | sort -u)
+docc_articles=0
+while IFS= read -r docc_md; do
+    [ -z "$docc_md" ] && continue
+    base=$(basename "$docc_md" .md)
+    if echo "$docc_landings" | grep -qx "$base"; then
+        pass "$docc_md: landing page"
+    else
+        fail "$docc_md — DocC holds API reference only; move prose to docs/tutorial/ (#533)"
+        docc_articles=$((docc_articles + 1))
+    fi
+done <<< "$(find Sources -type d -name '*.docc' -exec find {} -maxdepth 1 -name '*.md' \; | sort)"
+
+if [ "$docc_articles" -eq 0 ]; then
+    pass "no prose articles under Sources/**/*.docc"
 fi
 
 # --------------------------------------------------------------------------

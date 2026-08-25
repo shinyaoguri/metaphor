@@ -40,8 +40,11 @@ public struct MetalTestHelper: Sendable {
     }
 
     /// Create a ``DepthStencilCache`` using the shared device.
-    public static func depthStencilCache() -> DepthStencilCache {
-        DepthStencilCache(device: device!)
+    ///
+    /// - Throws: ``TestHelperError/noDevice`` when no GPU is available.
+    public static func depthStencilCache() throws -> DepthStencilCache {
+        guard let device else { throw TestHelperError.noDevice }
+        return DepthStencilCache(device: device)
     }
 
     /// Create a ``Canvas2D`` with sensible defaults.
@@ -58,7 +61,7 @@ public struct MetalTestHelper: Sendable {
     ) throws -> Canvas2D {
         guard let device else { throw TestHelperError.noDevice }
         let shaderLib = try shaderLibrary()
-        let depthCache = depthStencilCache()
+        let depthCache = try depthStencilCache()
         return try Canvas2D(
             device: device,
             shaderLibrary: shaderLib,
@@ -84,7 +87,7 @@ public struct MetalTestHelper: Sendable {
     ) throws -> Canvas3D {
         guard let device else { throw TestHelperError.noDevice }
         let shaderLib = try shaderLibrary()
-        let depthCache = depthStencilCache()
+        let depthCache = try depthStencilCache()
         return try Canvas3D(
             device: device,
             shaderLibrary: shaderLib,
@@ -131,8 +134,22 @@ public struct MetalTestHelper: Sendable {
     }
 
     /// Create a command queue from the shared device.
-    public static func commandQueue() -> MTLCommandQueue? {
-        device?.makeCommandQueue()
+    ///
+    /// Deliberately **not** `Optional`. `@Suite(.enabled(if: MetalTestHelper.isGPUAvailable))`
+    /// only guarantees `device != nil`; a command queue is a fresh allocation on every
+    /// call and can fail independently of the device under GPU contention (#1003).
+    /// Returning a non-`Optional` makes `MetalTestHelper.commandQueue()!` — which would
+    /// take the whole test process down with it — impossible to write.
+    ///
+    /// - Throws: ``TestHelperError/noDevice`` when no GPU is available, or
+    ///   ``TestHelperError/commandQueueCreationFailed`` when the device refuses to
+    ///   hand out a command queue.
+    public static func commandQueue() throws -> MTLCommandQueue {
+        guard let device else { throw TestHelperError.noDevice }
+        guard let queue = device.makeCommandQueue() else {
+            throw TestHelperError.commandQueueCreationFailed
+        }
+        return queue
     }
 
     // MARK: - Command Buffer
@@ -161,12 +178,14 @@ public struct MetalTestHelper: Sendable {
 /// Errors specific to test helper setup.
 public enum TestHelperError: Error, CustomStringConvertible {
     case noDevice
+    case commandQueueCreationFailed
     case commandBufferFailed(any Error)
     case commandBufferIncomplete(MTLCommandBufferStatus)
 
     public var description: String {
         switch self {
         case .noDevice: "No Metal device available"
+        case .commandQueueCreationFailed: "Failed to create a Metal command queue"
         case .commandBufferFailed(let error): "Command buffer failed: \(error)"
         case .commandBufferIncomplete(let status):
             "Command buffer did not complete (status: \(status.rawValue))"

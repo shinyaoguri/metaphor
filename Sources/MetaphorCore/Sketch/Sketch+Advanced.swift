@@ -37,45 +37,67 @@ extension Sketch {
 
 extension Sketch {
 
-    /// MSL ソースコードから GPU コンピュートカーネルを作成します。
+    /// Creates a GPU compute kernel from Metal Shading Language source.
     ///
     /// - Parameters:
-    ///   - source: Metal Shading Language のソースコード。
-    ///   - function: コンピュート関数の名前。
-    /// - Returns: 新しい ``ComputeKernel`` インスタンス。
-    /// - Throws: ``MetaphorError``。MSL のコンパイルに失敗した場合は
-    ///   ``MetaphorError/shaderCompilationFailed(name:underlying:)``、関数名が
-    ///   見つからない場合は ``MetaphorError/compute(_:)`` の
-    ///   ``MetaphorError/ComputeFailure/functionNotFound(_:)``、パイプライン作成に
-    ///   失敗した場合は ``MetaphorError/pipelineCreationFailed(name:underlying:)``。
+    ///   - source: The Metal Shading Language source code.
+    ///   - function: The name of the compute function.
+    /// - Returns: A new ``ComputeKernel`` instance.
+    /// - Throws: ``MetaphorError``. ``MetaphorError/shaderCompilationFailed(name:underlying:)``
+    ///   when the MSL fails to compile, ``MetaphorError/ComputeFailure/functionNotFound(_:)``
+    ///   wrapped in ``MetaphorError/compute(_:)`` when the function name is not found, and
+    ///   ``MetaphorError/pipelineCreationFailed(name:underlying:)`` when the pipeline cannot be
+    ///   created.
     public func createComputeKernel(source: String, function: String) throws -> ComputeKernel {
         try context.createComputeKernel(source: source, function: function)
     }
 
-    /// 指定した要素数と型の GPU バッファを作成します。
+    /// Creates a GPU buffer of the given element count and type.
     ///
     /// - Parameters:
-    ///   - count: 要素数。
-    ///   - type: 要素の型。
-    /// - Returns: 新しい ``GPUBuffer``。作成に失敗した場合は `nil`。
+    ///   - count: The number of elements.
+    ///   - type: The element type.
+    /// - Returns: A new ``GPUBuffer``, or `nil` if it could not be created.
+    /// - Important: Reading the buffer back does **not** wait for the GPU. See ``GPUBuffer``
+    ///   for when a kernel's writes actually become visible to the CPU.
     public func createBuffer<T>(count: Int, type: T.Type) -> GPUBuffer<T>? {
         context.createBuffer(count: count, type: type)
     }
 
-    /// 指定したデータで初期化された GPU バッファを作成します。
+    /// Creates a GPU buffer initialized with the given data.
     ///
-    /// - Parameter data: 初期データ配列。
-    /// - Returns: 新しい ``GPUBuffer``。作成に失敗した場合は `nil`。
+    /// - Parameter data: The array of initial data.
+    /// - Returns: A new ``GPUBuffer``, or `nil` if it could not be created.
+    /// - Important: Reading the buffer back does **not** wait for the GPU. See ``GPUBuffer``
+    ///   for when a kernel's writes actually become visible to the CPU.
     public func createBuffer<T>(_ data: [T]) -> GPUBuffer<T>? {
         context.createBuffer(data)
     }
 
-    /// 1D コンピュートカーネルをディスパッチします。
+    /// Dispatches a 1D compute kernel (only effective inside ``Sketch/compute()``).
+    ///
+    /// ``createComputeKernel(source:function:)`` and ``createBuffer(count:type:)`` work in
+    /// `setup()` as well, but **the dispatch itself only works inside `compute()`**.
+    ///
+    /// ```swift
+    /// func compute() {
+    ///     dispatch(kernel, threads: 256) { enc in
+    ///         enc.setBuffer(buffer.buffer, offset: 0, index: 0)
+    ///     }
+    /// }
+    /// ```
     ///
     /// - Parameters:
-    ///   - kernel: ディスパッチするコンピュートカーネル。
-    ///   - threads: 総スレッド数。
-    ///   - configure: ディスパッチ前にコンピュートコマンドエンコーダーを構成するクロージャ。
+    ///   - kernel: The compute kernel to dispatch.
+    ///   - threads: The total thread count.
+    ///   - configure: A closure that configures the compute command encoder before the
+    ///     dispatch.
+    /// - Important: The call only **encodes** the kernel into the frame's command buffer. The
+    ///   GPU does not start it until the frame is committed, so an output ``GPUBuffer`` read
+    ///   later in the same `compute()` still holds the contents from before the dispatch. See
+    ///   ``GPUBuffer`` for when the writes become visible to the CPU.
+    /// - Important: A call from `setup()` or `draw()` does nothing. Debug builds warn once
+    ///   (Issue #1092).
     public func dispatch(
         _ kernel: ComputeKernel,
         threads: Int,
@@ -84,13 +106,20 @@ extension Sketch {
         context.dispatch(kernel, threads: threads, configure: configure)
     }
 
-    /// 2D コンピュートカーネルをディスパッチします。
+    /// Dispatches a 2D compute kernel (only effective inside ``Sketch/compute()``).
     ///
     /// - Parameters:
-    ///   - kernel: ディスパッチするコンピュートカーネル。
-    ///   - width: スレッド単位のグリッド幅。
-    ///   - height: スレッド単位のグリッド高さ。
-    ///   - configure: ディスパッチ前にコンピュートコマンドエンコーダーを構成するクロージャ。
+    ///   - kernel: The compute kernel to dispatch.
+    ///   - width: The grid width in threads.
+    ///   - height: The grid height in threads.
+    ///   - configure: A closure that configures the compute command encoder before the
+    ///     dispatch.
+    /// - Important: The call only **encodes** the kernel into the frame's command buffer. The
+    ///   GPU does not start it until the frame is committed, so an output ``GPUBuffer`` read
+    ///   later in the same `compute()` still holds the contents from before the dispatch. See
+    ///   ``GPUBuffer`` for when the writes become visible to the CPU.
+    /// - Important: A call from `setup()` or `draw()` does nothing. Debug builds warn once
+    ///   (Issue #1092).
     public func dispatch(
         _ kernel: ComputeKernel,
         width: Int,
@@ -100,7 +129,36 @@ extension Sketch {
         context.dispatch(kernel, width: width, height: height, configure: configure)
     }
 
-    /// ディスパッチ間の同期のためにコンピュートコマンドエンコーダーにバリアを挿入します。
+    /// Inserts a barrier between compute dispatches (only inside ``Sketch/compute()``).
+    ///
+    /// Call it between a dispatch that writes a buffer and a dispatch that reads what the first
+    /// one wrote, to declare the dependency between the two.
+    ///
+    /// ```swift
+    /// func compute() {
+    ///     dispatch(integrate, threads: count) { enc in
+    ///         enc.setBuffer(velocity.buffer, offset: 0, index: 0)
+    ///     }
+    ///     computeBarrier()        // collide reads what integrate wrote
+    ///     dispatch(collide, threads: count) { enc in
+    ///         enc.setBuffer(velocity.buffer, offset: 0, index: 0)
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// - Note: **With the current encoder the call changes nothing.** Every dispatch of a frame
+    ///   is encoded into one compute pass created with `MTLDispatchType.serial`, where the
+    ///   dispatches run in encode order and each one already sees what the earlier ones wrote,
+    ///   including writes made by other threads. A dependent chain is therefore correct with or
+    ///   without the barrier today (measured in Issue #1093).
+    /// - Important: **It stops being a no-op the moment the pass becomes concurrent.** The same
+    ///   chain re-encoded with `MTLDispatchType.concurrent` reads stale values without the
+    ///   barrier and is correct with it. That is what this API exists for, so keep calling it
+    ///   wherever a dispatch genuinely depends on an earlier one: it costs nothing now, it
+    ///   states the dependency for the next reader, and it is what keeps the chain correct if
+    ///   the pass ever moves to concurrent dispatch.
+    /// - Important: A call from `setup()` or `draw()` does nothing. Debug builds warn once
+    ///   (Issue #1092).
     public func computeBarrier() {
         context.computeBarrier()
     }
@@ -366,6 +424,10 @@ extension Sketch {
 
 extension Sketch {
     /// オービットカメラコントロールを有効にします（``draw()`` 内で呼び出してください）。
+    ///
+    /// - Note: The frame a button goes down in is measured from the press point, not
+    ///   from where the cursor was a frame earlier, so a click that lands far from the
+    ///   last known cursor position does not spin the camera (Issue #1100).
     public func orbitControl() {
         context.orbitControl()
     }

@@ -169,7 +169,7 @@ metaphor のドキュメントは読者と用途で分かれています。チ�
 
 | 領域 | Issue | 書く場所 |
 |---|---|---|
-| タイポグラフィ（text-on-path / 書体を変えない太さ切り替え） | [#651](https://github.com/shinyaoguri/metaphor/issues/651) / [#816](https://github.com/shinyaoguri/metaphor/issues/816) | 2.7 |
+| タイポグラフィ（text-on-path / 折り返し規則と描画矩形） | [#651](https://github.com/shinyaoguri/metaphor/issues/651) / [#1165](https://github.com/shinyaoguri/metaphor/issues/1165) | 2.7 |
 | モダン 3D（UV / PBR テクスチャ / IBL / glTF） | [#293](https://github.com/shinyaoguri/metaphor/issues/293) | 5.6, 5.8, 5.9 |
 
 実装されたら、その節の「いまできないこと」を本文に昇格させます。実例が 2 つあります — 2D カスタムシェーダ（`loadShader` / `shader`、[Epic #291](https://github.com/shinyaoguri/metaphor/issues/291)）は 6.5 の本文へ（[#670](https://github.com/shinyaoguri/metaphor/issues/670)）、フォントファイル読み込みと `textToPoints`（[#649](https://github.com/shinyaoguri/metaphor/issues/649) / [#650](https://github.com/shinyaoguri/metaphor/issues/650)）は 2.7 の本文へ（[#673](https://github.com/shinyaoguri/metaphor/issues/673)）昇格しました。**この昇格は自動では起きません**——機能を入れる PR でチュートリアルまで見るか、この表から消えた領域を後で拾い直します。後者は実際に起きていて、タイポグラフィの 2 本は実装から 2 日ほど遅れて拾い直しました。
@@ -287,7 +287,7 @@ make tutorial-shots ARGS="--force"                                    # 全部
 
 本文の書き換えはスクリプトが行います。**台帳を正として、節の構造（節見出しと `<!-- tutorial-snippet: … -->`）から画像行の位置を決めて URL を上書きする**ため、初回の外部化・撮り直し・中断後の再実行がすべて同じ操作になります。本文の URL を手で書き換える必要はありません（書き換えても次回の実行で台帳の値に戻ります）。
 
-鮮度の見方は他の生成物と違い、**画像のバイト比較ではありません**。CI に GPU が無く撮影できないためです。加えて、バイト単位の一致を当てにできる範囲そのものが限られています — **同じマシン・同じ実装・同じ OS なら静止画も WebP もバイト単位で一致しますが、別のマシン・別の GPU・macOS のメジャーアップデートを挟んだ場合は測っていないので保証しません**（正典は [ADR-0010 の Amendment 2026-08-23](../adr/0010-tutorial-images-via-gyazo.md#amendment-2026-08-23--再現性で保証する範囲しない範囲)。環境が変わった後の初回の撮り直しは「基準の張り直し」として扱う規則もそこにあります）。代わりに `images/manifest.json` が「撮影したときのスケッチの指紋」を持ち、`--check`（pre-push と CI）が現在のソースと突き合わせて「コードを変えたのに撮り直していない」だけを検出します。指紋の材料はパッケージ配下の全ファイル（`.build` / `.swiftpm` / `.metaphor` を除く）なので、Swift だけでなく同梱リソースの差し替えも拾います（[#505](https://github.com/shinyaoguri/metaphor/issues/505)）。あわせて「本文が指す URL が台帳と揃っているか」も見ます。台帳の `sha256` は鮮度判定には使いません（上げたバイト列の指紋で、URL の中身が入れ替わっていないことを後から確かめるためのものです）。
+鮮度の見方は他の生成物と違い、**画像のバイト比較ではありません**。撮り直しには GPU と、節ごとの起動時間が要るためです（per-PR の CI で全数を撮り直すのは現実的ではありません）。加えて、バイト単位の一致を当てにできる範囲そのものが限られています — **同じマシン・同じ実装・同じ OS なら静止画も WebP もバイト単位で一致しますが、別のマシン・別の GPU・macOS のメジャーアップデートを挟んだ場合は測っていないので保証しません**（正典は [ADR-0010 の Amendment 2026-08-23](../adr/0010-tutorial-images-via-gyazo.md#amendment-2026-08-23--再現性で保証する範囲しない範囲)。環境が変わった後の初回の撮り直しは「基準の張り直し」として扱う規則もそこにあります）。代わりに `images/manifest.json` が「撮影したときのスケッチの指紋」を持ち、`--check`（pre-push と CI）が現在のソースと突き合わせて「コードを変えたのに撮り直していない」だけを検出します。指紋の材料はパッケージ配下の全ファイル（`.build` / `.swiftpm` / `.metaphor` を除く）なので、Swift だけでなく同梱リソースの差し替えも拾います（[#505](https://github.com/shinyaoguri/metaphor/issues/505)）。あわせて「本文が指す URL が台帳と揃っているか」も見ます。台帳の `sha256` は鮮度判定には使いません（上げたバイト列の指紋で、URL の中身が入れ替わっていないことを後から確かめるためのものです）。
 
 **この検査が見ていないもの**: 指紋の材料はパッケージ配下だけで、`Package.swift` が path 依存で参照する metaphor 本体（`Sources/`）は入りません。**ライブラリの実装だけが変わって絵が変わっても、`--check` は「変わっていない」と答えます**（[#586](https://github.com/shinyaoguri/metaphor/issues/586)）。埋め合わせとして台帳は撮影時の来歴（`provenance`: 撮った commit と、そのとき `Sources/` に未コミットの変更があったか）を持ち、`--check` は最後に「N 点は撮影後に `Sources/` が変わっている」と要約だけ伝えます。**合否には混ぜません** — 実装が変わっても絵が変わったとは限らず、描画に触るあらゆる PR を画像の撮り直しで止めることになるためです。来歴は撮り直したものから順に入るので、それ以前に撮った画像は「未記録」と数えられます。
 
@@ -483,7 +483,7 @@ Examples の本数やバージョン番号のような、増減する数値を�
 | ドキュメント | 再配置後の役割 | いつ |
 |---|---|---|
 | [README.md](../../README.md) / [README.en.md](../../README.en.md) の「はじめてのスケッチ」 | 60 秒スタートと最小のコード例は残し、詳細（ライフサイクル表・よく使う関数一覧）はチュートリアル第 1 部・第 2 部へ委譲してリンクする | 完了（[#510](https://github.com/shinyaoguri/metaphor/issues/510)）。`## チュートリアル` 節から公開中の各部へ張る |
-| DocC [GettingStarted.md](../../Sources/metaphor/metaphor.docc/GettingStarted.md) | API リファレンス側の最小導入に絞る（インストール + 最小のスケッチ + `Sketch` へのリンク）。ライフサイクル・設定・入力の詳細はチュートリアルへ送り出す | 完了（入力は [#509](https://github.com/shinyaoguri/metaphor/issues/509)、残りは [#510](https://github.com/shinyaoguri/metaphor/issues/510)） |
+| DocC の読み物（`GettingStarted.md` / `Architecture.md`） | **削除**。DocC は API リファレンス専用にし、読み物は本チュートリアルが引き受ける。最小導入（動作環境 + インストール + 最小のスケッチ + `Sketch` へのリンク）だけをランディング [metaphor.md](../../Sources/metaphor/metaphor.docc/metaphor.md) に畳む | 完了（[#509](https://github.com/shinyaoguri/metaphor/issues/509) → [#510](https://github.com/shinyaoguri/metaphor/issues/510) → [#533](https://github.com/shinyaoguri/metaphor/issues/533)） |
 | [processing-migration-guide.md](../processing-migration-guide.md) | そのまま維持。読者が違う（既習者向け）ことを冒頭で相互に明記する | 完了（冒頭の "Never used Processing?" から本チュートリアルへ送り出している） |
 | [Examples/LEARNING_PATH.md](../../Examples/LEARNING_PATH.md) | **統合せず残す**。「チュートリアルを読み終えた人が Examples を掘るための地図」に位置づけ直し、冒頭でチュートリアルへ送り出す | 完了（[#484](https://github.com/shinyaoguri/metaphor/issues/484) の本文と同時） |
 

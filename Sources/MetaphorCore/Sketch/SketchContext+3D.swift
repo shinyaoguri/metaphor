@@ -750,11 +750,17 @@ extension SketchContext {
         GPUBuffer<T>(device: renderer.device, data: data)
     }
 
-    /// 1D コンピュートカーネルをディスパッチします。
+    /// Dispatches a 1D compute kernel (only effective inside ``Sketch/compute()``).
     /// - Parameters:
-    ///   - kernel: ディスパッチするコンピュートカーネル。
-    ///   - threads: 総スレッド数。
-    ///   - configure: ディスパッチ前にコンピュートエンコーダーを構成するクロージャ。
+    ///   - kernel: The compute kernel to dispatch.
+    ///   - threads: The total thread count.
+    ///   - configure: A closure that configures the compute encoder before the dispatch.
+    /// - Important: The call only **encodes** the kernel into the frame's command buffer. The
+    ///   GPU does not start it until the frame is committed, so an output ``GPUBuffer`` read
+    ///   later in the same `compute()` still holds the contents from before the dispatch. See
+    ///   ``GPUBuffer`` for when the writes become visible to the CPU.
+    /// - Important: GPU work can only be encoded during the compute phase, so a call from
+    ///   `setup()` or `draw()` does nothing. Debug builds warn once (Issue #1092).
     public func dispatch(
         _ kernel: ComputeKernel,
         threads: Int,
@@ -764,7 +770,7 @@ extension SketchContext {
             metaphorWarning("dispatch: threads must be positive (got \(threads)); skipped")
             return
         }
-        guard let encoder = ensureComputeEncoder() else { return }
+        guard let encoder = ensureComputeEncoder(api: "dispatch") else { return }
         encoder.setComputePipelineState(kernel.pipelineState)
         configure(encoder)
 
@@ -774,12 +780,18 @@ extension SketchContext {
         encoder.dispatchThreads(gridSize, threadsPerThreadgroup: threadsPerGroup)
     }
 
-    /// 2D コンピュートカーネルをディスパッチします。
+    /// Dispatches a 2D compute kernel (only effective inside ``Sketch/compute()``).
     /// - Parameters:
-    ///   - kernel: ディスパッチするコンピュートカーネル。
-    ///   - width: スレッド単位のグリッド幅。
-    ///   - height: スレッド単位のグリッド高さ。
-    ///   - configure: ディスパッチ前にコンピュートエンコーダーを構成するクロージャ。
+    ///   - kernel: The compute kernel to dispatch.
+    ///   - width: The grid width in threads.
+    ///   - height: The grid height in threads.
+    ///   - configure: A closure that configures the compute encoder before the dispatch.
+    /// - Important: The call only **encodes** the kernel into the frame's command buffer. The
+    ///   GPU does not start it until the frame is committed, so an output ``GPUBuffer`` read
+    ///   later in the same `compute()` still holds the contents from before the dispatch. See
+    ///   ``GPUBuffer`` for when the writes become visible to the CPU.
+    /// - Important: GPU work can only be encoded during the compute phase, so a call from
+    ///   `setup()` or `draw()` does nothing. Debug builds warn once (Issue #1092).
     public func dispatch(
         _ kernel: ComputeKernel,
         width: Int,
@@ -791,7 +803,7 @@ extension SketchContext {
                 "dispatch: width/height must be positive (got \(width)x\(height)); skipped")
             return
         }
-        guard let encoder = ensureComputeEncoder() else { return }
+        guard let encoder = ensureComputeEncoder(api: "dispatch") else { return }
         encoder.setComputePipelineState(kernel.pipelineState)
         configure(encoder)
 
@@ -802,19 +814,63 @@ extension SketchContext {
         encoder.dispatchThreads(gridSize, threadsPerThreadgroup: threadsPerGroup)
     }
 
-    /// データ依存関係を解決するためにコンピュートディスパッチ間にメモリバリアを挿入します。
+    /// Inserts a memory barrier between compute dispatches (only inside ``Sketch/compute()``).
+    ///
+    /// Use it to declare a data dependency between dispatches: put it between the dispatch that
+    /// writes a buffer and the dispatch that reads what was written.
+    /// - Note: **With the current encoder the call changes nothing.** `ensureComputeEncoder`
+    ///   builds the pass with `cb.makeComputeCommandEncoder()`, which is
+    ///   `MTLDispatchType.serial`, so the dispatches run in encode order and each one already
+    ///   sees what the earlier ones wrote, including writes made by other threads. Measured
+    ///   over a dependent chain of 4,194,304 elements (20 runs, Apple silicon): 0 disagreements
+    ///   with the barrier and 0 without it (Issue #1093).
+    /// - Important: **It stops being a no-op the moment the pass becomes concurrent.** The same
+    ///   chain re-encoded with `MTLDispatchType.concurrent` disagreed on up to 106 elements per
+    ///   run without the barrier and on 0 with it. This API is what would keep such a pass
+    ///   correct, which is why the calls are worth keeping wherever a real dependency exists
+    ///   rather than stripping them as dead weight.
+    /// - Important: GPU work can only be encoded during the compute phase, so a call from
+    ///   `setup()` or `draw()` does nothing. Debug builds warn once (Issue #1092).
     public func computeBarrier() {
+        // コンピュートフェーズの中でまだ 1 度も dispatch していない場合もエンコーダーは
+        // 無いが、そこでのバリアは順序を守るものが無いだけの無害な no-op なので黙って通す。
+        // 警告するのは「そもそも場所が違う」ときだけ。
+        guard _commandBuffer != nil else {
+            warnComputeOutsidePhase("computeBarrier")
+            return
+        }
         _computeEncoder?.memoryBarrier(scope: .buffers)
     }
 
-    /// コンピュートコマンドエンコーダーを遅延生成して返します。
-    func ensureComputeEncoder() -> MTLComputeCommandEncoder? {
+    /// Lazily creates and returns the compute command encoder.
+    ///
+    /// Returns `nil` outside the compute phase (between `beginCompute` and `endCompute`).
+    /// This used to return silently, which is why calling `dispatch` from `setup()` or
+    /// `draw()` looked like "no error, no warning, nothing happens" (Issue #1092).
+    /// - Parameter api: The caller-facing API name to put in the warning.
+    func ensureComputeEncoder(api: String) -> MTLComputeCommandEncoder? {
         if let existing = _computeEncoder { return existing }
-        guard let cb = _commandBuffer else { return nil }
+        guard let cb = _commandBuffer else {
+            warnComputeOutsidePhase(api)
+            return nil
+        }
         let encoder = cb.makeComputeCommandEncoder()
         _computeEncoder = encoder
         renderer.didEncodeComputeWork = true
         return encoder
+    }
+
+    /// Warns once per API that compute work was requested outside the compute phase.
+    ///
+    /// A call from `draw()` repeats the same line every frame, so this follows the same
+    /// "do not flood the log" rule as `didWarnPixelAccessBeforeLoad`.
+    /// - Parameter api: The caller-facing API name to put in the warning.
+    func warnComputeOutsidePhase(_ api: String) {
+        guard !_warnedComputeOutsidePhase.contains(api) else { return }
+        _warnedComputeOutsidePhase.append(api)
+        metaphorWarning(
+            "\(api): compute work can only be encoded from compute() — "
+                + "called outside the compute phase (setup()/draw()); skipped")
     }
 
     // MARK: - Particle System
@@ -844,7 +900,7 @@ extension SketchContext {
     /// パーティクルシステムを更新します（コンピュートフェーズ中に呼び出してください）。
     /// - Parameter system: 更新するパーティクルシステム。
     public func updateParticles(_ system: ParticleSystem) {
-        guard let encoder = ensureComputeEncoder() else { return }
+        guard let encoder = ensureComputeEncoder(api: "updateParticles") else { return }
         system.update(encoder: encoder, deltaTime: deltaTime, time: time)
     }
 
@@ -1025,14 +1081,22 @@ extension SketchContext {
     /// オービットカメラコントロールを有効にします（描画フェーズ中に呼び出してください）。
     ///
     /// マウスドラッグでカメラを回転し、スクロールでズームします。
+    ///
+    /// - Note: The frame a button goes down in is measured from the press point, not
+    ///   from where the cursor was a frame earlier, so a click that lands far from the
+    ///   last known cursor position does not spin the camera (Issue #1100).
     public func orbitControl() {
         let inp = input
 
         // マウスドラッグでカメラを回転
         if inp.isMouseDown {
-            let dx = inp.mouseX - inp.pmouseX
-            let dy = inp.mouseY - inp.pmouseY
-            orbitCamera.handleMouseDrag(dx: dx, dy: dy)
+            // 押下が届いたフレームは押下位置を起点に測る。押下は移動ではないので、
+            // カーソルが押下位置まで飛んだぶんを回してしまわない（#1100）。
+            // 起点を押下位置に取るので、押下とドラッグが同じフレームに来たとき
+            // （ライブビューアが溜めたイベントを一括で流す経路）はドラッグぶんだけ残る。
+            let originX = inp.isMousePressedThisFrame ? inp.mousePressX : inp.pmouseX
+            let originY = inp.isMousePressedThisFrame ? inp.mousePressY : inp.pmouseY
+            orbitCamera.handleMouseDrag(dx: inp.mouseX - originX, dy: inp.mouseY - originY)
         }
 
         // スクロールでズーム

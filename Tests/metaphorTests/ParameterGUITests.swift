@@ -1,4 +1,5 @@
 import Foundation
+import Metal
 import Testing
 @testable import MetaphorCore
 import MetaphorTestSupport
@@ -249,5 +250,51 @@ struct ParameterGUIStoreTests {
         #expect(isClose(ParameterGUI.niceCeil(6), 10))
         #expect(isClose(ParameterGUI.niceCeil(60), 100))
         #expect(isClose(ParameterGUI.niceCeil(0), 1))  // 値 0 でも潰れない
+    }
+}
+
+// MARK: - C-12: GUI Parameter Control
+
+@Suite("C-12 ParameterGUI", .enabled(if: MTLCreateSystemDefaultDevice() != nil))
+@MainActor
+struct ParameterGUITests {
+
+    @Test("ParameterGUI initializes with default values")
+    func guiDefaults() {
+        let gui = ParameterGUI()
+        #expect(gui.isVisible == true)
+        #expect(gui.widgetWidth == 200)
+        #expect(gui.fontSize == 12)
+    }
+
+    @Test("begin/end cycle works without crash")
+    func beginEndCycle() {
+        let gui = ParameterGUI()
+        gui.begin()
+        let (x, y, w, h) = gui.end()
+        #expect(x == 10)
+        #expect(y == 10)
+        #expect(w > 0)
+        #expect(h > 0)
+    }
+
+    @Test("isVisible=false makes slider skip")
+    func invisibleSkip() {
+        let gui = ParameterGUI()
+        gui.isVisible = false
+        gui.begin()
+        // slider は呼べるがスキップされる（クラッシュしない）
+        let (_, _, _, h) = gui.end()
+        #expect(h > 0)
+    }
+
+    @Test("SketchContext has gui property")
+    func sketchContextGUI() throws {
+        let renderer = try MetaphorRenderer()
+        let canvas = try Canvas2D(renderer: renderer)
+        let canvas3D = try Canvas3D(renderer: renderer)
+        let ctx = SketchContext(
+            renderer: renderer, canvas: canvas, canvas3D: canvas3D, input: renderer.input)
+        #expect(ctx.gui.isVisible == true)
     }
 }

@@ -18,10 +18,10 @@ struct AlphaSemanticsTests {
 
     private func makeGraphics() throws -> Graphics {
         try Graphics(
-            device: MetalTestHelper.device!,
-            commandQueue: MetalTestHelper.commandQueue()!,
+            device: try #require(MetalTestHelper.device),
+            commandQueue: try MetalTestHelper.commandQueue(),
             shaderLibrary: try MetalTestHelper.shaderLibrary(),
-            depthStencilCache: MetalTestHelper.depthStencilCache(),
+            depthStencilCache: try MetalTestHelper.depthStencilCache(),
             width: Self.size,
             height: Self.size
         )
@@ -326,10 +326,10 @@ struct Graphics3DBackgroundTests {
 
     private func makeGraphics3D() throws -> Graphics3D {
         try Graphics3D(
-            device: MetalTestHelper.device!,
-            commandQueue: MetalTestHelper.commandQueue()!,
+            device: try #require(MetalTestHelper.device),
+            commandQueue: try MetalTestHelper.commandQueue(),
             shaderLibrary: try MetalTestHelper.shaderLibrary(),
-            depthStencilCache: MetalTestHelper.depthStencilCache(),
+            depthStencilCache: try MetalTestHelper.depthStencilCache(),
             width: Self.size,
             height: Self.size
         )
@@ -355,18 +355,19 @@ struct Graphics3DBackgroundTests {
         pg3d.popMatrix()
     }
 
-    /// `background()` を呼ばなければ下地は不透明な黒のまま。
+    /// `background()` を呼ばなければ下地は透明のまま（#914 で不透明な黒から移した）。
     ///
-    /// 既定値を変えると既存の 3D オフスクリーンの見た目が動くので、`Graphics`（2D）と
-    /// 揃えた不透明な黒であることをここで固定する（#830 では既定を変えない判断）。
-    @Test("the default backdrop stays opaque black")
-    func defaultBackdropIsOpaqueBlack() throws {
+    /// 2D（`Graphics`）と既定が食い違うと、同じ概念の API が面ごとに違う絵を出す
+    /// （#830 が直した非対称）。2 面が揃っていることは
+    /// `OffscreenTransparentDefaultTests` が両方を並べて見張る。
+    @Test("the default backdrop stays transparent")
+    func defaultBackdropIsTransparent() throws {
         let pg3d = try makeGraphics3D()
         pg3d.beginDraw(time: 0)
         pg3d.endDraw(wait: true)
 
         let got = center(pg3d)
-        #expect(got == (0, 0, 0, 255), "既定の下地が不透明な黒でない: \(got) — #830")
+        #expect(got == (0, 0, 0, 0), "既定の下地が透明でない: \(got) — #914")
     }
 
     /// `background(α = 0)` は、呼んだそのフレームで下地を透明にする。

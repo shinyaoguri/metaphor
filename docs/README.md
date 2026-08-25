@@ -30,6 +30,7 @@ metaphor のドキュメントは「誰が・何のために読むか」で分�
 - **[reference/](reference/)** — DocC の API リファレンスに載せる実行結果画像の規約
   - [reference/README.md](reference/README.md) — doc コメントへのスニペットの書き方・撮影（`make reference-shots`）・CI が見るもの
   - **DocC カタログはリポジトリに 1 つだけ**（`Sources/metaphor/metaphor.docc/`）。`docc convert` は入力カタログを 1 つしか取れないので、モジュールのランディング（`MetaphorNoise` などモジュール自体を説明するページ）も**このカタログに `<モジュール名>.md` として置きます**（[#492](https://github.com/shinyaoguri/metaphor/issues/492)）。`Sources/<モジュール>/<モジュール>.docc/` に置いても convert の入力に入らず、**公開サイトに出ません**
+  - **DocC には API リファレンスだけを置きます**（[#533](https://github.com/shinyaoguri/metaphor/issues/533)）。`.docc` に置いてよい `.md` は**ランディング `metaphor.md` とモジュールランディング `<モジュール名>.md` だけ**で、`<doc:...>` で開く記事（チュートリアル・解説・アーキテクチャ論）は足しません。DocC は図の置き方や導線を作り込めないため、読み物は [tutorial/](tutorial/) が引き受けます。`scripts/validate-ai-docs.sh` がこれを機械で守ります
   - モジュールのランディングに書くのは**そのモジュール固有の散文**（Overview・クイックスタート・落とし穴）だけです。シンボルの Topics は `metaphor.docc/metaphor.md` が全モジュール分をまとめて curate しているので重複させません。シンボルリンクは ``` ``MetaphorNoise/NoiseConfig`` ``` のように**モジュール修飾**で書きます（無修飾は解決できず `make docs-check` が落ちます）
 - **[ai/](ai/)** — AI 支援まわりのドキュメント一式
   - [ai/README.md](ai/README.md) — 実装デバッグ・拡張ノート（ライブラリ開発者と AI エージェント向け）
@@ -46,6 +47,7 @@ metaphor のドキュメントは「誰が・何のために読むか」で分�
   - [design/roadmap-processing-unity.md](design/roadmap-processing-unity.md) — Processing / Unity ユーザー獲得ロードマップ（living document・Epic 一覧）
   - [design/live-tooling-params.md](design/live-tooling-params.md) — ライブツーリング基盤の設計。Parameter Store（A）と状態保持リロード（B）は producer / consumer とも実装済みで、インスペクタ（C）/ 往復レイテンシ（D）が叩き台（節ごとの状況は文書冒頭の表）
   - [design/v1-release-plan.md](design/v1-release-plan.md) — v1.0.0 リリース準備計画（readiness review・準備トラック・リリース条件）
+  - [design/app-bundle-distribution.md](design/app-bundle-distribution.md) — 完成作品を `.app` として配布する導線（段階・レイアウト・検査項目・クリーンルーム検証）。責務分担の判断は [ADR-0015](adr/0015-app-bundle-runtime-resolution-vs-assembly.md)
 - **[releasing.md](releasing.md)** — リリース手順（週次トレイン + `release:now` の express）+ CHANGELOG の昇格・リリースノート生成
 - **[release-pipeline.md](release-pipeline.md)** — 3 リポジトリ（metaphor / metaphor-cli / homebrew-tap）の依存関係とリリース自動連鎖の全体地図。詳細は releasing.md / metaphor-cli 側 docs へ委譲
 
@@ -66,7 +68,9 @@ Processing / Unity ユーザー獲得の並行トラック（ロードマップ 
 | 知りたいこと | 正典 |
 |---|---|
 | 公開 API シグネチャ | [`llms.txt`](../llms.txt)（生成物） |
+| DocC カタログに何を置くか | **API リファレンスのみ**。読み物（通しで読ませるもの）は [tutorial/](tutorial/) が正典（[#533](https://github.com/shinyaoguri/metaphor/issues/533)） |
 | チュートリアルの章立て・執筆規約 | [tutorial/README.md](tutorial/README.md) |
+| レンダリングアーキテクチャ・実装の不変条件 | [ai/README.md](ai/README.md)（[CLAUDE.md](../CLAUDE.md) の「アーキテクチャ」節は地図で、詳細はここへ委譲） |
 | リファレンスの実行結果画像の規約 | [reference/README.md](reference/README.md) |
 | 実行結果画像の再現性で保証する範囲・しない範囲 | [adr/0010](adr/0010-tutorial-images-via-gyazo.md) の Amendment 2026-08-23（3 面共通） |
 | 設計判断の根拠 | [adr/](adr/) |

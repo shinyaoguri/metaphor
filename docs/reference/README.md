@@ -134,10 +134,17 @@ make reference-shots ARGS="--list"                    # 撮影対象を並べる
 | `--check` | per-PR | スニペットを変えたのに撮り直していない／本文の URL が台帳とずれている |
 | `--compile-only` | per-PR（Sources 変更時） | **doc コメントの例が実際にコンパイルできる** |
 | `scripts/check-image-urls.py` | 週次（`asset-health.yml`） | Gyazo の URL が生きている |
+| `--verify-bytes` | 手動（`shot-reproducibility.yml`） | 撮り直した絵が台帳の `sha256` とバイト一致する |
 
-画像そのものは比較しません（CI に GPU が無く撮影できないため。加えてバイト一致を当てに
-できる範囲も限られます → [ADR-0010 の Amendment 2026-08-23](../adr/0010-tutorial-images-via-gyazo.md#amendment-2026-08-23--再現性で保証する範囲しない範囲)）。
+`--check` は画像そのものを比較しません。撮り直しには GPU と、スニペット 1 本ごとの起動
+時間が要るので、per-PR で全数を撮り直すのは現実的でないためです（加えてバイト一致を
+当てにできる範囲も限られます → [ADR-0010 の Amendment 2026-08-23](../adr/0010-tutorial-images-via-gyazo.md#amendment-2026-08-23--再現性で保証する範囲しない範囲)）。
 鮮度は台帳 `images/manifest.json` の `snippetHash`（スニペット + 撮影設定の指紋）で見ます。
+
+バイト比較そのものは `--verify-bytes` が行います。撮り直して台帳の `sha256` と突き合わせ、
+Gyazo へは上げません（トークンが要りません）。`macos-26` ランナーには GPU があるので CI でも
+走り、「別マシン・別 GPU でも同じ絵が撮れるか」— 上の Amendment が保証範囲の外に置いている
+まさにその部分 — を実測できます。
 
 **この検査が見ていないもの**: `snippetHash` の材料はスニペットと撮影設定だけで、
 `Sources/` の実装は入りません。**実装だけが変わって絵が変わっても「変わっていない」と

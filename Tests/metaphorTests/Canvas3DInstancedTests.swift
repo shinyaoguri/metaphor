@@ -172,7 +172,7 @@ struct Canvas3DInstancedTests {
     func flushesPrecedingBatch() throws {
         // 別メッシュ（= 別バッチキー）を先に描いてから drawInstanced する。
         // バッチが割れても両方描かれることを、手書きループとの一致で確かめる
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let other = try Mesh.sphere(device: device, radius: 14)
 
         let loop = try render { c, mesh in

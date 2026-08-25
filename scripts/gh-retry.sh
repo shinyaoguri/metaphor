@@ -6,6 +6,9 @@
 #   例: TITLE=$(scripts/gh-retry.sh pr view "$PR_NUMBER" --json title --jq '.title')
 #       PR_JSON=$(scripts/gh-retry.sh pr view "$PR_NUMBER" --json title,labels)
 #
+# Env: GH_RETRY_ATTEMPTS — リトライ回数 (既定 3)。下の「リトライ回数と
+#      バックオフ」の項を参照。
+#
 # 背景 (Issue #949 / #947 / #960): ci.yml の PR メタデータゲート 3 本は、タイトル・
 # ラベル・本文を**イベントペイロードではなく実行時に API から引く**。これは意図的な
 # 設計で、タイトルを直す / ラベルを貼る / 画像を足すだけで `gh run rerun --failed`
@@ -36,6 +39,20 @@
 # リトライ回数とバックオフは既存の同型リトライ (check-contract-identity.sh /
 # check-release-assets.sh) に揃えて 3 回・1s → 2s。
 #
+# 回数だけは呼び出し側が `GH_RETRY_ATTEMPTS` で増やせる (Issue #1006)。budget を
+# 決めるのは呼び出しの重さではなく**やり直しの費用**で、両者は桁で違う:
+#
+#   - ci.yml の PR ゲートは、落ちても `gh run rerun --failed` で戻せる。既定の
+#     3 回で十分で、伸ばしても人がボタンを押す回数は変わらない。
+#   - release.yml の `gh pr view` 2 本は、CI を一周終えた後に来る。前者
+#     (headRefOid) の時点で release ブランチ push と PR 作成が済んでいるので
+#     単純な再実行は `gh pr create` が二重になって通らず、後者 (mergeCommit) は
+#     **squash merge の後**なので再実行そのものが効かない (人手で `git tag` を
+#     打つしかない)。ここで数秒余分に粘る損は、10 分超の CI に対して誤差。
+#
+# 既定を動かさないのは意図的で、増やしたい経路だけが宣言する (呼び出し側の
+# `env:` を読めば、そこが「やり直しの効かない場所」だと分かる)。
+#
 # stdout は**呼び出し側がデータとして捕まえるチャンネル**なので、
 #
 #   - 成否が決まるまでバッファへ溜め、成功した attempt の分だけを一度に流す
@@ -58,7 +75,21 @@ if ! command -v gh >/dev/null 2>&1; then
   exit 2
 fi
 
-readonly ATTEMPTS=3
+# 未指定・空は既定の 3 回。空を突っぱねないのは、`${{ }}` の展開が空になった
+# だけでリリースを落とすより、既定へ戻して走り切る方が損が小さいため (budget は
+# あくまで上乗せで、3 回でも動作としては正しい)。
+#
+# 一方 `=three` や `=0` は弾く。素通しすると `[ "$attempt" -lt "$ATTEMPTS" ]` が
+# 算術エラーで転び、「gh が落ちた」のか「budget の指定を間違えた」のかが
+# ログから読めなくなる。
+ATTEMPTS="${GH_RETRY_ATTEMPTS:-3}"
+case "$ATTEMPTS" in
+  *[!0-9]* | 0)
+    echo "::error::GH_RETRY_ATTEMPTS must be a positive integer (got '${GH_RETRY_ATTEMPTS-}')." >&2
+    exit 2
+    ;;
+esac
+readonly ATTEMPTS
 
 out="$(mktemp)"
 err="$(mktemp)"

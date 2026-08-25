@@ -1,0 +1,71 @@
+name: Shot Reproducibility
+
+# 実行結果画像が「別マシン・別 GPU でも同じバイト列で撮れるか」を実測する。
+#
+# 台帳（docs/reference/images/manifest.json）の sha256 は、手元で撮ったバイト列の指紋。
+# 同じマシン・同じ実装・同じ OS なら静止画も動きもバイト単位で一致することは #586 / #784
+# で実測済みだが、**別マシン・別 GPU をまたいだ場合は測っていない**（保証範囲の正典は
+# docs/adr/0010-tutorial-images-via-gyazo.md の Amendment 2026-08-23）。
+#
+# ここが一致するなら、撮影そのものを CI へ移せる — generate-reference-shots.py の
+# upload() は「中身が同じなら上げ直さない」ので、Gyazo に無駄な URL を積まずに済む。
+# 一致しないなら「撮る場所を 1 つに決める」という運用の決めが要る。
+#
+# 恒久的な使い道もある: ランナーの GPU 世代や Xcode が変わって絵が変わったとき、
+# それを台帳と突き合わせて検出できるのはこのワークフローだけ。
+#
+# secrets を一切使わない（Gyazo へ上げないのでトークンが要らない）。
+on:
+  workflow_dispatch:
+    inputs:
+      only:
+        description: 'Symbol filter for --only (empty = every snippet; takes hours)'
+        required: false
+        type: string
+        default: 'circle'
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+concurrency:
+  group: shot-reproducibility
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: macos-26
+    # 1 本あたり「ビルド済みターゲットの起動 + 撮影」で数十秒。既定の 1 本なら
+    # metaphor 本体のビルドが所要のほとんどを占める。全数を回すときは注意
+    # （GitHub-hosted のジョブ上限は 6 時間で、それを超えると強制キャンセルされる）。
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_26.4.app
+      # 動きのあるスニペットは GIF を作るので ffmpeg が要る。GitHub-hosted の macOS
+      # ランナーには入っていない（初回の実測 run 32681341740 が
+      # 「ffmpeg が見つからない（GIF の生成に要る）」で落ちて分かった）。
+      #
+      # 静止画だけを撮るなら無くても通るが、対象に motion が混ざっているかは --only の
+      # 中身次第なので常に入れる。ここが GIF のバイト一致を左右する変数そのものでも
+      # ある — ffmpeg の版が手元と違えば、同じフレーム列から別のバイト列が出る。
+      # 一致しなかったときに版を疑えるよう、入れた版をログに残す。
+      - name: Install ffmpeg
+        run: |
+          brew install ffmpeg
+          ffmpeg -version | head -1
+      # 撮影はヘッドレス（METAPHOR_VIEWER=1）で走るのでウィンドウは開かないが、
+      # Metal のデバイスは要る。GPU が無いランナーではここで落ちる。
+      - name: Verify shot reproducibility
+        env:
+          ONLY: ${{ inputs.only }}
+        run: |
+          if [ -n "$ONLY" ]; then
+            python3 scripts/generate-reference-shots.py --verify-bytes --only "$ONLY"
+          else
+            python3 scripts/generate-reference-shots.py --verify-bytes
+          fi

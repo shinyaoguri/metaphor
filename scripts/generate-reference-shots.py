@@ -74,20 +74,29 @@ metaphor 本体のビルドも 1 回で済む（スニペットごとにパッ�
 
 ## なぜ画像のバイト比較で鮮度を見ないか
 
-GitHub の macOS ランナーには GPU が無く、CI では撮り直せない。だから `--check` は画像では
-なく**スニペットと撮影設定の指紋**（`snippetHash`）を台帳と突き合わせる。これで「コードを
-変えたのに画像を撮り直していない」だけを、GPU の無い CI ランナーでも検出できる。
+`--check` は画像ではなく**スニペットと撮影設定の指紋**（`snippetHash`）を台帳と突き合わせる。
+撮り直しには GPU と実行時間（スニペット 1 本ごとに起動）が要るので、per-PR の CI で全数を
+撮り直すのは現実的でない。指紋の比較なら「コードを変えたのに画像を撮り直していない」だけを
+一瞬で検出できる。
 
 なお「GPU の出力が非決定だからバイト比較できない」わけではない。同じマシン・同じ実装・同じ
 OS なら静止画も動きもバイト単位で一致する（#586 / #784）。ただし別マシン・別 GPU・macOS の
 メジャーアップデートを挟んだ場合は測っていないので保証しない（保証範囲の正典は
 `docs/adr/0010-tutorial-images-via-gyazo.md` の Amendment 2026-08-23）。
 
+その未測定の範囲を実測するのが `--verify-bytes`。撮り直して台帳の `sha256` と突き合わせ、
+**Gyazo へは上げない**（トークンも要らない）。GitHub-hosted の `macos-26` ランナーには GPU が
+あるので、手元と CI でこれを走らせて比べれば「別マシン・別 GPU でもバイトが一致するか」が
+決まる。一致するなら撮影そのものを CI へ移せる（`upload()` は中身が同じなら上げ直さないので、
+Gyazo に無駄な URL を積まずに済む）。
+
 台帳の `sha256` は鮮度判定には使わない。こちらは上げたバイト列そのものの指紋で、URL が
 指す中身が入れ替わっていないことを後から確かめるためのもの。URL の生死は週次のワーク
 フローが見る（scripts/check-image-urls.py）。
 
-撮影とアップロードはローカルで行い、doc コメントと台帳をコミットする（CI では走らせない）。
+撮影は手元でも CI でも走る。CI 側は `.github/workflows/shots.yml`（手動起動）が撮り、
+差分があれば **PR を開く** — 絵が変わったのが意図した変更か退行かは機械では判別できず、
+直接 push すると誰も確かめないまま退行が焼き付くため（#586 / #1112）。
 """
 
 from __future__ import annotations
@@ -1101,6 +1110,84 @@ def check(snippets: list[Snippet], shots: dict, config: dict) -> int:
 # --- 実行 ---------------------------------------------------------------------
 
 
+def verify_targets(snippet: Snippet, recorded: dict) -> list[tuple[str, Path, str]]:
+    """`--verify-bytes` で突き合わせる `(表示名, 撮影先, 台帳の指紋)` を並べる。
+
+    動きのあるスニペットは代表静止画と GIF の 2 つを持つ（`publish` と対）。
+    """
+    targets: list[tuple[str, Path, str]] = []
+    still = recorded.get("sha256")
+    if still:
+        targets.append(
+            (snippet.symbol, STAGING_DIR / f"{snippet.target}.png", still)
+        )
+    motion = (recorded.get("motion") or {}).get("sha256")
+    if motion:
+        targets.append(
+            (
+                f"{snippet.symbol} (motion)",
+                STAGING_DIR / f"{snippet.target}.gif",
+                motion,
+            )
+        )
+    return targets
+
+
+def verify_bytes(snippets: list[Snippet], shots: dict, config: dict) -> int:
+    """撮り直して、台帳の `sha256` とバイト単位で一致するかだけを見る。
+
+    **Gyazo へは上げない**（トークンが要らない）。台帳も doc コメントも書き換えない。
+    要るのは GPU と撮影時間だけなので、GitHub-hosted の `macos-26` でも走らせられる。
+
+    使いどころは「別マシン・別 GPU でも同じバイト列が出るか」の実測（モジュール冒頭の
+    「なぜ画像のバイト比較で鮮度を見ないか」を参照）。手元と CI の両方で走らせて突き
+    合わせる。全数は時間がかかるので `--only` で絞って使う。
+
+    台帳に `sha256` が無いスニペット（まだ一度も上げていない）は比較しようがないので
+    skip として数え、終了コードには含めない。
+    """
+    write_package(snippets, config)
+    build_package(snippets)
+
+    matched: list[str] = []
+    differed: list[str] = []
+    skipped: list[str] = []
+
+    for snippet in snippets:
+        targets = verify_targets(snippet, shots.get(snippet.key) or {})
+        if not targets:
+            skipped.append(snippet.symbol)
+            print(f"  skip     {snippet.symbol}（台帳に指紋が無い）", flush=True)
+            continue
+        capture(snippet, snippet.settings(config), snippet.symmetric(config))
+        for label, path, expected in targets:
+            if not path.is_file():
+                skipped.append(label)
+                print(f"  skip     {label}（撮れていない: {path.name}）", flush=True)
+                continue
+            actual = file_sha256(path)
+            if actual == expected:
+                matched.append(label)
+                print(f"  match    {label}", flush=True)
+            else:
+                differed.append(label)
+                print(f"  DIFFER   {label}", flush=True)
+                print(f"           台帳 {expected}", flush=True)
+                print(f"           撮影 {actual}", flush=True)
+
+    shutil.rmtree(STAGING_DIR, ignore_errors=True)
+
+    print(f"\n一致 {len(matched)} / 不一致 {len(differed)} / 比較なし {len(skipped)}")
+    if differed:
+        print(
+            "撮り直した絵が台帳の指紋と違います。実装か環境（GPU・OS・Xcode）が"
+            "変わった可能性があります。",
+            file=sys.stderr,
+        )
+        return 1
+    return 0
+
+
 def shoot(
     snippets: list[Snippet], shots: dict, config: dict, force: bool, prune: bool
 ) -> int:
@@ -1150,6 +1237,11 @@ def main() -> int:
     parser.add_argument(
         "--compile-only", action="store_true", help="スニペットのビルドだけ通す（GPU 不要）"
     )
+    parser.add_argument(
+        "--verify-bytes",
+        action="store_true",
+        help="撮り直して台帳の指紋とバイト一致するか調べる（上げない・GPU 要）",
+    )
     parser.add_argument("--list", action="store_true", help="撮影対象を並べる")
     parser.add_argument("--only", help="キー・シンボルの部分一致で絞る")
     parser.add_argument("--force", action="store_true", help="鮮度に関わらず撮り直す")
@@ -1169,6 +1261,8 @@ def main() -> int:
             print(f"スニペット {len(snippets)} 本のコンパイルを確認しました")
             return 0
         shots = load_manifest()
+        if args.verify_bytes:
+            return verify_bytes(snippets, shots, config)
         if args.check:
             if args.only:
                 # 絞ったまま孤児を報告すると毎回赤くなるので、全体を見る。

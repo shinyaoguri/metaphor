@@ -465,6 +465,8 @@ extension Canvas2D {
     }
 
     /// 2つのアンカーポイントと2つの制御点で定義される3次ベジェ曲線を描画します。
+    ///
+    /// The number of segments follows ``bezierDetail(_:)`` (it was fixed at 24 until Issue #813).
     /// - Parameters:
     ///   - x1: 第1アンカーポイントのx座標。
     ///   - y1: 第1アンカーポイントのy座標。
@@ -483,7 +485,7 @@ extension Canvas2D {
         svgRecorder?.recordBezier(
             x1: x1, y1: y1, cx1: cx1, cy1: cy1, cx2: cx2, cy2: cy2, x2: x2, y2: y2,
             style: svgStyle())
-        let segments = 24
+        let segments = bezierDetailCount
         let step = 1.0 / Float(segments)
 
         var prevX = x1

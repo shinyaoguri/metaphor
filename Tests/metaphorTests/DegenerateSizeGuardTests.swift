@@ -66,9 +66,10 @@ struct DegenerateSizeGuardTests {
     /// `Graphics` / `Graphics3D` / メインキャンバスが共通で通る唯一の関門。
     @Test("TextureManager が退化サイズを throw で弾く", arguments: degenerateSizes)
     fileprivate func textureManagerThrows(size: DegenerateSize) throws {
+        let device = try #require(MetalTestHelper.device)
         #expect(throws: MetaphorError.self) {
             _ = try TextureManager(
-                device: MetalTestHelper.device!,
+                device: device,
                 width: size.width,
                 height: size.height,
                 sampleCount: 1
@@ -78,12 +79,14 @@ struct DegenerateSizeGuardTests {
 
     @Test("Graphics の init が退化サイズを throw で弾く", arguments: degenerateSizes)
     fileprivate func graphicsInitThrows(size: DegenerateSize) throws {
+        let device = try #require(MetalTestHelper.device)
+        let queue = try MetalTestHelper.commandQueue()
         let shaderLib = try MetalTestHelper.shaderLibrary()
-        let depthCache = MetalTestHelper.depthStencilCache()
+        let depthCache = try MetalTestHelper.depthStencilCache()
         #expect(throws: MetaphorError.self) {
             _ = try Graphics(
-                device: MetalTestHelper.device!,
-                commandQueue: MetalTestHelper.commandQueue()!,
+                device: device,
+                commandQueue: queue,
                 shaderLibrary: shaderLib,
                 depthStencilCache: depthCache,
                 width: size.width,
@@ -94,12 +97,14 @@ struct DegenerateSizeGuardTests {
 
     @Test("Graphics3D の init が退化サイズを throw で弾く", arguments: degenerateSizes)
     fileprivate func graphics3DInitThrows(size: DegenerateSize) throws {
+        let device = try #require(MetalTestHelper.device)
+        let queue = try MetalTestHelper.commandQueue()
         let shaderLib = try MetalTestHelper.shaderLibrary()
-        let depthCache = MetalTestHelper.depthStencilCache()
+        let depthCache = try MetalTestHelper.depthStencilCache()
         #expect(throws: MetaphorError.self) {
             _ = try Graphics3D(
-                device: MetalTestHelper.device!,
-                commandQueue: MetalTestHelper.commandQueue()!,
+                device: device,
+                commandQueue: queue,
                 shaderLibrary: shaderLib,
                 depthStencilCache: depthCache,
                 width: size.width,
@@ -127,7 +132,8 @@ struct DegenerateSizeGuardTests {
     /// 無かった。context を経由しない呼び出しが同じ形で落ちる口が残っていた。
     @Test("MImage.createImage(device:) が退化サイズで nil を返す", arguments: degenerateSizes)
     fileprivate func createImageReturnsNil(size: DegenerateSize) throws {
-        #expect(MImage.createImage(size.width, size.height, device: MetalTestHelper.device!) == nil)
+        let device = try #require(MetalTestHelper.device)
+        #expect(MImage.createImage(size.width, size.height, device: device) == nil)
     }
 
     // MARK: ガードが効きすぎていないこと
@@ -138,7 +144,7 @@ struct DegenerateSizeGuardTests {
         let context = try makeContext()
         #expect(context.createGraphics(1, 1) != nil)
         #expect(context.createGraphics3D(1, 1) != nil)
-        #expect(MImage.createImage(1, 1, device: MetalTestHelper.device!) != nil)
+        #expect(MImage.createImage(1, 1, device: try #require(MetalTestHelper.device)) != nil)
     }
 }
 
@@ -169,9 +175,10 @@ struct OversizedGuardTests {
 
     @Test("TextureManager が上限超えを throw で弾く", arguments: oversizedSizes)
     fileprivate func textureManagerThrows(size: DegenerateSize) throws {
+        let device = try #require(MetalTestHelper.device)
         #expect(throws: MetaphorError.self) {
             _ = try TextureManager(
-                device: MetalTestHelper.device!,
+                device: device,
                 width: size.width,
                 height: size.height,
                 sampleCount: 1
@@ -195,14 +202,15 @@ struct OversizedGuardTests {
     /// 外側に残っていた口 (Issue #806)。下限だけが #798 で塞がれていた。
     @Test("MImage.createImage(device:) が上限超えで nil を返す", arguments: oversizedSizes)
     fileprivate func createImageReturnsNil(size: DegenerateSize) throws {
-        #expect(MImage.createImage(size.width, size.height, device: MetalTestHelper.device!) == nil)
+        let device = try #require(MetalTestHelper.device)
+        #expect(MImage.createImage(size.width, size.height, device: device) == nil)
     }
 
     /// ガードが効きすぎていないこと。上限ちょうどは 1GiB を確保してしまうので、
     /// じゅうぶん大きい実用サイズで代用する。
     @Test("上限内の大きな MImage は作れる")
     func largeValidImageSucceeds() throws {
-        #expect(MImage.createImage(4096, 4096, device: MetalTestHelper.device!) != nil)
+        #expect(MImage.createImage(4096, 4096, device: try #require(MetalTestHelper.device)) != nil)
     }
 
     /// ガードが効きすぎていないこと。上限ちょうど (16384 角) は色 + 深度で 2GiB を
@@ -258,12 +266,90 @@ struct DegenerateParticleCountTests {
         }
     }
 
+    /// #1091 と同じ族。`MemoryLayout<Particle>.stride * count` も、修正前は
+    /// ガードより手前で掛けていたため、大きな `count` は `.bufferCreationFailed` ではなく
+    /// 算術オーバーフローの trap になっていた。
+    @Test("溢れる count を throw で弾く")
+    func overflowingCountThrows() throws {
+        let context = try makeContext()
+        #expect(throws: MetaphorError.self) {
+            _ = try context.createParticleSystem(count: Int.max)
+        }
+    }
+
     /// ガードが効きすぎていないこと。1 個でも作れる。
     @Test("正の count は作れる", arguments: [1, 1_000])
     func positiveCountSucceeds(count: Int) throws {
         let context = try makeContext()
         let system = try context.createParticleSystem(count: count)
         #expect(system.count == count)
+    }
+}
+
+// MARK: - バッファ確保の掛け算が溢れる口 (Issue #1091)
+
+/// `createBuffer(count:type:)` の doc は「作成に失敗した場合は `nil`」。修正前は
+/// `MemoryLayout<T>.stride * count` をガードより手前で計算していたため、大きな `count` は
+/// `nil` ではなく算術オーバーフローの trap (`Swift runtime failure: arithmetic overflow`)
+/// になり、`guard let` を書いている呼び出し側から守れなかった。
+///
+/// #798 / #806 と同じ「Optional を返す口が Optional で失敗しない」族。
+@Suite("バッファ確保のオーバーフロー", .enabled(if: MetalTestHelper.isGPUAvailable))
+@MainActor
+struct BufferAllocationOverflowTests {
+
+    private func makeContext() throws -> SketchContext {
+        let renderer = try MetaphorRenderer(width: 32, height: 32)
+        return SketchContext(
+            renderer: renderer,
+            canvas: try Canvas2D(renderer: renderer),
+            canvas3D: try Canvas3D(renderer: renderer),
+            input: renderer.input
+        )
+    }
+
+    /// 最小の stride (4 バイト) でも `Int.max` は溢れる。
+    @Test("溢れる count は nil を返す")
+    func overflowingCountReturnsNil() throws {
+        let context = try makeContext()
+        #expect(context.createBuffer(count: Int.max, type: Float.self) == nil)
+    }
+
+    /// Issue #1091 の再現ケース (大きな要素型 × `Int.max / 8`)。
+    @Test("大きな要素型で溢れる count も nil")
+    func overflowingCountWithLargeElementReturnsNil() throws {
+        let context = try makeContext()
+        #expect(context.createBuffer(count: Int.max / 8, type: SIMD4<Float>.self) == nil)
+    }
+
+    /// 溢れはじめるちょうどの境界 (`Int.max / stride + 1`)。
+    @Test("溢れる境界の外側も nil")
+    func overflowBoundaryReturnsNil() throws {
+        let context = try makeContext()
+        let boundary = Int.max / MemoryLayout<SIMD4<Float>>.stride + 1
+        #expect(context.createBuffer(count: boundary, type: SIMD4<Float>.self) == nil)
+    }
+
+    /// 溢れないが確保はできない大きさ (≒ 274GB)。ここは修正前から `nil` で、
+    /// オーバーフローのガードを足しても契約が変わっていないこと。
+    @Test("溢れないが確保できない大きさは従来どおり nil")
+    func oversizedButNonOverflowingCountReturnsNil() throws {
+        let context = try makeContext()
+        #expect(context.createBuffer(count: 1 << 34, type: SIMD4<Float>.self) == nil)
+    }
+
+    @Test("0 以下の count は従来どおり nil", arguments: [0, -1, -100_000])
+    func nonPositiveCountReturnsNil(count: Int) throws {
+        let context = try makeContext()
+        #expect(context.createBuffer(count: count, type: Float.self) == nil)
+    }
+
+    /// ガードが効きすぎていないこと。確保できる大きさはそのまま通る。
+    @Test("確保できる count はそのまま通る", arguments: [1, 1_024])
+    func validCountSucceeds(count: Int) throws {
+        let context = try makeContext()
+        let buffer = context.createBuffer(count: count, type: Float.self)
+        #expect(buffer?.count == count)
     }
 }
 

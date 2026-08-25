@@ -246,6 +246,11 @@ public final class SketchContext {
     /// 遅延生成されるコンピュートコマンドエンコーダー。
     var _computeEncoder: MTLComputeCommandEncoder?
 
+    /// API names already warned about compute work requested outside the compute phase
+    /// (Issue #1092). A call from `draw()` repeats every frame, so each API warns only once.
+    /// An entry is appended only when a warning is emitted, so the count is the line count.
+    var _warnedComputeOutsidePhase: [String] = []
+
     // MARK: - GIF Export (D-19)
 
     /// GIF エクスポーターインスタンス。
@@ -570,7 +575,7 @@ public final class SketchContext {
             // 表示は `performance.fps` / Probe の `frame.json` と同じ採取経路
             // （レンダラーのトラッカーの直近ウィンドウ）から取る（#698）。
             hud.update(stats: renderer.frameRateTracker.windowStats(now: CACurrentMediaTime()))
-            hud.updateGPUTime(start: renderer.lastGPUStartTime, end: renderer.lastGPUEndTime)
+            hud.updateGPUTime(renderer.lastGPUDurationMs)
             hud.draw(
                 canvas: canvas, width: Float(renderer.textureManager.width),
                 height: Float(renderer.textureManager.height))

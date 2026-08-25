@@ -41,6 +41,9 @@ REPORT_FILE=""
 NO_PROMPT=0
 PARALLEL=1
 FILTERS=()
+# --shard I/N（空 = 分割しない）。CI が対象を N 等分して並列ジョブに配るために使う。
+SHARD_INDEX=""
+SHARD_TOTAL=""
 
 # Parallel state (global for signal handler access)
 PARALLEL_TMPDIR=""
@@ -75,6 +78,8 @@ Options:
   --report FILE        Save review report to FILE (default: examples-report.md)
   --no-color           Disable colored output
   --log FILE           Write build errors to FILE (default: /tmp/metaphor-examples.log)
+  --shard I/N          Handle only the I-th of N shards (1-based; used by CI to
+                       split the sweep across parallel jobs)
 
 Filters:
   Positional arguments are matched as path prefixes (relative to Examples/).
@@ -101,6 +106,22 @@ After each example closes (sequential mode), you can leave a mark:
 EOF
 }
 
+# --shard の "I/N" を読む。範囲外は黙って全件に落とさず、その場で落とす
+# （CI で 1 シャードが全件を回すと、気付かないまま所要が N 倍になる）。
+parse_shard() {
+    local spec="${1:-}"
+    if [[ ! "$spec" =~ ^[0-9]+/[0-9]+$ ]]; then
+        echo "Invalid --shard: '$spec' (expected I/N, e.g. 2/5)" >&2
+        exit 1
+    fi
+    SHARD_INDEX="${spec%/*}"
+    SHARD_TOTAL="${spec#*/}"
+    if (( SHARD_TOTAL < 1 )) || (( SHARD_INDEX < 1 )) || (( SHARD_INDEX > SHARD_TOTAL )); then
+        echo "Invalid --shard: '$spec' (need 1 <= I <= N)" >&2
+        exit 1
+    fi
+}
+
 # ─── Argument parsing ─────────────────────────────────────────
 
 while [[ $# -gt 0 ]]; do
@@ -117,6 +138,7 @@ while [[ $# -gt 0 ]]; do
         --report)       REPORT_FILE="$2"; shift 2 ;;
         --no-color)     USE_COLOR=0; shift ;;
         --log)          LOG_FILE="$2"; shift 2 ;;
+        --shard)        parse_shard "$2"; shift 2 ;;
         -*)             echo "Unknown option: $1"; usage; exit 1 ;;
         *)              FILTERS+=("$1"); shift ;;
     esac
@@ -305,6 +327,20 @@ discover_examples() {
 
         echo "$dir"
     done < <(find "$EXAMPLES_DIR" -name "Package.swift" -print0 | sort -z)
+}
+
+# --shard I/N の I 番目だけを通す。指定が無ければ素通し。
+#
+# 割り当ては連番の切り出しではなく**行番号の剰余**（1,6,11,… / 2,7,12,…）。
+# discover_examples はパス順に並べるので、連番で切ると Demos/ のような重い
+# ディレクトリが 1 シャードに固まり、そこだけ極端に遅くなる。交互に配れば
+# 種類が各シャードへ散る。
+shard_filter() {
+    if [[ -z "$SHARD_INDEX" ]]; then
+        cat
+        return
+    fi
+    awk -v idx="$SHARD_INDEX" -v total="$SHARD_TOTAL" 'NR % total == idx % total'
 }
 
 # ─── Build ────────────────────────────────────────────────────
@@ -876,7 +912,7 @@ main() {
     local example_dirs=()
     while IFS= read -r dir; do
         [[ -n "$dir" ]] && example_dirs+=("$dir")
-    done < <(discover_examples)
+    done < <(discover_examples | shard_filter)
     spinner_stop
 
     TOTAL=${#example_dirs[@]}
