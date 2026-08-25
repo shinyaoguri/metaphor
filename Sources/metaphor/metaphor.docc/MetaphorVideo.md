@@ -8,25 +8,25 @@
     @TopicsVisualStyle(compactGrid)
 }
 
-クリエイティブコーディングのためのビデオファイル再生。
+Video file playback for creative coding.
 
 ## Overview
 
-MetaphorVideo はビデオファイルの再生とフレーム単位のテクスチャ取得を提供します。
-``MetaphorVideo/VideoPlayer`` で MP4、MOV、M4V ファイルを再生し、
-CVMetalTextureCache によるゼロコピーの Metal テクスチャとしてフレームを取得できます。
+MetaphorVideo provides video file playback and per-frame texture access.
+Use ``MetaphorVideo/VideoPlayer`` to play MP4, MOV, and M4V files and to obtain frames as
+zero-copy Metal textures backed by CVMetalTextureCache.
 
-このモジュールは MetaphorCore に依存せず、単独で使用できます。
-アンブレラモジュール（`import metaphor`）使用時は、`loadVideo()` や
-`image(video, x, y)` などの便利なメソッドからアクセスできます。
+This module does not depend on MetaphorCore and can be used on its own.
+With the umbrella module (`import metaphor`), reach it through convenience methods
+such as `loadVideo()` and `image(video, x, y)`.
 
-### クイックスタート
+### Quick Start
 
 ```swift
 let video = try loadVideo("/path/to/video.mp4")
 video.loop()
 
-// 描画ループ内:
+// Inside the draw loop:
 video.update()
 image(video, 0, 0, width, height)
 ```

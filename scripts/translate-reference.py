@@ -56,7 +56,9 @@ DocC は 1 つの文を型の違うノードへ刻む。`Sets the fill color.` �
   説明が日本語のままなので、この規則のおかげで日本語版がそのまま成立する
 
 `heading` は `text` を訳すが `anchor` は書き換えない。表示だけ日本語になり、ページ内リンクの
-行き先は英語のアンカーのまま保たれる。
+行き先は英語のアンカーのまま保たれる。`topicSections` / `seeAlsoSections` などのセクション
+見出しも同じ形（`title` + `anchor`）なので同じ規則で扱う — Topics のグループ名（`.docc` が
+書いたものと、DocC が自動で付ける "Instance Properties" の類の両方）が日本語になる。
 
 ## 翻訳エンジン
 
@@ -187,12 +189,17 @@ def _is_inline_array(value: Any) -> bool:
 def iter_translatable_slots(node: Any) -> Iterator[tuple[Any, Any]]:
     """訳す場所を (容器, キー) で yield する。
 
-    容器が dict でキーが文字列ならインライン列（値は list）か heading の `text`。
-    呼び出し側が `container[key]` を差し替えられる。
+    容器が dict でキーが文字列ならインライン列（値は list）か、見出しの `text` /
+    セクション見出しの `title`。呼び出し側が `container[key]` を差し替えられる。
     """
     if isinstance(node, dict):
         if node.get("type") == "heading" and isinstance(node.get("text"), str):
             yield node, "text"
+        # `topicSections` / `seeAlsoSections` / `relationshipsSections` などの
+        # セクション見出し。`heading` が `text` + `anchor` を持つのと同じ形なので、
+        # 同じ規則で扱う（`title` は訳し、`anchor` は英語のまま残してリンクを保つ）。
+        if isinstance(node.get("title"), str) and isinstance(node.get("anchor"), str):
+            yield node, "title"
         for key, value in node.items():
             if _is_inline_array(value):
                 yield node, key

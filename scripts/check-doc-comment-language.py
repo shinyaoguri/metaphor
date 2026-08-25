@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""公開 API の doc コメントに日本語が混ざっていないかを検査する。
+"""公開 API の doc コメントと `.docc` の散文に日本語が混ざっていないかを検査する。
 
 doc コメントは `llms.txt`（AI 向け API 正典）と DocC の入力で、日本語版
 `/reference/ja/` は**英語版から生成**される（ADR-0011）。つまり英語が上流で、
@@ -25,6 +25,17 @@ Core ほかの英語化は #334 で進行中なので、いま全部を落とす
 英語化が終わったモジュールは ALLOWLIST から消す。**全部消えたら ALLOWLIST ごと
 削除**して、以降は「Sources に日本語 doc コメントは 1 行も無い」になる。
 
+## `.docc` カタログの散文（#1115）
+
+`Sources/metaphor/metaphor.docc/*.md`（ランディング 12 本）も同じ規範の下にある
+（docs/README.md「英語化の対象境界」が `.docc` 記事を名指ししている）。こちらは
+ALLOWLIST を持たず**日本語が 1 文字でもあれば落とす** — 12 本すべて英語化済みで、
+移行期が無いため。日本語の読み味は `docs/reference/i18n/ja.json` が持ち、
+`make docs-ja` が `/reference/ja/` へ当てる。
+
+`header.html` は対象外。言語切替バーの `日本語` ラベルと、仕組みを説明する
+HTML コメント（開発者向け内部ドキュメント）はどちらも日本語のままが正しい。
+
 ## 除外されるもの
 
 - `//` の通常コメント（`// MARK:` を含む）— 実装の意図を書いた日本語は残す
@@ -49,6 +60,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SOURCES = ROOT / "Sources"
+DOCC_CATALOG = SOURCES / "metaphor" / "metaphor.docc"
 
 # モジュール名 -> (許容する日本語 doc コメント行数, 理由)
 #
@@ -89,6 +101,20 @@ def japanese_doc_lines(text: str) -> list[tuple[int, str]]:
 
 def swift_sources(root: Path = SOURCES) -> list[Path]:
     return sorted(p for p in root.rglob("*.swift") if p.is_file())
+
+
+def catalog_articles(root: Path = DOCC_CATALOG) -> list[Path]:
+    """`.docc` カタログの散文（`header.html` は対象外）。"""
+    return sorted(p for p in root.rglob("*.md") if p.is_file())
+
+
+def japanese_lines(text: str) -> list[tuple[int, str]]:
+    """日本語を含む行を (行番号, 内容) で返す。"""
+    return [
+        (number, line.strip())
+        for number, line in enumerate(text.splitlines(), start=1)
+        if CJK.search(line)
+    ]
 
 
 def module_of(path: Path, root: Path = SOURCES) -> str:
@@ -139,6 +165,31 @@ def main() -> int:
             )
             print(f"        \"{module}\": ({actual}, ...)", file=sys.stderr)
 
+    catalog_hits: list[str] = []
+    for path in catalog_articles():
+        rel = path.relative_to(ROOT)
+        catalog_hits.extend(
+            f"{rel}:{number}: {text}"
+            for number, text in japanese_lines(path.read_text(encoding="utf-8"))
+        )
+
+    if catalog_hits:
+        failed = True
+        print(
+            f"❌ .docc カタログの散文に日本語が {len(catalog_hits)} 行あります"
+            "（ランディングは英語が正典 — ADR-0011）",
+            file=sys.stderr,
+        )
+        for line in catalog_hits[:20]:
+            print(f"    {line}", file=sys.stderr)
+        if len(catalog_hits) > 20:
+            print(f"    ... 他 {len(catalog_hits) - 20} 行", file=sys.stderr)
+        print(
+            "    日本語の読み味は docs/reference/i18n/ja.json が持ちます"
+            "（`make reference-i18n` で書き出し、--import で取り込む）。",
+            file=sys.stderr,
+        )
+
     if failed:
         print("", file=sys.stderr)
         print(
@@ -156,6 +207,7 @@ def main() -> int:
         print(f"✅ 日本語の doc コメントは移行中の {total} 行のみ（ALLOWLIST と一致）。")
     else:
         print("✅ doc コメントに日本語はありません。ALLOWLIST を削除できます。")
+    print(f"✅ .docc カタログの散文 {len(catalog_articles())} 本はすべて英語です。")
     return 0
 
 
