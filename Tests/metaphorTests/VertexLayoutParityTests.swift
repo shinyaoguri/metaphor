@@ -200,15 +200,29 @@ struct VertexLayoutParityTests {
             [Attribute(0, .float2, 0, "self")])
     }
 
-    // MARK: - CPU 側に構造体が無いケース
+    // MARK: - CPU 側に構造体が無いケース（deprecated・#1163）
 
     /// `.position` と `.positionColor` は `Sources/` のどこからも使われておらず、バイト列を
-    /// 書く Swift 構造体が存在しない（`PipelineFactory.swift` の `switch` 以外に参照が無い）。
-    /// 突き合わせる相手がいないので、**公開契約としてのバイト数**をここで固定する。
+    /// 書く Swift 構造体も存在しない（`PipelineFactory.swift` の `switch` 以外に参照が無い）。
+    /// #1163 で **deprecated** にし、次の minor で削除する。**この 2 本のテストもそのとき
+    /// 一緒に消える**。
+    ///
+    /// 消えるまでの窓の間は「バイトが動かないこと」を守る役目が残るので残置する。突き合わせる
+    /// 構造体がいない以上ここに書けるのはリテラルだけで、実装を書き写しているのと大差ない
+    /// （#1158 が旧 `VertexLayoutTests` について指摘した形そのもの）。**確かめる方法が無いこと
+    /// 自体が deprecated の理由**であって、この 2 本はその状態の記録でもある。
+    ///
+    /// テスト関数を `@available(*, deprecated)` にしてあるのは、囲みの宣言が deprecated なら
+    /// 中の参照が deprecation 警告を出さないため。CI は `swift test -Xswiftc
+    /// -warnings-as-errors` なので、これが無いと 2 本の `VertexLayout.position` /
+    /// `.positionColor` でテストターゲットのビルドが落ちる。
     ///
     /// 値は `float3` を 12 バイトにパックしたものではなく `SIMD3<Float>` の stride（16）に
-    /// 揃えてある。`.positionNormalColor` 以下の 3D レイアウトと同じ数え方で、
-    /// `Vertex3D` を流せば `.position` / `.positionColor` でも位置と色は正しく読める。
+    /// 揃えてある。つまり相手にできるのは `[SIMD3<Float>]`（`.position`）と
+    /// `{ SIMD3<Float>; SIMD4<Float> }`（`.positionColor`）で、**`Vertex3D` ではない** —
+    /// `Vertex3D` は stride 48・color @32 なので、これらのデスクリプタで流すと normal が
+    /// color として読まれ、1 頂点あたり 32 バイトしか進まない。
+    @available(*, deprecated)
     @Test("position は float3 1 本・stride 16 で固定する")
     func positionKeepsItsPublicByteContract() {
         let descriptor = VertexLayout.position.makeDescriptor()
@@ -216,10 +230,16 @@ struct VertexLayoutParityTests {
         #expect(descriptor.attributes[0].offset == 0)
         #expect(descriptor.attributes[0].bufferIndex == 0)
         #expect(descriptor.layouts[0].stride == 16)
+        // `.position2DOnly` ↔ `[SIMD2<Float>]` と同じ関係の 3D 版であることの確認。
+        #expect(descriptor.layouts[0].stride == MemoryLayout<SIMD3<Float>>.stride)
+        // `Vertex3D`（stride 48）とは噛まない。案 1（プリセットとして残す）の根拠が
+        // 成り立たないことの記録。
+        #expect(descriptor.layouts[0].stride != MemoryLayout<Vertex3D>.stride)
     }
 
+    @available(*, deprecated)
     @Test("positionColor は float3 + float4・stride 32 で固定する")
-    func positionColorKeepsItsPublicByteContract() {
+    func positionColorKeepsItsPublicByteContract() throws {
         let descriptor = VertexLayout.positionColor.makeDescriptor()
         #expect(descriptor.attributes[0].format == .float3)
         #expect(descriptor.attributes[0].offset == 0)
@@ -229,6 +249,11 @@ struct VertexLayoutParityTests {
         #expect(descriptor.attributes[1].offset == 16)
         #expect(descriptor.attributes[1].bufferIndex == 0)
         #expect(descriptor.layouts[0].stride == 32)
+        // `Vertex3D` の color は @32・stride は 48。このデスクリプタで `[Vertex3D]` を流すと
+        // normal が color として読まれる — 相手は `Vertex3D` ではない。
+        let vertex3DColorOffset = try offset(of: \Vertex3D.color, "color")
+        #expect(vertex3DColorOffset != Int(descriptor.attributes[1].offset))
+        #expect(descriptor.layouts[0].stride != MemoryLayout<Vertex3D>.stride)
     }
 
     // MARK: - 検査の前提

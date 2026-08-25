@@ -1415,11 +1415,9 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `enum VertexLayout` -- Predefined vertex attribute layouts for Metal render pipelines.
 
-- `case position` -- Stores a float3 position (stride: 16 bytes).
 - `case position2DColor` -- Stores a float2 position and a float4 color (stride: 24 bytes, for Canvas2D).
 - `case position2DOnly` -- Stores a float2 position (stride: 8 bytes, for the Canvas2D instancing unit meshes).
 - `case position2DTexCoordColor` -- Stores a float2 position, texture coordinates and a float4 color (stride: 32 bytes).
-- `case positionColor` -- Stores a float3 position and a float4 color (stride: 32 bytes).
 - `case positionNormalColor` -- Stores a float3 position, a float3 normal and a float4 color (stride: 48 bytes).
 - `case positionNormalUV` -- Stores a float3 position, a float3 normal and a float2 UV (stride: 48 bytes).
 - `func makeDescriptor() -> MTLVertexDescriptor` -- Creates a Metal vertex descriptor matching this layout.

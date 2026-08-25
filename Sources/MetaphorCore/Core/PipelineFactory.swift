@@ -16,13 +16,36 @@ import Metal
 public enum VertexLayout {
     /// Stores a float3 position (stride: 16 bytes).
     ///
-    /// No Swift vertex struct writes this layout. The float3 sits in the 16-byte slot a
-    /// `SIMD3<Float>` occupies, the same way ``positionNormalColor`` counts it; this is not a
-    /// 12-byte packed layout.
+    /// The float3 sits in the 16-byte slot a `SIMD3<Float>` occupies, the same way
+    /// ``positionNormalColor`` counts it; this is not a 12-byte packed layout. It therefore
+    /// describes a plain `[SIMD3<Float>]` — the 3D counterpart of ``position2DOnly``. It does
+    /// **not** describe `Vertex3D`, whose stride is 48.
+    ///
+    /// - Warning: Deprecated. No Swift vertex struct writes this layout, and nothing in the
+    ///   library, the examples or any known consumer has ever built a pipeline with it, so there
+    ///   is nothing to check the bytes against (issue #1163). Build the descriptor yourself and
+    ///   pass it to ``PipelineFactory/vertexDescriptor(_:)``, which accepts any
+    ///   `MTLVertexDescriptor`.
+    @available(
+        *, deprecated,
+        message:
+            "Unused and unverifiable — removed in the minor release after this warning ships (#1163). Build an MTLVertexDescriptor and pass it to PipelineFactory.vertexDescriptor(_:)."
+    )
     case position
     /// Stores a float3 position and a float4 color (stride: 32 bytes).
     ///
-    /// No Swift vertex struct writes this layout. The color starts at byte 16, not byte 12.
+    /// The color starts at byte 16, not byte 12, because the float3 occupies the 16-byte slot of
+    /// a `SIMD3<Float>`. The layout matches a `{ SIMD3<Float>; SIMD4<Float> }` pair, which this
+    /// library does not provide; it does **not** match `Vertex3D`, whose color starts at byte 32
+    /// and whose stride is 48.
+    ///
+    /// - Warning: Deprecated, for the same reason as ``position`` — see that case for the
+    ///   replacement (issue #1163).
+    @available(
+        *, deprecated,
+        message:
+            "Unused and unverifiable — removed in the minor release after this warning ships (#1163). Build an MTLVertexDescriptor and pass it to PipelineFactory.vertexDescriptor(_:)."
+    )
     case positionColor
     /// Stores a float3 position, a float3 normal and a float4 color (stride: 48 bytes).
     ///
@@ -55,14 +78,16 @@ public enum VertexLayout {
 
         switch self {
         case .position:
-            // 相手の構造体は無し。float3 は 16 バイト枠（12 バイトのパックではない）。
+            // deprecated（#1163）。相手の構造体は無し。float3 は 16 バイト枠（12 バイトの
+            // パックではない）。switch のパターンマッチは deprecation 警告を出さないので、
+            // ここは -warnings-as-errors でも無傷（Swift 6.3.3 で実測）。
             descriptor.attributes[0].format = .float3
             descriptor.attributes[0].offset = 0
             descriptor.attributes[0].bufferIndex = 0
             descriptor.layouts[0].stride = 16
 
         case .positionColor:
-            // 相手の構造体は無し。
+            // deprecated（#1163）。相手の構造体は無し。
             descriptor.attributes[0].format = .float3
             descriptor.attributes[0].offset = 0
             descriptor.attributes[0].bufferIndex = 0
