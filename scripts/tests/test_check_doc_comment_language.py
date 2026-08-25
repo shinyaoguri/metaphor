@@ -119,5 +119,41 @@ class TestRepositoryMatchesAllowlist(unittest.TestCase):
             self.assertTrue(reason.strip(), f"{name} に理由が書かれていません")
 
 
+class TestDoccCatalogIsEnglish(unittest.TestCase):
+    """`.docc` の散文が日本語へ戻らないこと（Issue #1115 / ADR-0011）。
+
+    doc コメントと違い ALLOWLIST を持たない — 12 本すべて英語化済みで移行期が無い。
+    """
+
+    def test_detects_japanese_anywhere_in_a_line(self):
+        found = check.japanese_lines("Draws a circle.\n円を描画します。\n")
+        self.assertEqual([n for n, _ in found], [2])
+
+    def test_ignores_pure_english(self):
+        self.assertEqual(check.japanese_lines("## Overview\n\nDraws a circle.\n"), [])
+
+    def test_catalog_articles_are_markdown_only(self):
+        """`header.html` は対象外 — 言語切替の `日本語` ラベルは日本語が正しい。"""
+        names = {p.name for p in check.catalog_articles()}
+        self.assertNotIn("header.html", names)
+        self.assertIn("metaphor.md", names)
+        self.assertTrue(all(p.suffix == ".md" for p in check.catalog_articles()))
+
+    def test_every_catalog_article_is_english(self):
+        for path in check.catalog_articles():
+            with self.subTest(article=path.name):
+                found = check.japanese_lines(path.read_text(encoding="utf-8"))
+                self.assertEqual(
+                    found,
+                    [],
+                    f"{path.name} に日本語が残っています。"
+                    "日本語は docs/reference/i18n/ja.json 側に置きます",
+                )
+
+    def test_the_catalog_has_the_expected_landing_pages(self):
+        """12 本（umbrella 1 + モジュール 11）。増減したら検査の前提を見直す。"""
+        self.assertEqual(len(check.catalog_articles()), 12)
+
+
 if __name__ == "__main__":
     unittest.main()

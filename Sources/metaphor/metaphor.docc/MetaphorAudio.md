@@ -8,29 +8,29 @@
     @TopicsVisualStyle(compactGrid)
 }
 
-クリエイティブコーディングのためのオーディオ入力解析とサウンドファイル再生。
+Audio input analysis and sound file playback for creative coding.
 
 ## Overview
 
-MetaphorAudio はマイク入力からのリアルタイム FFT スペクトラム解析と、
-解析機能統合済みのオーディオファイル再生を提供します。
-``MetaphorAudio/AudioAnalyzer`` でライブオーディオをキャプチャし、音量、スペクトラム、ビート情報を取得できます。
-``MetaphorAudio/SoundFile`` で MP3、WAV、AAC ファイルを再生し、オプションでスペクトラム解析も利用できます。
+MetaphorAudio provides real-time FFT spectrum analysis of microphone input,
+plus audio file playback with the same analysis built in.
+Use ``MetaphorAudio/AudioAnalyzer`` to capture live audio and read volume, spectrum, and beat information.
+Use ``MetaphorAudio/SoundFile`` to play MP3, WAV, and AAC files, optionally with spectrum analysis.
 
-このモジュールは MetaphorCore に依存せず、単独で使用できます。
-アンブレラモジュール（`import metaphor`）使用時は、`createAudioInput()` などの
-便利なメソッドからアクセスできます。
+This module does not depend on MetaphorCore and can be used on its own.
+With the umbrella module (`import metaphor`), reach it through convenience methods
+such as `createAudioInput()`.
 
-### クイックスタート
+### Quick Start
 
 ```swift
-// ライブマイク解析
+// Live microphone analysis
 let audio = AudioAnalyzer(fftSize: 1024)
 try audio.start()
 
-// 描画ループ内:
+// Inside the draw loop:
 audio.update()
-let bass = audio.band(0)      // 低域エネルギー
-let mid = audio.band(1)       // 中域エネルギー
-let treble = audio.band(2)    // 高域エネルギー
+let bass = audio.band(0)      // Low-frequency energy
+let mid = audio.band(1)       // Mid-frequency energy
+let treble = audio.band(2)    // High-frequency energy
 ```

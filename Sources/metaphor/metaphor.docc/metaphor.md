@@ -6,12 +6,12 @@
     @PageImage(
         purpose: icon,
         source: "metaphor-icon",
-        alt: "metaphor ライブラリのアイコン"
+        alt: "The metaphor library icon"
     )
     @PageImage(
         purpose: card,
         source: "metaphor-card",
-        alt: "metaphor ライブラリのカード画像"
+        alt: "The metaphor library card image"
     )
 }
 
@@ -19,16 +19,17 @@
     @TopicsVisualStyle(detailedGrid)
 }
 
-Processing、p5.js、openFrameworks にインスパイアされた Swift + Metal クリエイティブコーディングライブラリ。
+A Swift and Metal creative coding library inspired by Processing, p5.js, and openFrameworks.
 
 ## Overview
 
-> Tip: ここは**引くためのリファレンス**です。はじめて触るなら、通しで読める
-> [チュートリアル](https://shinyaoguri.github.io/metaphor/tutorial/)（第 1 部「入門」から）が近道です。
-> 全体像は [metaphor のサイト](https://shinyaoguri.github.io/metaphor/)にあります。
+> Tip: This is **reference material to look things up in**. If this is your first time,
+> the [tutorial](https://shinyaoguri.github.io/metaphor/tutorial/) reads front to back
+> and is the faster way in (start with Part 1, "Getting Started").
+> For the bigger picture, see [the metaphor site](https://shinyaoguri.github.io/metaphor/).
 
-metaphor は Metal を活用したイミディエイトモードのクリエイティブコーディング環境を提供します。
-`Sketch` プロトコルを実装するだけで、ウィンドウ生成、レンダーループ、GPU パイプラインの構築をライブラリが自動的に行います。
+metaphor provides an immediate-mode creative coding environment built on Metal.
+Implement the `Sketch` protocol and the library takes care of creating the window, running the render loop, and building the GPU pipeline.
 
 ```swift
 import metaphor
@@ -47,11 +48,11 @@ final class MySketch: Sketch {
 }
 ```
 
-### 導入
+### Installation
 
-動作環境は macOS 14.0+（Apple Silicon）・Swift 5.10+・Xcode 15.0+ です。
-`Package.swift` の `dependencies` に 1 行足し、ターゲットの `dependencies` に
-`.product(name: "metaphor", package: "metaphor")` を加えれば、上のコードが動きます。
+metaphor requires macOS 14.0+ (Apple Silicon), Swift 5.10+, and Xcode 15.0+.
+Add one line to `dependencies` in your `Package.swift` and add
+`.product(name: "metaphor", package: "metaphor")` to your target's `dependencies`, and the code above runs.
 
 ```swift
 dependencies: [
@@ -59,35 +60,35 @@ dependencies: [
 ]
 ```
 
-インストールから最初のスケッチが動くまでを手順で追うなら、チュートリアル
-[第 1 部 入門](https://shinyaoguri.github.io/metaphor/tutorial/getting-started/)が近道です
-（`metaphor` CLI を使う導入もそちらで扱います）。
+To follow installation through to your first running sketch step by step, the tutorial's
+[Part 1, Getting Started](https://shinyaoguri.github.io/metaphor/tutorial/getting-started/) is the faster route
+(it also covers getting started with the `metaphor` CLI).
 
-### 2パスレンダリング
+### Two-Pass Rendering
 
-metaphor は2パスレンダリングアーキテクチャを採用しています:
+metaphor uses a two-pass rendering architecture:
 
-1. **オフスクリーンパス** — `draw()` のコードが、指定した解像度のオフスクリーンテクスチャにレンダリングされます。
-2. **ブリットパス** — 内蔵パイプラインがオフスクリーンテクスチャをアスペクト比を維持したままウィンドウに合成します。
+1. **Offscreen pass** — the code in `draw()` renders into an offscreen texture at the resolution you specify.
+2. **Blit pass** — a built-in pipeline composites that offscreen texture into the window, preserving aspect ratio.
 
-レンダリング解像度がウィンドウサイズから分離されることで、次の 4 つが成立します:
+Separating render resolution from window size makes four things possible:
 
-- **解像度の独立性** — 窓の大きさに関わらず、常に指定した解像度で描かれます（``MetaphorCore/TextureManager``）。
-- **外部出力** — 固定解像度のフレームをライブビューアや VJ ソフトウェアへ送れます。ブリットの前に、登録された出力プラグイン（``MetaphorCore/MetaphorOutputPlugin``）が同じオフスクリーンテクスチャを受け取ります（Syphon は別パッケージ [metaphor-syphon](https://github.com/shinyaoguri/metaphor-syphon)）。
-- **動画エクスポート** — 窓を小さくしたまま、一定品質でフレームを書き出せます。
-- **ポストプロセス** — 表示前のオフスクリーンテクスチャに GPU エフェクトをかけられます（``MetaphorCore/PostEffect``）。
+- **Resolution independence** — drawing always happens at the resolution you specified, whatever the window size (``MetaphorCore/TextureManager``).
+- **External output** — send fixed-resolution frames to a live viewer or VJ software. Before the blit, registered output plugins (``MetaphorCore/MetaphorOutputPlugin``) receive the same offscreen texture (Syphon lives in the separate [metaphor-syphon](https://github.com/shinyaoguri/metaphor-syphon) package).
+- **Video export** — write out frames at a consistent quality while keeping the window small.
+- **Post-processing** — apply GPU effects to the offscreen texture before it is displayed (``MetaphorCore/PostEffect``).
 
-### 3レイヤー API
+### Three-Layer API
 
-- **Sketch** — ユーザーが実装するトップレベルのプロトコル。エクステンションで便利なメソッドを提供します。
-- **SketchContext** — 描画状態、トランスフォーム、レンダリングコンテキストを管理するブリッジレイヤー。
-- **Canvas2D / Canvas3D** — Metal 描画コマンドを直接発行するローレベル描画バックエンド。
+- **Sketch** — the top-level protocol you implement. Its extensions supply the convenience methods.
+- **SketchContext** — the bridge layer that manages drawing state, transforms, and the rendering context.
+- **Canvas2D / Canvas3D** — the low-level drawing backends that issue Metal draw commands directly.
 
-### ブリッジ API
+### Bridge API
 
-`import metaphor` でしか生えないメソッド群です。オーディオ・映像・物理・ネットワークといった
-オプションのサブシステムを `Sketch` から 1 行で呼び出せるようにする糊で、
-アンブレラターゲット `metaphor` が `Sketch` のエクステンションとして提供します。
+These are the methods that only appear with `import metaphor`. They are the glue that lets you call
+optional subsystems — audio, video, physics, networking — from a `Sketch` in a single line,
+and the umbrella target `metaphor` supplies them as extensions on `Sketch`.
 
 ```swift
 import metaphor
@@ -97,7 +98,7 @@ final class MySketch: Sketch {
     var audio: AudioAnalyzer?
 
     func setup() {
-        let input = createAudioInput(fftSize: 2048)  // ← ブリッジ API
+        let input = createAudioInput(fftSize: 2048)  // <- Bridge API
         try? input.start()
         audio = input
     }
@@ -111,71 +112,71 @@ final class MySketch: Sketch {
 }
 ```
 
-`MetaphorCore` だけを import した最小構成にはこれらのメソッドは含まれません
-（`AudioAnalyzer` などを自分で組み立てることになります）。
-一覧は下の Topics の「ブリッジ API（…）」を参照してください。
+A minimal setup that imports only `MetaphorCore` does not include these methods
+(you would assemble `AudioAnalyzer` and the rest yourself).
+For the full list, see the "Bridge API (...)" groups in Topics below.
 
 ## Topics
 
-### はじめに
+### Essentials
 
 - ``/MetaphorCore/Sketch``
 - ``MetaphorCore/SketchConfig``
 
-### ブリッジ API（オーディオ）
+### Bridge API (Audio)
 
 - ``MetaphorCore/Sketch/createAudioInput(fftSize:)``
 - ``MetaphorCore/Sketch/loadSound(_:)``
 
-### ブリッジ API（映像）
+### Bridge API (Video)
 
 - ``MetaphorCore/Sketch/loadVideo(_:)``
 - ``MetaphorCore/Sketch/image(_:_:_:)``
 - ``MetaphorCore/Sketch/image(_:_:_:_:_:)``
 
-### ブリッジ API（ネットワーク）
+### Bridge API (Networking)
 
 - ``MetaphorCore/Sketch/createOSCReceiver(port:)``
 - ``MetaphorCore/Sketch/createOSCSender(host:port:)``
 - ``MetaphorCore/Sketch/createMIDI()``
 
-### ブリッジ API（物理演算）
+### Bridge API (Physics)
 
 - ``MetaphorCore/Sketch/createPhysics2D(cellSize:)``
 
-### ブリッジ API（ノイズ生成）
+### Bridge API (Noise)
 
 - ``MetaphorCore/Sketch/createNoise(_:config:)``
 - ``MetaphorCore/Sketch/noiseTexture(_:width:height:config:)``
 
-### ブリッジ API（シーングラフ）
+### Bridge API (Scene Graph)
 
 - ``MetaphorCore/Sketch/createNode(_:)``
 - ``MetaphorCore/Sketch/drawScene(_:)``
 
-### ブリッジ API（レンダーグラフ）
+### Bridge API (Render Graph)
 
 - ``MetaphorCore/Sketch/createSourcePass(label:width:height:)``
 - ``MetaphorCore/Sketch/createEffectPass(_:effects:)``
 - ``MetaphorCore/Sketch/createMergePass(_:_:blend:)``
 - ``MetaphorCore/Sketch/setRenderGraph(_:)``
 
-### ブリッジ API（Core Image）
+### Bridge API (Core Image)
 
 - ``MetaphorCore/Sketch/ciFilter(_:_:)``
 - ``MetaphorCore/Sketch/ciFilter(_:name:parameters:)``
 - ``MetaphorCore/Sketch/ciGenerate(_:width:height:)``
 
-### ブリッジ API（Metal Performance Shaders）
+### Bridge API (Metal Performance Shaders)
 
 - ``MetaphorCore/Sketch/createMPSFilter()``
 - ``MetaphorCore/Sketch/createRayTracer(width:height:)``
 
-### ブリッジ API（機械学習）
+### Bridge API (Machine Learning)
 
 - ``MetaphorCore/Sketch/createMLTextureConverter()``
 
-### コア
+### Core
 
 - ``MetaphorCore/MetaphorRenderer``
 - ``MetaphorCore/TextureManager``
@@ -183,7 +184,7 @@ final class MySketch: Sketch {
 - ``MetaphorCore/PipelineFactory``
 - ``MetaphorCore/MetaphorError``
 
-### 2D 描画
+### 2D Drawing
 
 - ``MetaphorCore/Canvas2D``
 - ``MetaphorCore/Graphics``
@@ -194,7 +195,7 @@ final class MySketch: Sketch {
 - ``MetaphorCore/TextAlignH``
 - ``MetaphorCore/TextAlignV``
 
-### 2D 描画モード
+### 2D Drawing Modes
 
 - ``MetaphorCore/RectMode``
 - ``MetaphorCore/EllipseMode``
@@ -206,53 +207,53 @@ final class MySketch: Sketch {
 - ``MetaphorCore/StrokeJoin``
 - ``MetaphorCore/GradientAxis``
 
-### 3D 描画
+### 3D Drawing
 
 - ``MetaphorCore/Canvas3D``
 - ``MetaphorCore/Graphics3D``
 - ``MetaphorCore/CustomMaterial``
 - ``MetaphorCore/ShadowMap``
 
-### ジオメトリ
+### Geometry
 
 - ``MetaphorCore/Mesh``
 - ``MetaphorCore/DynamicMesh``
 
-### アニメーション
+### Animation
 
 - ``MetaphorCore/Tween``
 - ``MetaphorCore/Interpolatable``
 - ``MetaphorCore/TweenManager``
 
-### コンピュート
+### Compute
 
 - ``MetaphorCore/ComputeKernel``
 - ``MetaphorCore/GPUBuffer``
 - ``MetaphorCore/ImageFilterGPU``
 
-### ポストプロセス
+### Post-Processing
 
 - ``MetaphorCore/PostEffect``
 - ``MetaphorCore/CustomPostEffect``
 - ``MetaphorCore/PostProcessPipeline``
 
-### パーティクルシステム
+### Particle Systems
 
 - ``MetaphorCore/ParticleSystem``
 - ``MetaphorCore/Particle``
 - ``MetaphorCore/ParticleForce``
 - ``MetaphorCore/EmitterShape``
 
-### オーディオ
+### Audio
 
 - ``MetaphorAudio/AudioAnalyzer``
 - ``MetaphorAudio/SoundFile``
 
-### 映像
+### Video
 
 - ``MetaphorVideo/VideoPlayer``
 
-### ネットワーク
+### Networking
 
 - ``MetaphorNetwork/OSCReceiver``
 - ``MetaphorNetwork/OSCValue``
@@ -260,7 +261,7 @@ final class MySketch: Sketch {
 - ``MetaphorNetwork/MIDIMessage``
 - ``MetaphorNetwork/MIDIMessageType``
 
-### 機械学習
+### Machine Learning
 
 - ``MetaphorML/MLTextureConverter``
 
@@ -282,13 +283,13 @@ final class MySketch: Sketch {
 - ``MetaphorCoreImage/CIFilterEffect``
 - ``MetaphorCoreImage/CIFilterRawEffect``
 
-### ノイズ生成
+### Noise
 
 - ``MetaphorNoise/NoiseType``
 - ``MetaphorNoise/NoiseConfig``
 - ``MetaphorNoise/GKNoiseWrapper``
 
-### 物理演算
+### Physics
 
 - ``MetaphorPhysics/Physics2D``
 - ``MetaphorPhysics/PhysicsBody2D``
@@ -296,13 +297,13 @@ final class MySketch: Sketch {
 - ``MetaphorPhysics/PhysicsConstraint2D``
 - ``MetaphorPhysics/SpatialHash2D``
 
-### シーングラフ
+### Scene Graph
 
 - ``MetaphorSceneGraph/Node``
 - ``MetaphorSceneGraph/AABB``
 - ``MetaphorSceneGraph/SceneRenderer``
 
-### レンダーグラフ
+### Render Graph
 
 - ``MetaphorRenderGraph/RenderGraph``
 - ``MetaphorRenderGraph/RenderPassNode``
@@ -317,13 +318,13 @@ final class MySketch: Sketch {
 - ``MetaphorCore/OrbitCamera``
 - ``MetaphorCore/PerformanceHUD``
 
-### 入力
+### Input
 
 - ``MetaphorCore/InputManager``
 - ``MetaphorCore/CaptureDevice``
 - ``MetaphorCore/CameraPosition``
 
-### エクスポート
+### Export
 
 - ``MetaphorCore/VideoExporter``
 - ``MetaphorCore/VideoCodec``
@@ -332,7 +333,7 @@ final class MySketch: Sketch {
 - ``MetaphorCore/GIFExporter``
 - ``MetaphorCore/FrameExporter``
 
-### 出力（拡張ポイント）
+### Output (Extension Points)
 
 - ``MetaphorCore/MetaphorOutputPlugin``
 - ``MetaphorCore/MetaphorOutputProvider``
@@ -341,23 +342,23 @@ final class MySketch: Sketch {
 - ``MetaphorCore/PluginRequirements``
 - ``MetaphorCore/ViewerOutputPlugin``
 
-### カラー
+### Color
 
 - ``MetaphorCore/Color``
 - ``MetaphorCore/ColorSpace``
 - ``MetaphorCore/ColorModeConfig``
 
-### 数学・ベクトル
+### Math and Vectors
 
 - ``MetaphorCore/Vec2``
 - ``MetaphorCore/Vec3``
 - ``MetaphorCore/FrameTimer``
 
-### ユーティリティ
+### Utilities
 
 - ``MetaphorCore/NoiseGenerator``
 
-### エラー
+### Errors
 
 - ``MetaphorCore/MetaphorError``
 - ``MetaphorAudio/SoundFileError``
