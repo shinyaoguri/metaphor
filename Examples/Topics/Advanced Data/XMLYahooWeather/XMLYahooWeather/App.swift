@@ -1,5 +1,8 @@
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Topics/Advanced%20Data/XMLYahooWeather
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 // NOTE: This example requires loadXML and network access which is not available in metaphor.
 
 @main

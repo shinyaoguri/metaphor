@@ -2,5 +2,5 @@
   "name": "Ribbons",
   "title": "Ribbons",
   "status": "obsolete",
-  "description": "Requires a PDB (molecular structure) file parser, a specialized data format outside metaphor's scope; non-goal."
+  "description": "Placeholder for rendering a protein backbone as ribbons. metaphor has no parser for the PDB molecular data format, so the sketch draws an explanatory message instead."
 }

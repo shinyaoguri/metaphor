@@ -1,8 +1,10 @@
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Basics/Shape/LoadDisplaySVG
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 // NOTE: This example requires SVG file loading via loadShape()
 // which is not available in metaphor.
-// Original Processing source: LoadDisplaySVG.pde
 
 @main
 final class LoadDisplaySVG: Sketch {

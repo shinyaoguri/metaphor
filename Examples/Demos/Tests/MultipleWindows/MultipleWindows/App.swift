@@ -1,3 +1,6 @@
+
+// Processing original: https://github.com/processing/processing-examples/tree/main/Demos/Tests/MultipleWindows
+// The original .pde is not bundled — see Examples/NOTICE.md.
 // Based on Processing's MultipleWindows example by GeneKao
 // Two windows with independent 3D orbit cameras, cross-window state sharing
 

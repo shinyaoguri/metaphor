@@ -1,10 +1,8 @@
 {
   "name": "Circle Collision",
   "title": "Circle Collision with Swapping Velocities",
-  "author": "Ira Greenberg",
   "level": "Advanced",
-  "order": "5",
-  "description": "Based on Keith Peter's Solution in\n  Foundation Actionscript Animation: Making Things Move!",
+  "description": "Circles collide elastically, swapping velocities along the axis between their centers with each circle's mass taken from its radius.",
   "featured": [
     "PVector",
     "PVector_random2D_",

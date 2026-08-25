@@ -1,5 +1,8 @@
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Topics/Geometry/Toroid
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 @main
 final class Toroid: Sketch {
     var config: SketchConfig {

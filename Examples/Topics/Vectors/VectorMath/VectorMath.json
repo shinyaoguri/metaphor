@@ -1,9 +1,12 @@
 {
   "name": "Vector Math",
   "title": "Vector",
-  "author": "Daniel Shiffman",
   "level": "Intermediate",
-  "order": "1",
-  "description": "Demonstration of some basic vector math: subtraction, normalization, scaling. Normalizing a vector sets its length to 1.",
-  "featured": ["PVector", "PVector_sub", "PVector_normalize_", "PVector_mult_"]
+  "description": "Draws a vector from the center of the window toward the cursor, rescaled to a fixed length with setMag().",
+  "featured": [
+    "PVector",
+    "PVector_sub",
+    "PVector_normalize_",
+    "PVector_mult_"
+  ]
 }

@@ -2,8 +2,11 @@
   "name": "Penrose Snowflake",
   "title": "Penrose Snowflake",
   "level": "Advanced",
-  "order": "3",
-  "author": "Geraldine Sarmiento",
-  "description": "This code was based on Patrick Dwyer's L-System class.",
-  "featured": ["pushMatrix_", "popMatrix_", "translate_", "rotate_"]
+  "description": "Draws a Penrose snowflake from an L-system. A production string is expanded through four generations, then walked with translate() and rotate().",
+  "featured": [
+    "pushMatrix_",
+    "popMatrix_",
+    "translate_",
+    "rotate_"
+  ]
 }

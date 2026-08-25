@@ -1,5 +1,8 @@
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Basics/Color/WaveGradient
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 @main
 final class WaveGradient: Sketch {
     var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Wave Gradient") }

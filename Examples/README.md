@@ -23,7 +23,7 @@ swift run
 - **はじめて metaphor を使う** → [docs/tutorial/](../docs/tutorial/)。順に読んで作品を作れるようになるための読み物（日本語。<!-- tutorial-status: ja-status -->第 1 部〜第 10 部を公開中<!-- /tutorial-status -->）。Examples を掘るのはその後で構いません。
 - **順番に学ぶ** → [LEARNING_PATH.md](LEARNING_PATH.md)（英語）。283 本の索引ではなく、難度タグを使ったカテゴリ別の推奨順路（代表 3〜5 本 x 各カテゴリ）です。
 - **やりたいことから探す** → [docs/ai/examples-index.md](../docs/ai/examples-index.md)。全サンプルをタグ・難度つきで索引化しています（AI エージェントは MCP の `api_reference` ツールでも同じ索引を引けます）。
-- **Processing のサンプル名で探す** → `Basics/` / `Topics/` は Processing 公式サンプルとほぼ同じ階層・名前です。多くのサンプルに元の `.pde` とスクリーンショット `.png` が同梱されています。
+- **Processing のサンプル名で探す** → `Basics/` / `Topics/` は Processing 公式サンプルとほぼ同じ階層・名前なので、[processing-examples](https://github.com/processing/processing-examples) の同じパスが原典です。うち 158 本は原典の `.pde` も同梱しています（同梱できないものは移植側の `App.swift` 冒頭が upstream の URL を指します。理由は [NOTICE.md](NOTICE.md)）。
 
 ## サンプルの構成
 
@@ -33,7 +33,7 @@ swift run
 ShapePrimitives/
 ├── Package.swift        # 独立した SwiftPM パッケージ
 ├── Sources/…/App.swift  # スケッチ本体
-├── ShapePrimitives.pde  # 元になった Processing スケッチ（移植の場合）
+├── ShapePrimitives.pde  # 元になった Processing スケッチ（同梱できる場合のみ）
 ├── ShapePrimitives.json # メタデータ（説明・タグ・status）
 └── ShapePrimitives.png  # 実行結果画像
 ```

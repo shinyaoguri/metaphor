@@ -1,5 +1,8 @@
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Topics/Vectors/VectorMath
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 // Vector Math
 // Draw a vector from center to mouse, scaled to length 150 using Vec2's setMag().
 

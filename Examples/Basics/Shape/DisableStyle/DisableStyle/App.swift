@@ -1,5 +1,8 @@
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Basics/Shape/DisableStyle
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 /// DisableStyle
 ///
 /// Demonstrates disableStyle() and enableStyle() on an MShape.

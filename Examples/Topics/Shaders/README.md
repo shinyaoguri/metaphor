@@ -58,7 +58,10 @@ in [THIRD_PARTY_LICENSES.md](../../../THIRD_PARTY_LICENSES.md).
 
 To translate one of these sketches into a real Metal shader, fetch the GLSL from
 upstream — [processing/processing-examples](https://github.com/processing/processing-examples)
-mirrors Processing's own tree, and each sketch's `.pde` names what it loaded.
+mirrors Processing's own tree, so the sketch sits at the matching path there and
+its `.pde` names what it loaded. Read it upstream rather than here: `Deform` no
+longer bundles its original either, because that one carries a credit line and
+was never licensed ([#1191](https://github.com/shinyaoguri/metaphor/issues/1191)).
 
 `ToonShading` is the one that already went through that translation, and its
 lineage is worth recording here since the source it came from is no longer in the

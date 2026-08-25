@@ -1,6 +1,9 @@
 import Foundation
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Demos/Graphics/Planets
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 /// Planets
 ///
 /// テクスチャを貼ったリテインドシェイプ（球）を 3 つ組んで、毎フレームは

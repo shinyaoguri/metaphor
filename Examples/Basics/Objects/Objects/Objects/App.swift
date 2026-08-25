@@ -1,5 +1,8 @@
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Basics/Objects/Objects
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 class MRect {
     var w: Float; var xpos: Float; var h: Float; var ypos: Float; var d: Float; var t: Float
     init(_ iw: Float, _ ixp: Float, _ ih: Float, _ iyp: Float, _ id: Float, _ it: Float) {

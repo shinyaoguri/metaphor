@@ -1,8 +1,10 @@
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Demos/Graphics/TessUpdate
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 // NOTE: This example requires PShape tessellation API (setVertex on tessellated shapes)
 // which is not available in metaphor.
-// Original Processing source: TessUpdate.pde
 
 @main
 final class TessUpdate: Sketch {

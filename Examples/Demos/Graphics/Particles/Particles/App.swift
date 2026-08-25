@@ -1,5 +1,8 @@
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Demos/Graphics/Particles
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 /// Particles（未移植のスタブ）
 ///
 /// `createShape` / `addChild` / `shape` / `texture` は **metaphor に実装済み**で、
@@ -16,7 +19,6 @@ import metaphor
 ///
 /// → #734 / #905 が入ったら実装に起こす。
 ///
-/// 原典: Particles.pde, by Daniel Shiffman
 @main
 final class Particles: Sketch {
     var config: SketchConfig {

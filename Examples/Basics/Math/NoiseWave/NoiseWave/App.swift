@@ -1,5 +1,8 @@
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Basics/Math/NoiseWave
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 @main
 final class NoiseWave: Sketch {
     var yoff: Float = 0

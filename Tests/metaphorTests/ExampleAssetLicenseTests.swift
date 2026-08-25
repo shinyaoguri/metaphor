@@ -66,18 +66,18 @@ struct ExampleAssetLicenseTests {
             """)
     }
 
-    // MARK: - Processing 原典の帰属
+    // MARK: - Processing 原典のクレジット行
 
-    /// `THIRD_PARTY_LICENSES.md` が名指ししている原著者。
+    /// `THIRD_PARTY_LICENSES.md` が「外した原典の著者」として名指ししている人たち。
     ///
-    /// 表を正本にして走査するので、**表に無い著者のファイルが増えると本数が合わずに赤くなる**。
-    /// 著者名リストをテスト側に隠し持つと、記載と検査が別々に育って食い違う。
-    private static func creditedAuthors() throws -> [String] {
+    /// 表を正本にして走査するので、**表を消すとこの検査ごと落ちる**。著者名をテスト側に
+    /// 隠し持つと、記載と検査が別々に育って食い違う。
+    private static func removedAuthors() throws -> [String] {
         let notices = try #require(
             CheckedInFiles.readText("THIRD_PARTY_LICENSES.md"),
             "THIRD_PARTY_LICENSES.md が読めない")
-        // 「The credited `.pde` authors」の直後に来る `| 著者 | 本数 |` の表を読む。
-        let heading = "The credited `.pde` authors, as their own headers name them:"
+        // 見出しの直後に来る `| 著者 | 本数 |` の表を読む。
+        let heading = "The authors named by the sketches that were removed:"
         let table = try #require(
             notices.range(of: heading).map { notices[$0.upperBound...] },
             "著者の表が見つからない（見出しを変えたなら、この検査の見出しも合わせる）")
@@ -96,6 +96,31 @@ struct ExampleAssetLicenseTests {
         return authors
     }
 
+    /// クレジット行の書式。コメント行の `by <Name>` と `based on (code from) <Name>`。
+    ///
+    /// 導入句をこの 2 つに絞ったのは実測の結果で、外した 144 本のうち 101 本をこれだけで
+    /// 捕まえる。`adapted from` / `ported from` / `derived from` / `modified from` を
+    /// 足しても捕捉は 1 本も増えず、`Topics/Shaders/Conway/Conway.pde` の
+    /// 「ported from GLSL sandbox:」（人ではなくサイトを指す）を誤検出するだけだった。
+    private static let creditLinePattern = #"(?:^|[\s,])(?:by|based on(?: code from)?)[ \t]+[A-Z]"#
+
+    /// ソースの**コメント行**から、クレジット行らしきものを 1 本返す。
+    ///
+    /// コード行を見ないのは、`MouseFunctions.pde` の `by = height/2.0;` のような
+    /// 代入に当たらないため。
+    private static func creditLine(in source: String) -> String? {
+        for rawLine in source.split(separator: "\n", omittingEmptySubsequences: false) {
+            let line = rawLine.trimmingCharacters(in: .whitespaces)
+            guard line.hasPrefix("*") || line.hasPrefix("//") || line.hasPrefix("/*") else {
+                continue
+            }
+            if line.range(of: Self.creditLinePattern, options: .regularExpression) != nil {
+                return line
+            }
+        }
+        return nil
+    }
+
     /// `THIRD_PARTY_LICENSES.md` の本文から `| ラベル | 総数 | クレジットあり |` を読む。
     private static func recordedCounts(forRow label: String) throws -> (total: Int, credited: Int) {
         let notices = try #require(
@@ -112,43 +137,92 @@ struct ExampleAssetLicenseTests {
         return (-1, -1)
     }
 
-    @Test("`.pde` の本数とクレジットありの内訳が THIRD_PARTY_LICENSES.md と一致する")
-    func pdeCountsMatchTheRecord() throws {
-        let authors = try Self.creditedAuthors()
-        #expect(authors.count >= 10, "著者の表が読めていない: \(authors)")
-
+    @Test("同梱している `.pde` にクレジット行が 1 本も無い")
+    func bundledSketchesCarryNoCreditLine() throws {
         let sketches = try CheckedInFiles.list("Examples").filter { $0.hasSuffix(".pde") }
-        let credited = sketches.filter { path in
-            guard let text = CheckedInFiles.readText(path) else { return false }
-            return authors.contains { text.localizedCaseInsensitiveContains($0) }
+        // 走査そのものが壊れて 0 件になったら（= 常に緑）気付けないので下限を置く。
+        #expect(sketches.count >= 100, "`.pde` の走査が効いていない: \(sketches.count) 件")
+
+        var offenders: [String] = []
+        for path in sketches {
+            guard let text = CheckedInFiles.readText(path),
+                let line = Self.creditLine(in: text)
+            else { continue }
+            offenders.append("\(path) → \(line)")
         }
 
-        let recorded = try Self.recordedCounts(forRow: ".pde")
         #expect(
-            (sketches.count, credited.count) == (recorded.total, recorded.credited),
+            offenders.isEmpty,
             """
-            `.pde` の実測 \(sketches.count) 本（うちクレジットあり \(credited.count) 本）が
-            THIRD_PARTY_LICENSES.md の記載 \(recorded.total) / \(recorded.credited) と合わない。
-            サンプルを足したか消したなら記載を更新する。クレジット行に**表に無い著者**が
-            現れた場合も合わなくなるので、その著者を表へ足す（Issue #1191）。
+            クレジット行のある Processing 原典が Examples 配下にある: \(offenders)
+            processing-examples の README が public domain と言うのはクレジット行の **無い**
+            ものだけで、クレジット行のあるものは著作権が原著者に残ったままライセンスが
+            付与されていない。MIT のこのリポジトリは再頒布できないので、帰属を書き足すのでは
+            なく取り除く（Issue #1191）。原典を参照させたいなら、`App.swift` の先頭に
+            upstream の URL を書く形にそろえる。
             """)
     }
 
-    @Test("`.json` の本数と author ありの内訳が THIRD_PARTY_LICENSES.md と一致する")
-    func jsonCountsMatchTheRecord() throws {
+    @Test("同梱している原典に、外した原典の著者の名前が現れない")
+    func bundledOriginalsDoNotNameRemovedAuthors() throws {
+        // 導入句を持たない裸の名前（`// Daniel Shiffman`）と、小文字始まりのハンドル
+        // （`by hbarragan`）は書式の網を抜ける。名前でしか捕まらないので 2 枚目を張る。
+        let authors = try Self.removedAuthors()
+        #expect(authors.count >= 20, "著者の表が読めていない: \(authors)")
+
+        let originals = try CheckedInFiles.list("Examples")
+            .filter { $0.hasSuffix(".pde") || $0.hasSuffix(".json") }
+        var offenders: [String] = []
+        for path in originals {
+            guard let text = CheckedInFiles.readText(path) else { continue }
+            for author in authors where text.localizedCaseInsensitiveContains(author) {
+                offenders.append("\(path) → \(author)")
+            }
+        }
+
+        #expect(
+            offenders.isEmpty,
+            """
+            外したはずの原典の著者名が、同梱している原典に残っている: \(offenders)
+            その著者のサンプルはライセンスが付与されていないので同梱できない（Issue #1191）。
+            """)
+    }
+
+    @Test("同梱している `.json` に `author` が残っていない")
+    func bundledMetadataDeclaresNoAuthor() throws {
         let metadata = try CheckedInFiles.list("Examples").filter { $0.hasSuffix(".json") }
-        let credited = metadata.filter { path in
+        let offenders = metadata.filter { path in
             guard let text = CheckedInFiles.readText(path) else { return false }
             return text.range(of: #""author"\s*:\s*"[^"]"#, options: .regularExpression) != nil
         }
 
-        let recorded = try Self.recordedCounts(forRow: ".json")
         #expect(
-            (metadata.count, credited.count) == (recorded.total, recorded.credited),
+            offenders.isEmpty,
             """
-            `.json` の実測 \(metadata.count) 本（うち author が非空 \(credited.count) 本）が
-            THIRD_PARTY_LICENSES.md の記載 \(recorded.total) / \(recorded.credited) と合わない。
+            `author` を持つ Processing 原典のメタデータが残っている: \(offenders)
+            同梱しているメタデータは metaphor が移植版から書き起こしたもので、原典の
+            クレジットを引き継がない（Issue #1191）。索引の生成器が読むのは
+            `title` / `name` / `description` / `level` / `featured` / `status` だけで、
+            `author` はどこからも読まれない。
             """)
+    }
+
+    @Test("同梱している原典の本数が THIRD_PARTY_LICENSES.md の記載と一致する")
+    func bundledOriginalCountsMatchTheRecord() throws {
+        // 上の 2 枚の網でも、まったく新しい著者の**裸の名前**は構文的には検出できない。
+        // 本数を固定しておくと、原典が 1 本増えた時点で赤くなり、人間の判断を必ず経る。
+        for suffix in [".pde", ".json"] {
+            let actual = try CheckedInFiles.list("Examples").filter { $0.hasSuffix(suffix) }.count
+            let recorded = try Self.recordedCounts(forRow: suffix)
+            #expect(
+                (actual, 0) == (recorded.total, recorded.credited),
+                """
+                `\(suffix)` の実測 \(actual) 本が THIRD_PARTY_LICENSES.md の記載
+                \(recorded.total) 本（クレジットあり \(recorded.credited) 本）と合わない。
+                サンプルを足したか消したなら記載を更新する。**原典を足した場合は、それが
+                クレジット行を持たない public domain のものか確かめてから**（Issue #1191）。
+                """)
+        }
     }
 
     // MARK: - 適用範囲の宣言
@@ -168,23 +242,29 @@ struct ExampleAssetLicenseTests {
         }
     }
 
-    @Test("Examples/NOTICE.md がクレジット行のあるサンプルを public domain と言っていない")
-    func theExamplesNoticeDoesNotOverclaimPublicDomain() throws {
-        let notice = try #require(CheckedInFiles.readText("Examples/NOTICE.md"))
-        // upstream が public domain と言うのは「クレジット行の無いもの」だけ。
-        // 特定の著者を名指しで public domain 側に置く記述は、そこと食い違う
-        // （かつて「Daniel Shiffman's examples are also in the public domain」と書いていた）。
-        let authors = try Self.creditedAuthors()
-        for author in authors {
-            let overclaims = notice.range(
-                of: "\(author)[^.]*public domain", options: [.regularExpression, .caseInsensitive])
-            #expect(
-                overclaims == nil,
-                """
-                Examples/NOTICE.md が \(author) のサンプルを public domain と書いている。
-                processing-examples の README が public domain と言うのはクレジット行の無い
-                ものだけで、\(author) は THIRD_PARTY_LICENSES.md の credited 側にいる。
-                """)
+    @Test("説明文がクレジット行のあるサンプルを public domain と言っていない")
+    func theProseDoesNotOverclaimPublicDomain() throws {
+        // upstream が public domain と言うのは「クレジット行の無いもの」だけ。特定の著者を
+        // 名指しで public domain 側に置く記述は、そこと食い違う（`Examples/NOTICE.md` は
+        // かつて「Daniel Shiffman's examples are also in the public domain」と書き、
+        // `README.en.md` は「sample sketches (public domain) by ... Daniel Shiffman」と
+        // 書いていた。後者は著者名が後ろに来るので、前後どちらの語順も見る）。
+        let authors = try Self.removedAuthors()
+        for document in ["Examples/NOTICE.md", "README.md", "README.en.md"] {
+            let prose = try #require(CheckedInFiles.readText(document), "\(document) が読めない")
+            for author in authors {
+                for pattern in ["\(author)[^.]*public domain", "public domain[^.]*\(author)"] {
+                    #expect(
+                        prose.range(of: pattern, options: [.regularExpression, .caseInsensitive])
+                            == nil,
+                        """
+                        \(document) が \(author) のサンプルを public domain と書いている。
+                        processing-examples の README が public domain と言うのはクレジット行の
+                        無いものだけで、\(author) のサンプルはライセンス未付与として
+                        Examples から外してある（Issue #1191）。
+                        """)
+                }
+            }
         }
     }
 }

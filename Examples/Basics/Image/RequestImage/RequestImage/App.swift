@@ -1,6 +1,9 @@
 import metaphor
 import Foundation
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Basics/Image/RequestImage
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 @main
 final class RequestImage: Sketch {
     var config: SketchConfig {

@@ -1,9 +1,12 @@
 {
   "name": "Sequential",
   "title": "Sequential",
-  "author": "James Paterson",
   "level": "Intermediate",
-  "order": "0",
-  "description": "Displaying a sequence of images creates the illusion of motion. \n  Twelve images are loaded and each is displayed individually in a loop.",
-  "featured": ["PImage", "Array", "loadImage_", "image_"]
+  "description": "Plays a generated twelve-frame sequence by drawing one image per frame, the simplest form of sequential animation.",
+  "featured": [
+    "PImage",
+    "Array",
+    "loadImage_",
+    "image_"
+  ]
 }

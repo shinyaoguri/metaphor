@@ -2,5 +2,5 @@
   "name": "LoadSaveXML",
   "title": "LoadSaveXML",
   "status": "obsolete",
-  "description": "Requires Processing's loadXML/saveXML. metaphor does not clone Processing's XML types; the planned data path is Codable JSON / CSV (see LoadSaveJSON). XML is non-goal."
+  "description": "Placeholder for reading and writing XML. metaphor has no loadXML() or saveXML(), so the sketch draws an explanatory message instead."
 }

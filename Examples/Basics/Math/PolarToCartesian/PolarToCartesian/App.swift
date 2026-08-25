@@ -1,5 +1,8 @@
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Basics/Math/PolarToCartesian
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 @main
 final class PolarToCartesian: Sketch {
     var r: Float = 0; var theta: Float = 0; var thetaVel: Float = 0; let thetaAcc: Float = 0.0001

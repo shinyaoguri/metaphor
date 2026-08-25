@@ -1,9 +1,13 @@
 {
   "name": "Simple Particle System",
   "title": "Simple Particle System",
-  "author": "Daniel Shiffman",
   "level": "Intermediate",
-  "order": "0",
-  "description": "Particles are generated each cycle through draw(), fall with gravity and fade out over time. A ParticleSystem object manages a variable size (ArrayList) list of particles.",
-  "featured": ["ArrayList", "class", "PVector", "PVector_add_", "ellipse_"]
+  "description": "One emitter releases particles that fall under gravity and fade out as their lifespan runs down.",
+  "featured": [
+    "ArrayList",
+    "class",
+    "PVector",
+    "PVector_add_",
+    "ellipse_"
+  ]
 }

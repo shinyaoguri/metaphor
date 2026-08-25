@@ -1,8 +1,10 @@
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Demos/Graphics/Ribbons
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 // NOTE: This example requires PDB file parser (specialized molecular data format)
 // which is not available in metaphor.
-// Original Processing source: Ribbons.pde
 
 @main
 final class Ribbons: Sketch {

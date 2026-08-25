@@ -252,9 +252,9 @@ metaphor は**個人が単独でメンテナンスしているプロジェクト
 
 ## Acknowledgements
 
-[Examples/](Examples/) ディレクトリの多くのサンプルは、[Processing](https://processing.org/) のサンプルスケッチの Swift / Metal 移植です。原典の `.pde` は移植の隣に残してあります。
+[Examples/](Examples/) ディレクトリの多くのサンプルは、[Processing](https://processing.org/) のサンプルスケッチの Swift / Metal 移植です。`Basics/` と `Topics/` は Processing 公式サンプルとほぼ同じ階層・名前なので、原典は upstream の同じパスにあります。
 
-原典の扱いは一様ではありません。processing-examples の README が述べるとおり、**クレジット行の無いものは Casey Reas / Ben Fry による public domain** ですが、**クレジット行のあるものは著作権が原著者に残り、ライセンスは付与されていません**（`.pde` 314 本のうち 95 本、`.json` 181 本のうち 54 本）。個別の帰属は各ファイルのヘッダーコメントに、全体の内訳と現状の判断は [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) にあります。
+原典の扱いは一様ではありません。processing-examples はリポジトリ自体にライセンスファイルを持たず、README の 1 文が唯一の許諾です。**クレジット行の無いものは Casey Reas / Ben Fry 本人による public domain** なので同梱していますが（`.pde` 170 本）、**クレジット行のあるものは著作権が原著者に残ったままライセンスが付与されていない**ため、2026-08 に Examples から外しました（`.pde` 144 本 / 95 パッケージ、[#1191](https://github.com/shinyaoguri/metaphor/issues/1191)）。外した分は各移植の `App.swift` 冒頭から upstream の URL を指しています。経緯と外した原典の著者は [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) にあります。
 
 - Processing: https://processing.org/
 - Processing examples: https://github.com/processing/processing-examples

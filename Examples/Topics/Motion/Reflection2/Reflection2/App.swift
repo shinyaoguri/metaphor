@@ -1,5 +1,8 @@
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Topics/Motion/Reflection2
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 struct GroundSegment {
     var x1: Float, y1: Float, x2: Float, y2: Float
     var x: Float, y: Float, len: Float, rot: Float

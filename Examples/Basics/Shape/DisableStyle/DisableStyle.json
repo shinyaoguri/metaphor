@@ -1,10 +1,8 @@
 {
   "name": "Disable Style",
   "title": "Disable Style",
-  "author": "George Brower",
   "level": "Intermediate",
-  "order": "3",
-  "description": "Shapes are loaded with style information that tells them how to draw (e.g. color, stroke weight). The disableStyle() method of PShape turns off this information so functions like stroke() and fill() change the SVGs color. The enableStyle() method turns the file's original styles back on.",
+  "description": "The same retained shape drawn twice. On the left its own fill and stroke are disabled so the sketch's current style applies; on the right it keeps the style it captured when it was built.",
   "featured": [
     "PShape_enableStyle_",
     "PShape_disableStyle_",

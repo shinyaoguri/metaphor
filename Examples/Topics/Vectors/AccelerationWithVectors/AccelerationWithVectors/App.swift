@@ -1,5 +1,8 @@
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Topics/Vectors/AccelerationWithVectors
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 // Acceleration With Vectors
 // Calculate acceleration toward the mouse using Vec2's setMag()/limit() methods.
 // Processing's PVector code (sub → setMag → add → limit) translates nearly 1:1.

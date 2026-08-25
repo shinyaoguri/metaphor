@@ -1,5 +1,8 @@
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Basics/Shape/ScaleShape
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 /// ScaleShape
 ///
 /// Demonstrates per-shape scaling on an MShape.

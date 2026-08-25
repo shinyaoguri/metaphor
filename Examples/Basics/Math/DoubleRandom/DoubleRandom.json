@@ -1,9 +1,9 @@
 {
   "name": "Double Random",
   "title": "Double Random",
-  "author": "Ira Greenberg",
   "level": "Beginner",
-  "order": "14",
-  "description": "Using two random() calls and the point() function \n  to create an irregular sawtooth line.",
-  "featured": ["random_"]
+  "description": "Draws a jagged line across the window by accumulating a random walk on top of a per-point random offset, so the spread widens from left to right.",
+  "featured": [
+    "random_"
+  ]
 }

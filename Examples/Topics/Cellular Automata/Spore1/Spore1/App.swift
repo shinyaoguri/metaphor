@@ -1,5 +1,8 @@
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Topics/Cellular%20Automata/Spore1
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 @main
 final class Spore1: Sketch {
     var config: SketchConfig { SketchConfig(width: 640, height: 360, title: "Spore 1") }

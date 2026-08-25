@@ -1,6 +1,9 @@
 import Foundation
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Topics/Image%20Processing/Convolution
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 @main
 final class Convolution: Sketch {
     var config: SketchConfig {

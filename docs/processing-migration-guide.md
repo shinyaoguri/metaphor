@@ -1052,9 +1052,10 @@ parity gaps are the most useful thing to report.
 **The Examples tree mirrors Processing's own.** Categories and sample names under
 [`Examples/Basics/`](../Examples/Basics/) and [`Examples/Topics/`](../Examples/Topics/)
 follow Processing's official example hierarchy, so if you know the Processing
-sample you can usually guess the path. Of the 278 example packages, 254 ship the
-**original `.pde` right next to the Swift port**, plus a reference render — the
-fastest way to see how a construct translates is to read both:
+sample you can usually guess the path — and the same path under
+[processing-examples](https://github.com/processing/processing-examples) is the
+original. 158 of the example packages also ship that original `.pde` next to the
+Swift port, so the two can be read side by side:
 
 ```
 Examples/Basics/Form/ShapePrimitives/
@@ -1062,6 +1063,16 @@ Examples/Basics/Form/ShapePrimitives/
 ├── ShapePrimitives/App.swift    ← the metaphor port
 ├── ShapePrimitives.png          ← reference render
 └── Package.swift
+```
+
+The rest do not, because their originals carry a credit line and were never
+licensed for redistribution ([#1191](https://github.com/shinyaoguri/metaphor/issues/1191)).
+Those ports name the upstream original in the first lines of their `App.swift`
+instead:
+
+```swift
+// Processing original: https://github.com/processing/processing-examples/tree/main/Basics/Color/Brightness
+// The original .pde is not bundled — see Examples/NOTICE.md.
 ```
 
 Each example is a self-contained SwiftPM package:

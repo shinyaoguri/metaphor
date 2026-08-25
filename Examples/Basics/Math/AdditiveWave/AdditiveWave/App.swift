@@ -1,5 +1,8 @@
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Basics/Math/AdditiveWave
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 @main
 final class AdditiveWave: Sketch {
     let xspacing: Float = 8

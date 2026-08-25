@@ -1,5 +1,8 @@
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Topics/Motion/CubesWithinCube
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 struct InnerCube {
     var px: Float = 0, py: Float = 0, pz: Float = 0
     var vx: Float, vy: Float, vz: Float

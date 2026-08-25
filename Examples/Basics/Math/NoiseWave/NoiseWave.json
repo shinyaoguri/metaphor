@@ -1,9 +1,9 @@
 {
   "name": "Noise Wave",
   "title": "Noise Wave",
-  "author": "Daniel Shiffman",
   "level": "Intermediate",
-  "order": "19",
-  "description": "Using Perlin Noise to generate a wave-like pattern.",
-  "featured": ["noise_"]
+  "description": "A wave whose height comes from one-dimensional Perlin noise, drawn as a filled shape that drifts as the noise offset advances.",
+  "featured": [
+    "noise_"
+  ]
 }

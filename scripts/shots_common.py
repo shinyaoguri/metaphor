@@ -51,6 +51,14 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 # 「撮影後にスケッチが変わった」と言い出す（#1055）。
 EXCLUDED_NAMES = {".build", ".swiftpm", ".metaphor", ".DS_Store", "Package.resolved"}
 
+# パッケージ直下の `<Name>.pde` と `<Name>.json` は Processing 原典とそのメタデータ
+# （#1191）。コンパイルもされず、どのターゲットも resources に宣言していないので、
+# `Package.resolved` と同じく絵を変える入力ではない。材料に入れると、原典を 1 本
+# 足したり外したりしただけで --check が「撮影後にスケッチが変わった」と言い出す。
+# **パッケージ直下に限る**のが要点で、`data/*.json` はスケッチが読むデータ
+# （`Topics/Advanced Data/LoadSaveJSON/data/data.json`）なので材料に残す。
+EXCLUDED_TOP_LEVEL_SUFFIXES = {".pde", ".json"}
+
 # 撮影用の入力台本（#509）。パッケージ直下に置くと起動後に stdin へ流す。
 INPUT_SCRIPT_NAME = "probe-input.jsonl"
 # 1 行送るごとに空ける間隔。60fps の 2 フレームぶん空けて、1 フレームに複数の
@@ -118,6 +126,8 @@ def source_files(package_dir: Path, *, exclude: Iterable[Path] = ()) -> list[Pat
             continue
         relative = path.relative_to(package_dir)
         if EXCLUDED_NAMES.intersection(relative.parts):
+            continue
+        if len(relative.parts) == 1 and path.suffix in EXCLUDED_TOP_LEVEL_SUFFIXES:
             continue
         if path.resolve() in dropped:
             continue

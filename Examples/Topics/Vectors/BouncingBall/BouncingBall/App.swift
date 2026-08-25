@@ -1,5 +1,8 @@
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Topics/Vectors/BouncingBall
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 // Bouncing Ball
 // Bounce simulation using Vec2 to represent position, velocity, and gravity.
 

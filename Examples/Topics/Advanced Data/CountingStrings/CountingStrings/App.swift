@@ -1,5 +1,8 @@
 import metaphor
 
+// Processing original: https://github.com/processing/processing-examples/tree/main/Topics/Advanced%20Data/CountingStrings
+// The original .pde is not bundled — see Examples/NOTICE.md.
+
 @main
 final class CountingStrings: Sketch {
     var config: SketchConfig {

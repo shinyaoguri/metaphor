@@ -1,9 +1,11 @@
 {
   "name": "Triangle Strip",
   "title": "Triangle Strip",
-  "author": "Ira Greenberg",
   "level": "Intermediate",
-  "order": "5",
-  "description": "Generate a closed ring using the vertex() function and \n  beginShape(TRIANGLE_STRIP) mode. The outsideRadius and insideRadius \n  variables control ring's radii respectively.",
-  "featured": ["beginShape_", "endShape_", "vertex_"]
+  "description": "Builds a closed ring from a triangle strip whose vertices alternate between an outer and an inner radius. The cursor's horizontal position sets how many segments the ring is divided into.",
+  "featured": [
+    "beginShape_",
+    "endShape_",
+    "vertex_"
+  ]
 }

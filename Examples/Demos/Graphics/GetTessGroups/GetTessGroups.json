@@ -2,5 +2,5 @@
   "name": "GetTessGroups",
   "title": "GetTessGroups",
   "status": "obsolete",
-  "description": "Requires Processing's PShape tessellation-introspection API (getTessellation). metaphor does not expose tessellated-geometry introspection; non-goal."
+  "description": "Placeholder for reading back a shape's tessellation. metaphor has no getTessellation() API, so the sketch draws an explanatory message instead."
 }
