@@ -356,6 +356,8 @@ struct FrameStateResetTests {
         // フォントとスタイルもフレームを跨ぐ側（#816）。
         canvas.textFont("Menlo")
         canvas.textStyle(.bold)
+        // 折り返し規則もフレームを跨ぐ側（#1165）。
+        canvas.textWrap(.char)
         canvas.currentStrokeCap = .square
         canvas.currentStrokeJoin = .bevel
         // 曲線の分割数とシェイプの座標解釈もスタイル状態（#813）。
@@ -375,6 +377,7 @@ struct FrameStateResetTests {
         #expect(canvas.currentTextStyle == .bold)
         // 解決済み名まで残らないと、絵だけが黙って細字へ戻る。
         #expect(canvas.resolvedFontName == "Menlo-Bold")
+        #expect(canvas.currentTextWrap == .char)
         #expect(canvas.currentStrokeCap == .square)
         #expect(canvas.currentStrokeJoin == .bevel)
         #expect(canvas.bezierDetailCount == 7)

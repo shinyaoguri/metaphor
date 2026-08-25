@@ -538,6 +538,60 @@ extension Sketch {
         context.textLeading(leading)
     }
 
+    /// Chooses where the rectangle form of ``text(_:_:_:_:_:)`` may break a line.
+    ///
+    /// The p5.js `textWrap(WORD / CHAR)` counterpart. ``TextWrap/word`` is the default, as in
+    /// p5.js, and is what metaphor has always done — turning it on changes nothing.
+    ///
+    /// ```swift
+    /// textWrap(.char)
+    /// text("filling every line", 20, 20, 120, 200)
+    /// ```
+    ///
+    /// - Note: ``TextWrap/word`` prefers word boundaries rather than promising never to split a
+    ///   word. A word longer than the box is still broken between characters, because there is
+    ///   nowhere else to put it — both rules lay it out identically.
+    ///
+    /// - Note: It has **no effect on ``text(_:_:_:)``**, which breaks only at the newlines already
+    ///   in the string. Wrapping needs a width, and the three-argument form has none.
+    ///
+    /// - Note: **Survives across frames.** Like the rest of the 2D style state it is **not** reset
+    ///   at the start of a frame, so a value set in `setup()` still applies in `draw()`. It is
+    ///   saved and restored by ``push()`` / ``pop()``.
+    ///
+    /// - Parameter mode: The wrap rule.
+    ///
+    /// ### Result
+    ///
+    /// The same string in the same box under both rules.
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![textWrap(_:) の実行結果](https://i.gyazo.com/a911bc3b2a660f2d06b4997971ff80a3.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(24)
+    ///       textSize(18)
+    ///       textAlign(.left, .top)
+    ///       let s = "Wrapping words in a thin box"
+    ///       fill(240)
+    ///       textWrap(.word)
+    ///       text(s, 20, 60, 110, 280)
+    ///       textWrap(.char)
+    ///       text(s, 265, 60, 110, 280)
+    ///       fill(150, 200, 255)
+    ///       text(".word", 20, 24)
+    ///       text(".char", 265, 24)
+    ///       ```
+    ///    }
+    /// }
+    public func textWrap(_ mode: TextWrap) {
+        context.textWrap(mode)
+    }
+
     /// Draws a text string at the given position.
     ///
     /// A string containing newlines (`\n`) is drawn as multiple lines, with the line height taken
@@ -562,8 +616,8 @@ extension Sketch {
 
     /// Draws a text string inside a bounding box.
     ///
-    /// It wraps automatically at the width of the box. Lines that do not fit within the height of
-    /// the box are not drawn.
+    /// It wraps automatically at the width of the box, under the rule ``textWrap(_:)`` selects.
+    /// Lines that do not fit within the height of the box are not drawn.
     ///
     /// Color is handled exactly as in ``text(_:_:_:)``, so ``noFill()`` has no effect on text.
     ///
@@ -591,6 +645,72 @@ extension Sketch {
     /// - Returns: The width of the text, in pixels.
     public func textWidth(_ string: String) -> Float {
         context.textWidth(string)
+    }
+
+    /// Returns the rectangle ``text(_:_:_:)`` would fill for this string at `(x, y)`.
+    ///
+    /// The p5.js `font.textBounds(str, x, y)` counterpart. It answers "where will this land", so
+    /// the box already accounts for the current ``textAlign(_:_:)``, ``textSize(_:)``,
+    /// ``textFont(_:)-(String)``, ``textStyle(_:)`` and, for a string with newlines,
+    /// ``textLeading(_:)``.
+    ///
+    /// ```swift
+    /// let b = textBounds("metaphor", 40, 80)
+    /// rect(b.x, b.y, b.width, b.height)
+    /// text("metaphor", 40, 80)
+    /// ```
+    ///
+    /// - Important: The width is the one ``textWidth(_:)`` reports — the sum of the per-character
+    ///   advances — so `textBounds(s, x, y).width == textWidth(s)`. That is the ruler
+    ///   ``text(_:_:_:)`` lays glyphs out with and ``textAlign(_:_:)`` aligns against, but it is
+    ///   **not** the extent of the ink: glyphs such as `f`, or an italic face, can paint a little
+    ///   past either edge. p5.js measures the ink instead, so its box is a touch tighter and does
+    ///   not agree with its own `textWidth()`.
+    ///
+    /// - Note: The height is ``textAscent()`` + ``textDescent()`` — a property of the font, not of
+    ///   the string — plus one ``textLeading(_:)`` for every newline. `"x"` and `"X"` therefore
+    ///   get boxes of the same height.
+    ///
+    /// - Note: The rectangle is in the coordinate space `x` and `y` are given in. The current
+    ///   ``translate(_:_:)`` / ``rotate(_:)`` / ``scale(_:_:)`` applies when the text is drawn,
+    ///   not to the numbers returned here.
+    ///
+    /// - Note: An empty string returns a zero-sized box at `(x, y)`, matching
+    ///   ``text(_:_:_:)`` drawing nothing for it.
+    ///
+    /// - Parameters:
+    ///   - string: The text to measure.
+    ///   - x: The x coordinate the text would be drawn at.
+    ///   - y: The y coordinate the text would be drawn at.
+    /// - Returns: The box, with `x` / `y` at its top-left corner.
+    ///
+    /// ### Result
+    ///
+    /// The box drawn around the string it measures, under ``TextAlignV/center`` alignment.
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![textBounds(_:_:_:) の実行結果](https://i.gyazo.com/e210ebfaf3c9b77aa2ad9469a2c7871f.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(24)
+    ///       textSize(52)
+    ///       textAlign(.center, .center)
+    ///       let b = textBounds("bounds", 240, 180)
+    ///       noFill()
+    ///       stroke(255, 90, 90)
+    ///       strokeWeight(2)
+    ///       rect(b.x, b.y, b.width, b.height)
+    ///       fill(240)
+    ///       text("bounds", 240, 180)
+    ///       ```
+    ///    }
+    /// }
+    public func textBounds(_ string: String, _ x: Float, _ y: Float) -> TextBounds {
+        context.textBounds(string, x, y)
     }
 
     /// Returns the ascent of the current font.

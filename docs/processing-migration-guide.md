@@ -239,7 +239,8 @@ Angles are **radians** everywhere, as in Processing. There is no `angleMode()`
 | `PFont` | `MFont` |
 | p5 `font.textToPoints(…)` | `textToPoints(_ string:_ x:_ y:sampleFactor:) -> [Vec2]`, plus `textToContours(…) -> [[Vec2]]` (one closed polyline per contour) and `textToShape(…) -> MShape` (holes included) |
 | p5 `textStyle(BOLD / ITALIC)` | `textStyle(_ style: TextStyle)` — `.normal` / `.bold` / `.italic` / `.boldItalic`. Keeps the family and asks for that family's face, and **warns** when the font has none (it never substitutes another font) |
-| p5 `textWrap()` / `textBounds()` | — not implemented ([#1165](https://github.com/shinyaoguri/metaphor/issues/1165)) |
+| p5 `textWrap(WORD / CHAR)` | `textWrap(_ mode: TextWrap)` — `.word` (the default, as in p5) / `.char`. It applies to the rectangle form of `text()` only; the three-argument form breaks at newlines and nothing else |
+| p5 `font.textBounds(str, x, y)` | `textBounds(_ string: String, _ x: Float, _ y: Float) -> TextBounds` — the box `text()` would fill, already accounting for `textAlign()`. **The width is the advance sum `textWidth()` reports, not the extent of the ink**, so it agrees with where the glyphs land rather than with p5's slightly tighter ink box |
 | `textAlign(CENTER, TOP)` | `textAlign(.center, .top)` — `TextAlignH` is `.left/.center/.right`, `TextAlignV` is `.top/.center/.baseline/.bottom` (default `.baseline`) |
 | `textLeading(l)` | `textLeading(_ leading: Float)` — the line height in **pixels**, as in Processing; `textSize()` / `textFont()` reset it, so call it after them |
 | `textWidth(s)` | `textWidth(_ string: String) -> Float` |
@@ -1034,7 +1035,6 @@ sizes, colors) stay unlabelled, optional modifiers get labels (ADR-0007).
 | `PDF` export | Demand-gated, Phase 4 — [Epic #288](https://github.com/shinyaoguri/metaphor/issues/288). `DXF` export likewise has no equivalent. |
 | `blendColor()` | Not implemented — [#1153](https://github.com/shinyaoguri/metaphor/issues/1153). `blendMode()` configures drawing, not a pair of colors. The component extractors (`hue()` / `saturation()` / `brightness()` / `alpha()` / `red()` / `green()` / `blue()`) **do** exist — they return 0–1 and ignore `colorMode`. |
 | `ambient()`, `lightFalloff()`, `lightSpecular()`, `textureMode()`, `textureWrap()`, `beginCamera()` / `endCamera()`, `frustum()` | Not implemented — [#815](https://github.com/shinyaoguri/metaphor/issues/815). |
-| p5 `textWrap()` / `textBounds()` | Not implemented — [#1165](https://github.com/shinyaoguri/metaphor/issues/1165). `textStyle()` covers bold and italic, and the rectangle form of `text()` already wraps; what is missing is choosing the wrap rule and measuring the drawn box. |
 | `loadXML()` / `saveXML()` / `XML`, `loadBytes()` / `saveBytes()`, `createReader()` / `createWriter()`, `nf()` / `nfc()` / `nfp()` / `nfs()` / `hex()` / `binary()` | Not implemented. JSON, CSV/TSV and plain strings are covered; the rest is demand-gated. Swift's `String(format:)` replaces the `nf` family. |
 | sound synthesis (`SinOsc`, `Env`, `Reverb`, `Delay`, recording, panning) | Not implemented — playback (`loadSound`) and analysis (`createAudioInput`, FFT, beat) exist, but nothing generates audio. Demand-gated, Phase 4. |
 | `Serial` (Arduino), `Client` / `Server` (TCP) | Not implemented. OSC and MIDI are available instead (`createOSCSender` / `createOSCReceiver` / `createMIDI`), and both exceed Processing's standard set. Demand-gated, Phase 4. |

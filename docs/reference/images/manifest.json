@@ -264,6 +264,18 @@
       "url": "https://i.gyazo.com/6238ad4f021c6d0294b39d844d9796f0.png",
       "sha256": "4722334e94576410a7a8ac97ebf7c7d6f75884e29bf018e4bf4d4fb07147c042"
     },
+    "Sources/MetaphorCore/Sketch/Sketch+Image.swift::textBounds(_:_:_:)": {
+      "symbol": "textBounds(_:_:_:)",
+      "snippetHash": "2040490ca786546d86c91efa8e9ba744144490c4a179303b54aceff5b8394b7a",
+      "provenance": {
+        "commit": "c75499412102f1a0d1e226cbaaf011d782fc6e3b",
+        "dirty": true
+      },
+      "width": 480,
+      "height": 360,
+      "url": "https://i.gyazo.com/e210ebfaf3c9b77aa2ad9469a2c7871f.png",
+      "sha256": "69c28a248b6d146a0b339af60f1ead4b397b86d900123ce9c091051b20881eee"
+    },
     "Sources/MetaphorCore/Sketch/Sketch+Image.swift::textStyle(_:)": {
       "symbol": "textStyle(_:)",
       "snippetHash": "c5ea9fcdd47c2546891e98d5bcf836fdb462f90b1e724ffb7e3ccd582c57ed1e",
@@ -275,6 +287,18 @@
       "height": 360,
       "url": "https://i.gyazo.com/b303f6bf43e8674b5986770f3045348c.png",
       "sha256": "a25a8f62933a97c9046a3e622c3647ca4cacae7405d81325c854b90ad519f2b7"
+    },
+    "Sources/MetaphorCore/Sketch/Sketch+Image.swift::textWrap(_:)": {
+      "symbol": "textWrap(_:)",
+      "snippetHash": "c8a514ee68e18ba1344ac46dcb0cd8ebbbaedc4618714c926b28b5405ad3103d",
+      "provenance": {
+        "commit": "c75499412102f1a0d1e226cbaaf011d782fc6e3b",
+        "dirty": true
+      },
+      "width": 480,
+      "height": 360,
+      "url": "https://i.gyazo.com/a911bc3b2a660f2d06b4997971ff80a3.png",
+      "sha256": "135f5e9604b6a0f39d6999e18141ab86fa08c18f5daf19d8e66ce34219975aff"
     },
     "Sources/MetaphorCore/Sketch/Sketch+Shapes.swift::arc(_:_:_:_:_:_:_:)": {
       "symbol": "arc(_:_:_:_:_:_:_:)",

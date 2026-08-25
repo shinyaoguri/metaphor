@@ -91,6 +91,16 @@ extension Canvas2D {
         currentTextLeading = leading
     }
 
+    /// Chooses where the rectangle form of ``text(_:_:_:_:_:)`` may break a line.
+    ///
+    /// - Note: It has no effect on ``text(_:_:_:)``, which only ever breaks at the newlines
+    ///   already in the string.
+    ///
+    /// - Parameter mode: The wrap rule.
+    public func textWrap(_ mode: TextWrap) {
+        currentTextWrap = mode
+    }
+
     /// 実際に使う行の高さ（ピクセル単位）。
     ///
     /// ``textLeading(_:)`` で明示されていればその値、していなければ Processing の
@@ -148,6 +158,40 @@ extension Canvas2D {
     /// - Returns: ピクセル単位のフォントディセント。
     public func textDescent() -> Float {
         textRenderer.textDescent(fontSize: currentTextSize, fontFamily: resolvedFontName)
+    }
+
+    /// Returns the rectangle ``text(_:_:_:)`` would fill for this string at `(x, y)`.
+    ///
+    /// - Note: The width is the one ``textWidth(_:)`` reports — the sum of the per-character
+    ///   advances, which is the ruler ``text(_:_:_:)`` lays glyphs out with and
+    ///   ``textAlign(_:_:)`` aligns against. It is therefore **not** the extent of the ink:
+    ///   glyphs such as `f`, or an italic face, can paint a little past either edge.
+    ///
+    /// - Returns: The box, with `x` / `y` at its top-left corner.
+    public func textBounds(_ string: String, _ x: Float, _ y: Float) -> TextBounds {
+        // `text()` が `guard !string.isEmpty` で何も描かずに帰る文字列。描かないものの箱は 0。
+        guard !string.isEmpty else { return TextBounds(x: x, y: y, width: 0, height: 0) }
+
+        // ここから下は `text(_:_:_:)` の配置計算をそのままなぞる。揃えの規則が将来変わっても
+        // textBounds が置いていかれないよう、自前で組み直さず同じ 2 段を通す。
+        let width = textWidth(string)
+        let hangingHeight = Float(Self.lines(of: string).count - 1) * effectiveTextLeading
+        var lineY = y
+        switch currentTextAlignV {
+        case .top, .baseline: break
+        case .center: lineY -= hangingHeight / 2
+        case .bottom: lineY -= hangingHeight
+        }
+        let origin = textBaselineOrigin(x: x, y: lineY, width: width)
+
+        let ascent = textAscent()
+        let descent = textDescent()
+        return TextBounds(
+            x: origin.x,
+            y: origin.y - ascent,
+            width: width,
+            height: ascent + descent + hangingHeight
+        )
     }
 
     /// テキストの基準点 `(x, y)` を、現在の ``textAlign(_:_:)`` からベースライン左端へ
@@ -280,8 +324,8 @@ extension Canvas2D {
 
     /// バウンディングボックス内に自動改行付きでテキストを描画します。
     ///
-    /// 行の高さは ``textLeading(_:)`` に従い、箱の高さに入り切らない行は
-    /// Processing と同じく描かれません（箱でクリップされます）。
+    /// 行の高さは ``textLeading(_:)`` に従い、折り返し規則は ``textWrap(_:)`` に従います。
+    /// 箱の高さに入り切らない行は Processing と同じく描かれません（箱でクリップされます）。
     ///
     /// 色の扱いは ``text(_:_:_:)`` と同じで、``noFill()`` はテキストに効きません。
     ///
@@ -302,6 +346,7 @@ extension Canvas2D {
                 maxWidth: w,
                 maxHeight: h,
                 leading: effectiveTextLeading,
+                wrap: currentTextWrap,
                 frameCount: frameCounter
             )
         else { return }
