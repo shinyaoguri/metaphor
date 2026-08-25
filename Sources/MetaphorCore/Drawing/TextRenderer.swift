@@ -14,6 +14,95 @@ public enum TextAlignV: Sendable {
     case top, center, baseline, bottom
 }
 
+// MARK: - Text Style
+
+/// The bold / italic combination applied on top of the current font.
+public enum TextStyle: Sendable {
+    /// Draw with the face the font name itself selects (the default).
+    case normal
+    /// Draw with the bold face of the current font.
+    case bold
+    /// Draw with the italic face of the current font.
+    case italic
+    /// Draw with the bold italic face of the current font.
+    case boldItalic
+}
+
+// MARK: - Text Font Resolution
+
+// ## なぜ名前を 1 本に畳むのか
+//
+// `GlyphAtlas.Key` / `AdvanceKey` / `TextCacheKey` はいずれも「フォント名 + サイズ」で
+// できていて、名前から `CTFontCreateWithName` でフォントを作り直す。ここで
+// PostScript 名まで解決してしまえば、キーもシグネチャも広げずにスタイルを通せる。
+// `MFont`（`loadFont()`）が既に「PostScript 名 1 本でフォントを指す」経路なので、
+// スタイル指定もそれに相乗りする形になる。
+//
+// ## なぜ名前の文字列連結ではないのか
+//
+// 素朴には `"Helvetica Neue" + " Bold"` を `CTFontCreateWithName` に渡せばよさそうで、
+// 実際 `"Helvetica Neue Bold"` は効く。しかし **`CTFontCreateWithName` は解決できない
+// 名前を無警告でシステム既定へ落とす**ため、スタイル名を持たないフォントでは
+// `"Papyrus Bold"` → `Helvetica` のように**要求したファミリーごと失われる**（#816 の実測）。
+// `CTFontCreateCopyWithSymbolicTraits` は同じ条件で `nil` を返すので、
+// 「要求したスタイルが得られなかった」ことを呼び出し側へ伝えられる。
+
+/// Folds a family name plus a ``TextStyle`` into the single font name passed downstream.
+enum TextFontResolver {
+
+    /// The outcome of resolving a family name and a style.
+    struct Resolved: Equatable {
+        /// The font name to hand to `CTFontCreateWithName` downstream.
+        let name: String
+        /// Whether the requested style was obtained. When `false`, `name` is the family unchanged.
+        let styleApplied: Bool
+    }
+
+    /// Only bold and italic are considered; other traits (condensed, …) are left alone.
+    private static let styleMask: CTFontSymbolicTraits = [.traitBold, .traitItalic]
+
+    /// Only names and traits are read here, so the size is arbitrary.
+    private static let nominalSize: CGFloat = 12
+
+    /// The traits `style` asks for. ``TextStyle/normal`` asks for nothing, hence nil.
+    private static func traits(for style: TextStyle) -> CTFontSymbolicTraits? {
+        switch style {
+        case .normal: return nil
+        case .bold: return .traitBold
+        case .italic: return .traitItalic
+        case .boldItalic: return [.traitBold, .traitItalic]
+        }
+    }
+
+    /// Resolves a family name and a style into a font name.
+    ///
+    /// ``TextStyle/normal`` passes the family through untouched rather than stripping traits.
+    /// Stripping them would quietly un-bold every existing sketch that gets its bold from a
+    /// style-qualified name such as `textFont("Helvetica Neue Bold")`, because `.normal` is the
+    /// default (measured in #816).
+    static func resolve(family: String, style: TextStyle) -> Resolved {
+        guard let wanted = traits(for: style) else {
+            return Resolved(name: family, styleApplied: true)
+        }
+
+        let base = CTFontCreateWithName(family as CFString, nominalSize, nil)
+        guard let styled = CTFontCreateCopyWithSymbolicTraits(base, 0, nil, wanted, styleMask)
+        else {
+            return Resolved(name: family, styleApplied: false)
+        }
+        let name = CTFontCopyPostScriptName(styled) as String
+
+        // 下流はこの名前から `CTFontCreateWithName` でフォントを作り直すので、その往復を
+        // 通って初めて「効いた」と言える。往復で落ちる名前をそのまま渡すと、まさに避けたい
+        // 「無警告で別のフォントになる」に戻ってしまう。
+        let roundTrip = CTFontCreateWithName(name as CFString, nominalSize, nil)
+        guard CTFontGetSymbolicTraits(roundTrip).intersection(styleMask) == wanted else {
+            return Resolved(name: family, styleApplied: false)
+        }
+        return Resolved(name: name, styleApplied: true)
+    }
+}
+
 // MARK: - Glyph Info
 
 /// グリフアトラス内の単一グリフに関する情報を格納します。

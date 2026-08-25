@@ -425,6 +425,20 @@ extension Sketch {
 
     /// Sets the font family for subsequent text drawing.
     ///
+    /// - Note: A **style-qualified name** resolves too, as in Processing's `createFont()`:
+    ///   `textFont("Helvetica Neue Bold")` really does draw bold. Which qualified names exist
+    ///   depends on the font, though — `"Helvetica Neue Bold"` works while `"Papyrus Bold"` does
+    ///   not — and ``textStyle(_:)`` is the portable way to ask for bold or italic.
+    ///
+    /// - Important: An unresolvable name falls back to the system default **without any warning**,
+    ///   and that loses the family as well as the style: `textFont("Papyrus Bold")` draws in
+    ///   Helvetica, not in an unbolded Papyrus. Core Text does the substituting, so metaphor
+    ///   cannot tell it apart from a name that resolved. ``textStyle(_:)`` does report the miss.
+    ///
+    /// - Note: **Survives across frames.** Like the rest of the 2D style state it is **not** reset
+    ///   at the start of a frame, so a value set in `setup()` still applies in `draw()`. It is
+    ///   saved and restored by ``push()`` / ``pop()``.
+    ///
     /// - Parameter family: The font family name.
     public func textFont(_ family: String) {
         context.textFont(family)
@@ -432,9 +446,77 @@ extension Sketch {
 
     /// Sets the font used for subsequent text drawing from the result of ``loadFont(_:cache:)``.
     ///
+    /// - Note: **Survives across frames.** Like the rest of the 2D style state it is **not** reset
+    ///   at the start of a frame, so a value set in `setup()` still applies in `draw()`. It is
+    ///   saved and restored by ``push()`` / ``pop()``.
+    ///
     /// - Parameter font: The loaded font.
     public func textFont(_ font: MFont) {
         context.textFont(font)
+    }
+
+    /// Sets the bold / italic style applied on top of the current font.
+    ///
+    /// The p5.js `textStyle(NORMAL / ITALIC / BOLD / BOLDITALIC)` counterpart. Unlike a
+    /// style-qualified name passed to ``textFont(_:)-(String)``, this keeps the family and asks
+    /// Core Text for that family's bold or italic face, so the same code ports between fonts.
+    ///
+    /// ```swift
+    /// textFont("Helvetica Neue")
+    /// textStyle(.bold)
+    /// text("bold", 20, 60)
+    /// textStyle(.normal)   // back to the face the name itself selects
+    /// ```
+    ///
+    /// - Important: A font with no face for the style requested is drawn **unstyled**, with a
+    ///   warning naming the font. metaphor never substitutes a different font to satisfy the
+    ///   style, because silently drawing in some other typeface is worse than drawing unstyled.
+    ///   Fonts such as Monaco, Geneva and Papyrus have no bold or italic face at all.
+    ///
+    /// - Note: ``TextStyle/normal`` means "use the face the font name selects", not "strip bold".
+    ///   It therefore leaves a style-qualified ``textFont(_:)-(String)`` name alone —
+    ///   `textFont("Helvetica Neue Bold")` stays bold under the default ``TextStyle/normal``.
+    ///
+    /// - Note: The style is re-applied when the font changes, so ``textFont(_:)-(String)`` after
+    ///   this one keeps the style. Unlike ``textSize(_:)`` and ``textFont(_:)-(String)`` it does
+    ///   not reset ``textLeading(_:)``.
+    ///
+    /// - Note: **Survives across frames.** Like the rest of the 2D style state it is **not** reset
+    ///   at the start of a frame, so a value set in `setup()` still applies in `draw()`. It is
+    ///   saved and restored by ``push()`` / ``pop()``.
+    ///
+    /// - Parameter style: The style to apply.
+    ///
+    /// ### Result
+    ///
+    /// The four styles on one family. ``TextStyle/normal`` is the default, so the first line is
+    /// what ``textFont(_:)-(String)`` alone gives.
+    ///
+    /// <!-- reference-shot -->
+    ///
+    /// @Row {
+    ///    @Column(size: 1) {
+    ///       ![textStyle(_:) の実行結果](https://i.gyazo.com/b303f6bf43e8674b5986770f3045348c.png)
+    ///    }
+    ///    @Column(size: 2) {
+    ///       ```swift
+    ///       background(24)
+    ///       fill(240)
+    ///       textFont("Helvetica")
+    ///       textSize(44)
+    ///       textStyle(.normal)
+    ///       text("normal", 30, 80)
+    ///       textStyle(.bold)
+    ///       text("bold", 30, 150)
+    ///       textStyle(.italic)
+    ///       text("italic", 30, 220)
+    ///       textStyle(.boldItalic)
+    ///       text("bold italic", 30, 290)
+    ///       ```
+    ///    }
+    /// }
+    public func textStyle(_ style: TextStyle) {
+        context.textStyle(style)
     }
 
     /// Sets the text alignment.

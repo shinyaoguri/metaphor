@@ -548,6 +548,15 @@ extension SketchContext {
         canvas.textFont(font)
     }
 
+    /// Sets the bold / italic style applied on top of the current font.
+    ///
+    /// - Note: A style the current font has no face for leaves the text unstyled and warns.
+    ///
+    /// - Parameter style: The style to apply.
+    public func textStyle(_ style: TextStyle) {
+        canvas.textStyle(style)
+    }
+
     /// テキストの配置を設定します。
     /// - Parameters:
     ///   - horizontal: 水平方向の配置。

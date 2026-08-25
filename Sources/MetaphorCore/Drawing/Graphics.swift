@@ -727,8 +727,20 @@ public final class Graphics {
     public func textSize(_ size: Float) { canvas.textSize(size) }
 
     /// Sets the font family.
+    ///
+    /// - Note: A style-qualified name such as `"Helvetica Neue Bold"` also resolves, but which
+    ///   ones exist depends on the font. Prefer ``textStyle(_:)``, which warns when the style is
+    ///   unavailable instead of falling back to a different font.
+    ///
     /// - Parameter family: The font family name.
     public func textFont(_ family: String) { canvas.textFont(family) }
+
+    /// Sets the bold / italic style applied on top of the current font.
+    ///
+    /// - Note: A style the current font has no face for leaves the text unstyled and warns.
+    ///
+    /// - Parameter style: The style to apply.
+    public func textStyle(_ style: TextStyle) { canvas.textStyle(style) }
 
     /// Sets the text alignment.
     /// - Parameters:

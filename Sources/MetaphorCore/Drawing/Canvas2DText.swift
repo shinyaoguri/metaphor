@@ -25,6 +25,7 @@ extension Canvas2D {
     public func textFont(_ family: String) {
         currentFontFamily = family
         currentTextLeading = nil
+        resolveCurrentFont()
     }
 
     /// 読み込み済みのフォントを設定します。
@@ -36,6 +37,38 @@ extension Canvas2D {
     public func textFont(_ font: MFont) {
         currentFontFamily = font.postScriptName
         currentTextLeading = nil
+        resolveCurrentFont()
+    }
+
+    /// Sets the bold / italic style applied on top of the current font.
+    ///
+    /// Unlike ``textSize(_:)`` and ``textFont(_:)-(String)`` this does **not** reset the leading.
+    /// An explicit ``textLeading(_:)`` is worth keeping, and a leading that was never set stays
+    /// derived from whatever font is current, so it follows the style on its own.
+    ///
+    /// - Parameter style: The style to apply.
+    public func textStyle(_ style: TextStyle) {
+        currentTextStyle = style
+        resolveCurrentFont()
+    }
+
+    /// Folds the requested family and style into the name every downstream consumer uses.
+    ///
+    /// - Note: A style the current font has no face for leaves the font unchanged and warns
+    ///   rather than silently substituting a different one.
+    func resolveCurrentFont() {
+        let resolved = TextFontResolver.resolve(family: currentFontFamily, style: currentTextStyle)
+        resolvedFontName = resolved.name
+        guard !resolved.styleApplied else { return }
+
+        // 毎フレーム `textStyle()` を呼ぶ書き方でも警告が溢れないよう、(family, style) ごとに 1 回。
+        let key = "\(currentFontFamily)|\(currentTextStyle)"
+        guard warnedMissingTextStyles.insert(key).inserted else { return }
+        metaphorWarning(
+            "textStyle(): \"\(currentFontFamily)\" に \(currentTextStyle) の字面が無いため、"
+                + "スタイルを当てずにそのまま描きます。"
+                + "別のフォントへ差し替えるか、textFont(\"<名前> Bold\") のように"
+                + "スタイル込みの名前を渡してください")
     }
 
     /// テキストの揃え方を設定します。
@@ -65,9 +98,9 @@ extension Canvas2D {
     var effectiveTextLeading: Float {
         if let leading = currentTextLeading { return leading }
         let ascent = textRenderer.textAscent(
-            fontSize: currentTextSize, fontFamily: currentFontFamily)
+            fontSize: currentTextSize, fontFamily: resolvedFontName)
         let descent = textRenderer.textDescent(
-            fontSize: currentTextSize, fontFamily: currentFontFamily)
+            fontSize: currentTextSize, fontFamily: resolvedFontName)
         return (ascent + descent) * 1.275
     }
 
@@ -90,7 +123,7 @@ extension Canvas2D {
         Self.lines(of: string)
             .map {
                 textRenderer.textWidth(
-                    string: $0, fontSize: currentTextSize, fontFamily: currentFontFamily)
+                    string: $0, fontSize: currentTextSize, fontFamily: resolvedFontName)
             }
             .max() ?? 0
     }
@@ -108,13 +141,13 @@ extension Canvas2D {
     /// 現在のフォントのアセントを返します。
     /// - Returns: ピクセル単位のフォントアセント。
     public func textAscent() -> Float {
-        textRenderer.textAscent(fontSize: currentTextSize, fontFamily: currentFontFamily)
+        textRenderer.textAscent(fontSize: currentTextSize, fontFamily: resolvedFontName)
     }
 
     /// 現在のフォントのディセントを返します。
     /// - Returns: ピクセル単位のフォントディセント。
     public func textDescent() -> Float {
-        textRenderer.textDescent(fontSize: currentTextSize, fontFamily: currentFontFamily)
+        textRenderer.textDescent(fontSize: currentTextSize, fontFamily: resolvedFontName)
     }
 
     /// テキストの基準点 `(x, y)` を、現在の ``textAlign(_:_:)`` からベースライン左端へ
@@ -130,9 +163,9 @@ extension Canvas2D {
     /// - Returns: ベースライン左端の座標。
     func textBaselineOrigin(x: Float, y: Float, width: Float) -> (x: Float, y: Float) {
         let ascent = textRenderer.textAscent(
-            fontSize: currentTextSize, fontFamily: currentFontFamily)
+            fontSize: currentTextSize, fontFamily: resolvedFontName)
         let descent = textRenderer.textDescent(
-            fontSize: currentTextSize, fontFamily: currentFontFamily)
+            fontSize: currentTextSize, fontFamily: resolvedFontName)
 
         var originX = x
         switch currentTextAlignH {
@@ -201,13 +234,13 @@ extension Canvas2D {
         guard !string.isEmpty else { return }
 
         if let (atlasTex, glyphs) = textRenderer.textGlyphs(
-            string: string, fontSize: currentTextSize, fontFamily: currentFontFamily
+            string: string, fontSize: currentTextSize, fontFamily: resolvedFontName
         ), !glyphs.isEmpty {
             // 揃えの基準は advance の合計 = textWidth() が返す幅（#803）。最後のグリフの
             // ビットマップの右端（$0.x + $0.width）で測ると、アトラスへ書き込むときの
             // 余白 2px（TextRenderer の glyphW）が幅に混ざる。
             let totalWidth = textRenderer.textWidth(
-                string: string, fontSize: currentTextSize, fontFamily: currentFontFamily)
+                string: string, fontSize: currentTextSize, fontFamily: resolvedFontName)
             // drawTextFromAtlas の y は「ベースライン」位置（PositionedGlyph の座標が
             // ベースライン基準のため）。textBaselineOrigin が各揃えモードから変換する。
             let origin = textBaselineOrigin(x: x, y: y, width: totalWidth)
@@ -219,7 +252,7 @@ extension Canvas2D {
             let cached = textRenderer.textTexture(
                 string: string,
                 fontSize: currentTextSize,
-                fontFamily: currentFontFamily,
+                fontFamily: resolvedFontName,
                 frameCount: frameCounter
             )
         else { return }
@@ -265,7 +298,7 @@ extension Canvas2D {
             let cached = textRenderer.textTextureMultiline(
                 string: string,
                 fontSize: currentTextSize,
-                fontFamily: currentFontFamily,
+                fontFamily: resolvedFontName,
                 maxWidth: w,
                 maxHeight: h,
                 leading: effectiveTextLeading,

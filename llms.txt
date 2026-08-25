@@ -591,9 +591,18 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `func textAscent() -> Float` -- Returns the ascent of the current font.
 - `func textDescent() -> Float` -- Returns the descent of the current font.
 - `func textFont(_ family: String)` -- Sets the font family for subsequent text drawing.
+  - Note: A **style-qualified name** resolves too, as in Processing's `createFont()`: `textFont("Helvetica Neue Bold")` really does draw bold. Which qualified names exist depends on the font, though — `"Helvetica Neue Bold"` works while `"Papyrus Bold"` does not — and `textStyle(_:)` is the portable way to ask for bold or italic.
+  - Important: An unresolvable name falls back to the system default **without any warning**, and that loses the family as well as the style: `textFont("Papyrus Bold")` draws in Helvetica, not in an unbolded Papyrus. Core Text does the substituting, so metaphor cannot tell it apart from a name that resolved. `textStyle(_:)` does report the miss.
+  - Note: **Survives across frames.** Like the rest of the 2D style state it is **not** reset at the start of a frame, so a value set in `setup()` still applies in `draw()`. It is saved and restored by `push()` / `pop()`.
 - `func textFont(_ font: MFont)` -- Sets the font used for subsequent text drawing from the result of `loadFont(_:cache:)`.
+  - Note: **Survives across frames.** Like the rest of the 2D style state it is **not** reset at the start of a frame, so a value set in `setup()` still applies in `draw()`. It is saved and restored by `push()` / `pop()`.
 - `func textLeading(_ leading: Float)` -- Sets the leading (line height) for multi-line text.
 - `func textSize(_ size: Float)` -- Sets the text size for subsequent text drawing.
+- `func textStyle(_ style: TextStyle)` -- Sets the bold / italic style applied on top of the current font.
+  - Important: A font with no face for the style requested is drawn **unstyled**, with a warning naming the font. metaphor never substitutes a different font to satisfy the style, because silently drawing in some other typeface is worse than drawing unstyled. Fonts such as Monaco, Geneva and Papyrus have no bold or italic face at all.
+  - Note: `TextStyle/normal` means "use the face the font name selects", not "strip bold". It therefore leaves a style-qualified `textFont(_:)-(String)` name alone — `textFont("Helvetica Neue Bold")` stays bold under the default `TextStyle/normal`.
+  - Note: The style is re-applied when the font changes, so `textFont(_:)-(String)` after this one keeps the style. Unlike `textSize(_:)` and `textFont(_:)-(String)` it does not reset `textLeading(_:)`.
+  - Note: **Survives across frames.** Like the rest of the 2D style state it is **not** reset at the start of a frame, so a value set in `setup()` still applies in `draw()`. It is saved and restored by `push()` / `pop()`.
 - `func textToContours(_ string: String, _ x: Float, _ y: Float, sampleFactor: Float = 0.25) -> [[Vec2]]` -- Returns the glyph outlines of a text as closed polylines, one per contour.
 - `func textToPoints(_ string: String, _ x: Float, _ y: Float, sampleFactor: Float = 0.25) -> [Vec2]` -- Returns the points along the glyph outlines of a text as a single flat array (the equivalent
 - `func textToShape(_ string: String, _ x: Float, _ y: Float, sampleFactor: Float = 0.25) -> MShape` -- Converts the outlines of a text into a retained shape that can be drawn with its holes.
@@ -1374,6 +1383,13 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 - `case center`
 - `case top`
 
+### `enum TextStyle` -- The bold / italic combination applied on top of the current font.
+
+- `case bold` -- Draw with the bold face of the current font.
+- `case boldItalic` -- Draw with the bold italic face of the current font.
+- `case italic` -- Draw with the italic face of the current font.
+- `case normal` -- Draw with the face the font name itself selects (the default).
+
 ### `enum ThermalState` -- システムの熱状態。負荷を自分で落とす（自己 degrade）ときの判断材料です。
 
 - `case critical` -- 危険。表示を維持することより発熱を下げることが優先される。
@@ -1458,7 +1474,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class Canvas2D` -- Metal を利用したイミディエイトモード 2D 描画コンテキストを提供します。
 
-- （ほか 93 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- （ほか 94 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `var colorModeConfig: ColorModeConfig`
 - `var currentEncoder: (any MTLRenderCommandEncoder)? { get }` -- 現在のレンダーコマンドエンコーダーにアクセスします。フレーム中のみ有効です。
 - `var fillColor: SIMD4<Float>`
@@ -1627,7 +1643,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class Graphics` -- Provides an offscreen 2D drawing buffer (the equivalent of Processing's
 
-- （ほか 86 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- （ほか 87 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `var height: Float { get }` -- The height in pixels.
 - `var width: Float { get }` -- The width in pixels.
 - `func beginDraw()` -- Begins drawing by creating a command buffer and a render command encoder.
@@ -2000,7 +2016,7 @@ Optional: `setup()`, `compute()`, input callbacks (`mousePressed`, `keyPressed`,
 
 ### `final class SketchContext` -- Sketch 内で使用される描画コンテキストを提供します。
 
-- （ほか 242 件の描画・変換メンバーは Sketch API と同名・同挙動）
+- （ほか 243 件の描画・変換メンバーは Sketch API と同名・同挙動）
 - `let assetCache: AssetCache` -- `loadImage` / `loadModel` のパスキーアセットキャッシュ。
 - `var canvas: Canvas2D { get }` -- 2D キャンバス（上級者向け）。
 - `var canvas3D: Canvas3D { get }` -- 3D キャンバス（上級者向け）。

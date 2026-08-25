@@ -169,7 +169,7 @@ metaphor のドキュメントは読者と用途で分かれています。チ�
 
 | 領域 | Issue | 書く場所 |
 |---|---|---|
-| タイポグラフィ（text-on-path / 書体を変えない太さ切り替え） | [#651](https://github.com/shinyaoguri/metaphor/issues/651) / [#816](https://github.com/shinyaoguri/metaphor/issues/816) | 2.7 |
+| タイポグラフィ（text-on-path / 折り返し規則と描画矩形） | [#651](https://github.com/shinyaoguri/metaphor/issues/651) / [#1165](https://github.com/shinyaoguri/metaphor/issues/1165) | 2.7 |
 | モダン 3D（UV / PBR テクスチャ / IBL / glTF） | [#293](https://github.com/shinyaoguri/metaphor/issues/293) | 5.6, 5.8, 5.9 |
 
 実装されたら、その節の「いまできないこと」を本文に昇格させます。実例が 2 つあります — 2D カスタムシェーダ（`loadShader` / `shader`、[Epic #291](https://github.com/shinyaoguri/metaphor/issues/291)）は 6.5 の本文へ（[#670](https://github.com/shinyaoguri/metaphor/issues/670)）、フォントファイル読み込みと `textToPoints`（[#649](https://github.com/shinyaoguri/metaphor/issues/649) / [#650](https://github.com/shinyaoguri/metaphor/issues/650)）は 2.7 の本文へ（[#673](https://github.com/shinyaoguri/metaphor/issues/673)）昇格しました。**この昇格は自動では起きません**——機能を入れる PR でチュートリアルまで見るか、この表から消えた領域を後で拾い直します。後者は実際に起きていて、タイポグラフィの 2 本は実装から 2 日ほど遅れて拾い直しました。
