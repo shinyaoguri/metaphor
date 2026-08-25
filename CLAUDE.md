@@ -21,7 +21,7 @@ metaphor は Processing 由来の発想を持つクリエイティブコーデ�
 
 **ライブラリのメッセージは素の `print()` で書かない**。3 関数の使い分け表は [`Sources/MetaphorLog/Log.swift`](Sources/MetaphorLog/Log.swift) が正本で、`Sources/` に生の `print()` が戻らないことは CI（`scripts/check-no-raw-print.py`）が機械で守る（#896。正当な例外はスクリプトの `ALLOWLIST` に理由つきで載せる）。
 
-**root の `Package.swift` に binaryTarget は置かない**（`scripts/check-no-binary-targets.sh` が CI で守る。使わない product 経由でも消費者が artifact を download してしまうため — [ADR-0014](docs/adr/0014-viewer-frame-ipc-and-syphon-plugin.md)）。Syphon は独立パッケージ `shinyaoguri/metaphor-syphon` が持ち、利用者は `Package.swift` に 1 行足して `plugins: [.syphon(name:)]` を渡す。`MetaphorCore` は出力バックエンド非依存で、出力は `MetaphorOutputProviders` に登録された provider の走査で決まる（ライブビューア向けの `ViewerOutputPlugin` だけが Core 内蔵）。`SketchConfig.syphon` / `syphonName` と `MetaphorOutputRegistry` は deprecated（次の minor で削除）。
+**root の `Package.swift` に binaryTarget は置かない**（`scripts/check-no-binary-targets.sh` が CI で守る。使わない product 経由でも消費者が artifact を download してしまうため — [ADR-0014](docs/adr/0014-viewer-frame-ipc-and-syphon-plugin.md)）。Syphon は独立パッケージ `shinyaoguri/metaphor-syphon` が持ち、利用者は `Package.swift` に 1 行足して `plugins: [.syphon(name:)]` を渡す。`MetaphorCore` は出力バックエンド非依存で、出力は `MetaphorOutputProviders` に登録された provider の走査で決まる（ライブビューア向けの `ViewerOutputPlugin` だけが Core 内蔵）。
 
 アンブレラターゲット `Sources/metaphor/` はブリッジ拡張（`Sketch+AudioBridge.swift` 等）を持ち、`import metaphor` 利用者に `createAudioInput()` / `createOSCReceiver()` / `createPhysics2D()` などの便利メソッドを提供します。
 
@@ -56,7 +56,7 @@ cd Examples/Basics/Form/ShapePrimitives && swift build && swift run
 3 層の API 構造:
 
 ```
-Sketch protocol extensions  ← ユーザー向け（_activeSketchContext 経由の Processing 風グローバル）
+Sketch protocol extensions  ← ユーザー向け（Processing 風の呼び口。実体はインスタンスごとの `context`）
         ↓
    SketchContext             ← Sketch を Canvas2D/Canvas3D へ橋渡し
         ↓
