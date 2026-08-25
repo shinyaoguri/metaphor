@@ -898,10 +898,11 @@ for p in textToPoints("metaphor", 40, 200) {
 }
 ```
 
-まだできないのは次の 2 つです。
+折り返し規則は `textWrap(.word)` / `textWrap(.char)` で選べ、描かれる矩形は
+`textBounds(文字列, x, y)` で測れます（`textAlign()` を織り込んだ箱が返ります）。
 
-- パスに沿って文字を並べる（[#651](https://github.com/shinyaoguri/metaphor/issues/651)）
-- 折り返し規則を選ぶ・描画矩形を測る（p5 の `textWrap()` / `textBounds()` — [#1165](https://github.com/shinyaoguri/metaphor/issues/1165)）
+まだできないのは、パスに沿って文字を並べることだけです
+（[#651](https://github.com/shinyaoguri/metaphor/issues/651)）。
 
 ### 試してみる
 
