@@ -1,11 +1,12 @@
 name: Asset Health
 
-# リポジトリの外に置いたアセットが消えていないかを週次で見張る。どちらも
-# 「消えても手元の CI は緑のまま、利用者や読者の側だけが壊れる」ものなので、
+# 実行結果として読まれるアセットが壊れていないかを週次で見張る。どれも
+# 「壊れても手元の CI は緑のまま、利用者や読者の側だけが壊れる」ものなので、
 # per-PR ではなくここでまとめて確認する。
 #
 # 1. Release asset（SwiftPM の binaryTarget）
 # 2. チュートリアルと DocC リファレンスの画像（Gyazo。ADR-0010 / ADR-0008）
+# 3. Examples の実行結果画像が今のスケッチと合っているか（Issue #1161）
 #
 # SwiftPM の binaryTarget(url:) は resolve のたびに Release asset を取りに行くため、
 # asset が消えると「そのタグは恒久的に resolve 不能」になる（既存利用者も含めて壊れる）。
@@ -59,3 +60,32 @@ jobs:
           persist-credentials: false
       - name: Check every external image URL is alive
         run: python3 scripts/check-image-urls.py
+
+  example-shots:
+    # Examples の実行結果画像だけは Gyazo ではなく**リポジトリ内**（パッケージ直下）に
+    # あるので、古くなるとそのまま配布物に混ざる。それでも per-PR ではなくここに置く
+    # のは、費用ではなく**落ちたときに人が取れる行動**が理由（Issue #1161）:
+    #
+    #   * 検査自体は 0.08 秒・GPU 不要（撮影時のソースの指紋を突き合わせるだけ）。
+    #     pre-push に載せても #1155 で足した +8 秒には響かない
+    #   * ところが復旧は `make example-shots ARGS="--only <パス> --force"` = GPU での
+    #     撮り直しで、対象はどれも動くスケッチなので**撮るたびに別の絵になる**。
+    #     退行か意図した変更かは機械では判別できないため人の目視が要る
+    #     （.claude/skills/shots/SKILL.md の「PR を確認せずに merge しない」・#586）
+    #   * per-PR の必須ゲートにすると、`Examples/` に触れただけの無関係な PR へ
+    #     溜まっている他人の backlog を渡すことになる。pre-push 自身が名指ししている
+    #     失敗モード（「広げすぎれば自分が入れていない指摘で止まる」）に当たる
+    #
+    # 見張らないと溜まることは実測済み: #726 が 5 本を報告 → #732 で解消 → 8 日後に
+    # 6 本へ再蓄積。週次で鳴らせば「気付いた人が撮る」以外の検出機会ができる。
+    #
+    # 原典由来（`origin: processing`、259 件中 156 件）は指紋を持たないので
+    # `stale_entries()` が対象外にする。ここが見るのは撮った 103 本だけ。
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Check example result images still match their sketches
+        run: python3 scripts/generate-example-shots.py --check

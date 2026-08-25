@@ -379,5 +379,40 @@ class TestReleaseBuild(ExampleShotsTestCase):
         self.assertEqual(recorded[0], ["swift", "build", "-c", "release"])
 
 
+class WatchedFromSomewhereTests(unittest.TestCase):
+    """`--check` を**誰かが呼んでいる**ことを固定する（Issue #1161）。
+
+    このスクリプトは `--check` を実装しながら、どこからも呼ばれない状態で 8 か月
+    走っていた。歯止めが「存在するが鳴らない」形で外れるのが元の失敗なので、
+    実装ではなく**配線**をここで留める。
+
+    置き場は per-PR ではなく週次（`asset-health.yml`）。理由は
+    `scripts/check-generated-freshness.sh` の `ALL_CHECKS` 脇と
+    `.claude/skills/shots/SKILL.md` にある — 検査は 0.08 秒・GPU 不要で軽いが、
+    復旧は GPU での撮り直しになり、動くスケッチは撮るたびに別の絵になるので人の
+    目視レビューが要る（#586）。
+    """
+
+    _REPO_ROOT = Path(__file__).resolve().parents[2]
+
+    def test_the_weekly_workflow_runs_the_freshness_check(self) -> None:
+        workflow = (self._REPO_ROOT / ".github/workflows/asset-health.yml").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("scripts/generate-example-shots.py --check", workflow)
+
+    def test_the_per_pr_freshness_script_deliberately_omits_example(self) -> None:
+        # 繋ぎ直すこと自体は歓迎だが、**理由を読んでから**にしてほしい。
+        # ここを緑に戻すときは ALL_CHECKS 脇の説明と SKILL.md の表も一緒に直す。
+        script = (self._REPO_ROOT / "scripts/check-generated-freshness.sh").read_text(
+            encoding="utf-8"
+        )
+        declared = [
+            line for line in script.splitlines() if line.startswith("ALL_CHECKS=")
+        ]
+        self.assertEqual(len(declared), 1, "ALL_CHECKS の宣言は 1 箇所のはず")
+        self.assertNotIn("example", declared[0])
+
+
 if __name__ == "__main__":
     unittest.main()

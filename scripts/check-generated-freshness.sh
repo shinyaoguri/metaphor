@@ -44,6 +44,26 @@ cd "$(dirname "$0")/.."
 
 ALL_CHECKS='llms index shaders tutorial reference status format'
 
+# **Examples の実行結果画像（`generate-example-shots.py --check`）はここに無い。**
+# 埋め忘れではなく、`.github/workflows/asset-health.yml` の週次ジョブが持っている
+# （Issue #1161）。
+#
+# 費用が理由ではない — 検査は 0.08 秒・GPU 不要で、reference / tutorial より軽い。
+# 分けているのは**落ちたときに人が取れる行動**が違うため:
+#
+#   * ここに並ぶ 7 本は、落ちても再生成コマンド 1 本で直る（機械が決めた 1 つの正解が
+#     あり、差分をそのままコミットすればよい）
+#   * example の画像は `make example-shots ARGS="--only <パス> --force"` = GPU での
+#     撮り直しになる。対象はどれも動くスケッチなので撮るたびに別の絵になり、退行か
+#     意図した変更かは機械では判別できない（#586）。**人の目視レビューが要る**
+#
+# per-PR の必須ゲートに載せると、`Examples/` に触れただけの PR が「自分が入れていない
+# 指摘」で止まる（pre-push の冒頭が名指ししている失敗モード）。週次なら溜まりっぱなしは
+# 防げて、無関係なレーンは止めない。
+#
+# なお `origin: processing`（原典由来）の 156 件は指紋を持たないので、検査する側の
+# `stale_entries()` が既に対象外にしている（`test_a_processing_image_never_goes_stale`）。
+
 usage() {
     cat <<'USAGE'
 usage: scripts/check-generated-freshness.sh [--label LABEL] (--all | CHECK...)
