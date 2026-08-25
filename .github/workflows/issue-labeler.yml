@@ -58,8 +58,13 @@ jobs:
 
           TRIAGE='status: needs-triage'
 
+          # gh の呼び出しは 3 本とも scripts/gh-retry.sh 経由（Issue #1132）。
+          # 一過性の 5xx で落ちてもラベルが付かないだけなので budget は既定の 3 回
+          # ——「やり直しの費用」が安い側で、取りこぼしは `gh workflow run` の
+          # 再実行か `python3 scripts/label-issues.py --backfill` で拾える。
+          #
           # 改行区切りで現在のラベルを取る。0 枚なら空文字になる。
-          CURRENT=$(gh issue view "$ISSUE_NUMBER" --json labels --jq '.labels[].name')
+          CURRENT=$(scripts/gh-retry.sh issue view "$ISSUE_NUMBER" --json labels --jq '.labels[].name')
 
           # 空でも triage 単独でもないなら、人かテンプレートが付けたもの。触らない。
           if [ -n "$CURRENT" ] && [ "$CURRENT" != "$TRIAGE" ]; then
@@ -68,7 +73,7 @@ jobs:
             exit 0
           fi
 
-          TITLE=$(gh issue view "$ISSUE_NUMBER" --json title --jq '.title')
+          TITLE=$(scripts/gh-retry.sh issue view "$ISSUE_NUMBER" --json title --jq '.title')
           echo "Issue title: ${TITLE}"
 
           LABEL=$(python3 scripts/label-issues.py --title "$TITLE")
@@ -84,7 +89,11 @@ jobs:
             # triage 単独だった場合だけここに来る（上で他を弾いている）。
             ARGS+=(--remove-label "$CURRENT")
           fi
-          gh issue edit "$ISSUE_NUMBER" "${ARGS[@]}"
+          # 書き込みだが冪等なのでリトライしてよい（Issue #1132 で実測）。既に
+          # 付いているラベルへの `--add-label` も、付いていないラベルへの
+          # `--remove-label` も exit 0 で無変化に終わる（GraphQL の
+          # addLabelsToLabelable / removeLabelsFromLabelable が集合演算のため）。
+          scripts/gh-retry.sh issue edit "$ISSUE_NUMBER" "${ARGS[@]}"
 
           if [ "$LABEL" = "$TRIAGE" ]; then
             echo "::notice::タイトルから型を読めませんでした。'${TRIAGE}' を付けたので、"\

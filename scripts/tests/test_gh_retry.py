@@ -45,8 +45,15 @@ _SCRIPT = Path(__file__).resolve().parents[1] / "gh-retry.sh"
 
 # Records every call, then behaves as GH_STUB_PLAN dictates for that attempt
 # (colon-separated, one field per attempt; the last field repeats).
+#
+# Two ledgers, because they answer different questions. GH_STUB_CALLS is one
+# line per call (how many attempts happened); GH_STUB_ARGV keeps argv itself,
+# NUL-separated within a call and \x1e between calls, so a test can assert that
+# an argument containing a space (`--add-label 'status: in progress'`) arrived
+# as one argument. `"$*"` cannot show that — it flattens argv into a string.
 _GH_STUB = r"""#!/usr/bin/env bash
 printf '%s\n' "$*" >> "$GH_STUB_CALLS"
+{ printf '%s\0' "$@"; printf '\036'; } >> "$GH_STUB_ARGV"
 n=$(wc -l < "$GH_STUB_CALLS" | tr -d ' ')
 behavior=$(printf '%s' "$GH_STUB_PLAN" | awk -F: -v i="$n" '{print (i <= NF ? $i : $NF)}')
 case "$behavior" in
@@ -103,8 +110,10 @@ class GhRetryTests(unittest.TestCase):
             path.chmod(0o755)
 
         self.gh_calls = self.tmp / "gh-calls"
+        self.gh_argv_calls = self.tmp / "gh-argv"
         self.sleep_calls = self.tmp / "sleep-calls"
         self.gh_calls.touch()
+        self.gh_argv_calls.touch()
         self.sleep_calls.touch()
 
     def run_script(self, plan, *args, stdout=_PAYLOAD, env_extra=None):
@@ -117,6 +126,7 @@ class GhRetryTests(unittest.TestCase):
         env["GH_STUB_PLAN"] = plan
         env["GH_STUB_STDOUT"] = stdout
         env["GH_STUB_CALLS"] = str(self.gh_calls)
+        env["GH_STUB_ARGV"] = str(self.gh_argv_calls)
         env["SLEEP_STUB_CALLS"] = str(self.sleep_calls)
         env.update(env_extra or {})
         return subprocess.run(
@@ -128,6 +138,15 @@ class GhRetryTests(unittest.TestCase):
 
     def gh_call_count(self):
         return len(self.gh_calls.read_text(encoding="utf-8").splitlines())
+
+    def gh_argv(self):
+        """Every gh invocation as its own argv list, split exactly as bash saw it."""
+        raw = self.gh_argv_calls.read_bytes()
+        return [
+            [arg.decode() for arg in call.split(b"\0")[:-1]]
+            for call in raw.split(b"\036")
+            if call
+        ]
 
     def sleeps(self):
         return self.sleep_calls.read_text(encoding="utf-8").split()
@@ -246,6 +265,40 @@ class GhRetryTests(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertEqual(self.gh_call_count(), 0)
 
+    # --- argv reaches gh unchanged --------------------------------------
+    #
+    # Until Issue #1132 every caller was a `gh pr view --json …` read whose
+    # arguments contain no spaces, so a wrapper that flattened argv would still
+    # have looked correct. The call sites added there do not have that luxury:
+    # `gh api -X POST … -f description="CI passed via workflow_dispatch run"`
+    # and `gh issue edit … --add-label "status: in progress"` both carry
+    # arguments with spaces, and re-splitting one would post a wrong status
+    # description or invent a label named `status:` — neither of which fails
+    # loudly. Pin the pass-through instead of trusting it.
+
+    def test_write_call_arguments_reach_gh_byte_for_byte(self):
+        """`gh api -X POST` with `-f k=v` values that contain spaces (#1132)."""
+        argv = [
+            "api",
+            "-X",
+            "POST",
+            "repos/shinyaoguri/metaphor/statuses/deadbeef",
+            "-f",
+            "state=success",
+            "-f",
+            "description=CI passed via workflow_dispatch run",
+        ]
+        result = self.run_script("ok", *argv)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.gh_argv(), [argv])
+
+    def test_arguments_survive_a_retry_unchanged(self):
+        """A label with a space must not be re-split on the second attempt."""
+        argv = ["issue", "edit", "1132", "--add-label", "status: in progress"]
+        result = self.run_script("503:ok", *argv)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.gh_argv(), [argv, argv])
+
     # --- stdout is the data channel -------------------------------------
 
     def test_partial_output_from_a_failed_attempt_is_discarded(self):
@@ -272,6 +325,7 @@ class GhRetryTests(unittest.TestCase):
         env["GH_STUB_PLAN"] = "ok"
         env["GH_STUB_STDOUT"] = ""
         env["GH_STUB_CALLS"] = str(self.gh_calls)
+        env["GH_STUB_ARGV"] = str(self.gh_argv_calls)
         env["SLEEP_STUB_CALLS"] = str(self.sleep_calls)
         bare = subprocess.run(
             [str(_SCRIPT)], capture_output=True, text=True, env=env
