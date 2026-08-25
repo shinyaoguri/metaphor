@@ -127,3 +127,5 @@ API シグネチャは `llms.txt` にありますが、**どのファイルが�
 ### 気付きは Issue へ
 
 本題以外のバグ・ドキュメント不備・改善アイデアはその場で直さず、気軽に Issue を起票する（手順は metaphor-contrib:quick-issue スキル）。CLI 側の事象は `shinyaoguri/metaphor-cli` へ、両リポに跨るものは両方に立てて相互リンクします（[CONTRACT.md](CONTRACT.md) 参照）。
+
+**見た目・動きの事象は「壊れている絵」を添えて起票する**。CI の視覚証跡ゲートは PR にしか掛からず、壊れている絵を撮れるのは起票の時点だけです（手順は [DEVELOPMENT.md](DEVELOPMENT.md) の「Issue にも「壊れている絵」を載せる」）。

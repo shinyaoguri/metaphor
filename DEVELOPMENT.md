@@ -365,6 +365,32 @@ metaphor 固有の事情として 1 つだけ: アクセストークンの読み
 ドキュメント本文に載り続ける実行結果画像はこれとは別の話で、`.claude/skills/shots/` が
 案内する。
 
+## Issue にも「壊れている絵」を載せる
+
+上の CI 検査は PR にしか掛からない。しかし **「壊れている絵」を撮れるのは起票の時点だけ**で、
+修正 PR に残るのは直った絵だけになる。実際、直近 1 週間では**描画に効く PR は漏れなく画像つき**
+だったのに対し、**Issue は 60 件中 4 件**しか画像が無く、OrbitCamera の動きのバグ 4 件
+(#1099 / #1100 / #1127 / #1128)は 1 枚も無いまま起票・修正された。見た目・動きの事象を
+起票するときは証跡を添える。
+
+判断は PR と同じ — **見た目が変わる / 見た目を説明する**なら静止画、**動きが分からないと正誤を
+判定できない**(アニメーション・パーティクル・物理・イージング・`orbitControl()` 等の
+インタラクション・時間依存シェーダ)なら静止画に加えてアニメーション WebP も併載する。
+
+metaphor は GUI を掴まなくても撮れる。
+
+| 撮りたいもの | 経路 |
+|---|---|
+| 実行中のスケッチ | MCP の `snapshot` / `capture_sequence`(`metaphor-sketch:sketch-loop` スキル) |
+| ヘッドレスで 1 枚 | Probe(`METAPHOR_PROBE=1` で起動し `.metaphor/probe/current/frame.png`。[CONTRACT.md](CONTRACT.md)) |
+| 動きの証跡 | Probe の連番 → `img2webp`(上の「動きの証跡を撮る」がそのまま使える) |
+| 既にコミット済みの生成物(ゴールデン PNG・example の実行結果) | 撮らずに raw URL で貼る |
+
+**撮れないときは撮れない理由を 1 行書いて起票する**。証跡が無いことを起票しない理由にはしない
+(気軽な起票の方が、完璧な報告より価値がある)。
+
+エージェントから起票するときの手順は `metaphor-contrib:quick-issue` スキルが案内する。
+
 ## 依存更新 PR（dependabot）を手元で検証する
 
 dependabot の PR は PR head だけで CI が回ります。ルールセットの `strict_required_status_checks_policy` は off なので BEHIND のままでも merge できますが（[docs/releasing.md](docs/releasing.md)）、その分**個別に green な PR 同士の意味的な衝突は merge 後の `push: main` CI まで表に出ません**。website の改修と astro の bump が並走したときのように、合成しないと分からないものは merge 前に確かめます。
