@@ -33,7 +33,7 @@ struct PerformanceBenchmarks {
 
     @Test("ShaderLibrary init < 2 seconds")
     func shaderLibraryInit() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let elapsed = try measure {
             _ = try ShaderLibrary(device: device)
         }
@@ -42,7 +42,7 @@ struct PerformanceBenchmarks {
 
     @Test("ComputeKernel compile < 1 second")
     func computeKernelCompile() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let source = """
             #include <metal_stdlib>
             using namespace metal;
@@ -58,7 +58,7 @@ struct PerformanceBenchmarks {
 
     @Test("Mesh.box generation < 100ms")
     func meshBoxGeneration() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let elapsed = try measure {
             _ = try Mesh.box(device: device)
         }
@@ -67,7 +67,7 @@ struct PerformanceBenchmarks {
 
     @Test("Mesh.sphere generation < 100ms")
     func meshSphereGeneration() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let elapsed = try measure {
             _ = try Mesh.sphere(device: device)
         }
@@ -76,7 +76,7 @@ struct PerformanceBenchmarks {
 
     @Test("GrowableGPUBuffer 4K to 64K growth < 100ms")
     func growableBufferGrowth() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let elapsed = try measure {
             let buffer = try GrowableGPUBuffer<Float>(
                 device: device,
@@ -91,7 +91,7 @@ struct PerformanceBenchmarks {
 
     @Test("TextureManager creation at 4K resolution < 500ms")
     func textureManager4K() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let elapsed = try measure {
             _ = try TextureManager(
                 device: device,
@@ -105,7 +105,7 @@ struct PerformanceBenchmarks {
 
     @Test("PostProcessPipeline 5 effects setup < 500ms")
     func postProcessSetup() throws {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let commandQueue = device.makeCommandQueue()!
         let shaderLib = try ShaderLibrary(device: device)
 

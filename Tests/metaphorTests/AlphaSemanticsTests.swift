@@ -18,7 +18,7 @@ struct AlphaSemanticsTests {
 
     private func makeGraphics() throws -> Graphics {
         try Graphics(
-            device: MetalTestHelper.device!,
+            device: try #require(MetalTestHelper.device),
             commandQueue: try MetalTestHelper.commandQueue(),
             shaderLibrary: try MetalTestHelper.shaderLibrary(),
             depthStencilCache: try MetalTestHelper.depthStencilCache(),
@@ -326,7 +326,7 @@ struct Graphics3DBackgroundTests {
 
     private func makeGraphics3D() throws -> Graphics3D {
         try Graphics3D(
-            device: MetalTestHelper.device!,
+            device: try #require(MetalTestHelper.device),
             commandQueue: try MetalTestHelper.commandQueue(),
             shaderLibrary: try MetalTestHelper.shaderLibrary(),
             depthStencilCache: try MetalTestHelper.depthStencilCache(),

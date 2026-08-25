@@ -12,7 +12,7 @@ import MetaphorTestSupport
 struct GraphicsTests {
 
     private func makeGraphics(width: Int = 64, height: Int = 64) throws -> Graphics {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let shaderLib = try MetalTestHelper.shaderLibrary()
         let depthCache = try MetalTestHelper.depthStencilCache()
         return try Graphics(
@@ -93,7 +93,7 @@ struct GraphicsCurveSettingsTests {
     private static let size = 64
 
     private func makeGraphics() throws -> Graphics {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         return try Graphics(
             device: device,
             commandQueue: try MetalTestHelper.commandQueue(),
@@ -189,7 +189,7 @@ struct GraphicsCurveSettingsTests {
 struct GraphicsLoadPixelsFreshnessTests {
 
     private func makeGraphics(width: Int = 16, height: Int = 16) throws -> Graphics {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         let shaderLib = try MetalTestHelper.shaderLibrary()
         let depthCache = try MetalTestHelper.depthStencilCache()
         return try Graphics(
@@ -237,7 +237,7 @@ struct GraphicsLoadPixelsFreshnessTests {
 struct GraphicsSameFrameRedrawTests {
 
     private func makeGraphics(width: Int = 16, height: Int = 16) throws -> Graphics {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         return try Graphics(
             device: device,
             commandQueue: try MetalTestHelper.commandQueue(),
@@ -380,7 +380,7 @@ struct GraphicsSameFrameRedrawTests {
 struct GraphicsAPIParityTests {
 
     private func makeGraphics(width: Int = 32, height: Int = 32) throws -> Graphics {
-        let device = MetalTestHelper.device!
+        let device = try #require(MetalTestHelper.device)
         return try Graphics(
             device: device,
             commandQueue: try MetalTestHelper.commandQueue(),

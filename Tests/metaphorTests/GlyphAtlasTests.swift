@@ -9,15 +9,15 @@ import MetaphorTestSupport
 struct GlyphAtlasTests {
 
     @Test("atlas creation")
-    func atlasCreation() {
-        let device = MetalTestHelper.device!
+    func atlasCreation() throws {
+        let device = try #require(MetalTestHelper.device)
         let atlas = GlyphAtlas(device: device, fontFamily: "Helvetica", fontSize: 32)
         #expect(atlas.texture != nil)
     }
 
     @Test("glyph caching returns same UVs")
-    func glyphCaching() {
-        let device = MetalTestHelper.device!
+    func glyphCaching() throws {
+        let device = try #require(MetalTestHelper.device)
         let atlas = GlyphAtlas(device: device, fontFamily: "Helvetica", fontSize: 32)
         let g1 = atlas.glyph(for: "A")
         let g2 = atlas.glyph(for: "A")
@@ -28,8 +28,8 @@ struct GlyphAtlasTests {
     }
 
     @Test("different glyphs have different UVs")
-    func differentGlyphs() {
-        let device = MetalTestHelper.device!
+    func differentGlyphs() throws {
+        let device = try #require(MetalTestHelper.device)
         let atlas = GlyphAtlas(device: device, fontFamily: "Helvetica", fontSize: 32)
         let gA = atlas.glyph(for: "A")
         let gB = atlas.glyph(for: "B")
@@ -39,8 +39,8 @@ struct GlyphAtlasTests {
     }
 
     @Test("glyph metrics are valid")
-    func glyphMetrics() {
-        let device = MetalTestHelper.device!
+    func glyphMetrics() throws {
+        let device = try #require(MetalTestHelper.device)
         let atlas = GlyphAtlas(device: device, fontFamily: "Helvetica", fontSize: 32)
         let g = atlas.glyph(for: "W")
         #expect(g != nil)
@@ -51,8 +51,8 @@ struct GlyphAtlasTests {
     }
 
     @Test("layoutGlyphs for Hello")
-    func layoutGlyphs() {
-        let device = MetalTestHelper.device!
+    func layoutGlyphs() throws {
+        let device = try #require(MetalTestHelper.device)
         let atlas = GlyphAtlas(device: device, fontFamily: "Helvetica", fontSize: 24)
         let glyphs = atlas.layoutGlyphs(string: "Hello")
         #expect(glyphs != nil)
@@ -63,8 +63,8 @@ struct GlyphAtlasTests {
     }
 
     @Test("layoutGlyphs empty string")
-    func layoutEmpty() {
-        let device = MetalTestHelper.device!
+    func layoutEmpty() throws {
+        let device = try #require(MetalTestHelper.device)
         let atlas = GlyphAtlas(device: device, fontFamily: "Helvetica", fontSize: 24)
         let glyphs = atlas.layoutGlyphs(string: "")
         #expect(glyphs != nil)
@@ -77,8 +77,8 @@ struct GlyphAtlasTests {
     /// その左の 1px を `bearingX` で引いていないと、文字列全体が送り位置より 1px 右へ
     /// ずれて描かれ、`textWidth()` で組んだレイアウトと 1px 食い違う。
     @Test("glyph bitmaps overhang the advance box symmetrically")
-    func glyphBitmapOverhangIsSymmetric() {
-        let device = MetalTestHelper.device!
+    func glyphBitmapOverhangIsSymmetric() throws {
+        let device = try #require(MetalTestHelper.device)
         let atlas = GlyphAtlas(device: device, fontFamily: "Helvetica", fontSize: 32)
         for char: Character in ["H", "i", "W", "."] {
             guard let g = atlas.glyph(for: char) else {
@@ -98,8 +98,8 @@ struct GlyphAtlasTests {
     }
 
     @Test("measureWidth increases with more characters")
-    func measureWidth() {
-        let device = MetalTestHelper.device!
+    func measureWidth() throws {
+        let device = try #require(MetalTestHelper.device)
         let atlas = GlyphAtlas(device: device, fontFamily: "Helvetica", fontSize: 24)
         let w1 = atlas.measureWidth(string: "i")
         let w2 = atlas.measureWidth(string: "WWW")
@@ -108,8 +108,8 @@ struct GlyphAtlasTests {
     }
 
     @Test("many characters fill atlas without crash")
-    func manyCharacters() {
-        let device = MetalTestHelper.device!
+    func manyCharacters() throws {
+        let device = try #require(MetalTestHelper.device)
         let atlas = GlyphAtlas(device: device, fontFamily: "Helvetica", fontSize: 48)
         for scalar in (32...126) {
             let char = Character(UnicodeScalar(scalar)!)
@@ -119,8 +119,8 @@ struct GlyphAtlasTests {
     }
 
     @Test("layout UVs remain valid across atlas expansion")
-    func layoutAcrossExpansion() {
-        let device = MetalTestHelper.device!
+    func layoutAcrossExpansion() throws {
+        let device = try #require(MetalTestHelper.device)
         // 大きなフォントで多数のユニーク文字を 1 回の layoutGlyphs に含め、
         // レイアウト中にアトラスの縦拡張（512 → 1024 → 2048）を跨がせる
         let atlas = GlyphAtlas(device: device, fontFamily: "Helvetica", fontSize: 120)
@@ -153,8 +153,8 @@ struct GlyphAtlasTests {
 struct TextRendererAtlasTests {
 
     @Test("textGlyphs returns correct count")
-    func textGlyphs() {
-        let device = MetalTestHelper.device!
+    func textGlyphs() throws {
+        let device = try #require(MetalTestHelper.device)
         let renderer = TextRenderer(device: device)
         let result = renderer.textGlyphs(string: "Test", fontSize: 24, fontFamily: "Helvetica")
         #expect(result != nil)
@@ -162,8 +162,8 @@ struct TextRendererAtlasTests {
     }
 
     @Test("different font sizes use different atlas textures")
-    func differentSizes() {
-        let device = MetalTestHelper.device!
+    func differentSizes() throws {
+        let device = try #require(MetalTestHelper.device)
         let renderer = TextRenderer(device: device)
         let r1 = renderer.textGlyphs(string: "A", fontSize: 16, fontFamily: "Helvetica")
         let r2 = renderer.textGlyphs(string: "A", fontSize: 32, fontFamily: "Helvetica")
@@ -173,16 +173,16 @@ struct TextRendererAtlasTests {
     }
 
     @Test("maxCacheSize is configurable")
-    func maxCacheSize() {
-        let device = MetalTestHelper.device!
+    func maxCacheSize() throws {
+        let device = try #require(MetalTestHelper.device)
         let renderer = TextRenderer(device: device)
         renderer.maxCacheSize = 128
         #expect(renderer.maxCacheSize == 128)
     }
 
     @Test("atlas count is bounded when font size animates")
-    func atlasCountBounded() {
-        let device = MetalTestHelper.device!
+    func atlasCountBounded() throws {
+        let device = try #require(MetalTestHelper.device)
         let renderer = TextRenderer(device: device)
         // textSize() アニメーション相当: 32 種類のサイズでアトラスを要求
         for size in 0..<32 {
