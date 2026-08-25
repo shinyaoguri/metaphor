@@ -104,6 +104,11 @@ class ChangedLlmsInputsTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         return sorted(line for line in result.stdout.splitlines() if line)
 
+    def changed_docc(self, base: str, head: str) -> list[str]:
+        result = self.run_script("--docc", base, head)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return sorted(line for line in result.stdout.splitlines() if line)
+
     # --- 取りこぼしていた入力（Issue #995 / 実例 PR #993） -------------------
 
     def test_a_makefile_only_change_is_an_input(self):
@@ -167,6 +172,48 @@ class ChangedLlmsInputsTests(unittest.TestCase):
             },
         )
         self.assertEqual(self.changed(self.a, head), [])
+
+    # --- --docc（DocC の警告検査の起動判定・Issue #1155） ---------------------
+
+    def test_the_docc_catalog_is_an_input_only_with_docc(self):
+        # カタログは symbol graph の入力ではないので、素の呼び出しには載らない
+        # （載せると `make llms-txt` = swift build が要らないところで起動する）。
+        # `--docc` を付けたときだけ載る。ここが片方に寄ったら、カタログだけ直した
+        # push が DocC 検査を取りこぼすか、逆に毎回ビルドを引くかのどちらかになる。
+        head = _commit(
+            self.repo,
+            "catalog only",
+            **{"Sources__metaphor__metaphor.docc__Architecture.md": "# arch\n"},
+        )
+        self.assertEqual(self.changed(self.a, head), [])
+        self.assertEqual(
+            self.changed_docc(self.a, head),
+            ["Sources/metaphor/metaphor.docc/Architecture.md"],
+        )
+
+    def test_docc_also_carries_the_llms_inputs(self):
+        # docs-check も symbol-graphs 依存なので、llms.txt の入力が動けば DocC も
+        # 検査が要る。`--docc` は差集合ではなく上乗せ。
+        head = _commit(
+            self.repo,
+            "api change",
+            **{"Sources__MetaphorCore__Sketch__Sketch.swift": "// v2\n"},
+        )
+        self.assertEqual(
+            self.changed_docc(self.a, head),
+            ["Sources/MetaphorCore/Sketch/Sketch.swift"],
+        )
+
+    def test_docc_does_not_fire_on_unrelated_paths(self):
+        head = _commit(self.repo, "docs only", docs__new="new\n")
+        self.assertEqual(self.changed_docc(self.a, head), [])
+
+    def test_docc_must_come_before_the_revisions(self):
+        # 呼び出し側（pre-push / ci.yml）はこの並びで渡す。後置を黙って無視すると
+        # 「フラグを付けたつもりで付いていない」が緑のまま通る。
+        result = self.run_script(self.a, "HEAD", "--docc")
+        self.assertEqual(result.returncode, 2, result.stdout)
+        self.assertIn("usage:", result.stderr)
 
     # --- 3 点表記であること（委譲先の契約が生きているか） ---------------------
 

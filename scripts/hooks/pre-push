@@ -1,11 +1,26 @@
 #!/bin/sh
 #
-# pre-push: ensure generated AI-facing files track their inputs
+# pre-push: run the per-PR CI checks that are cheap enough to pay at push time
 #
 # ここが持つのは **「push する range を見て、どの検査を鳴らすか」だけ**。検査の実体と
-# 復旧手順のメッセージは scripts/check-generated-freshness.sh が正本で、pre-push を
-# 通らない経路（scripts/signed-commit.py の GraphQL コミット）と `make freshness-check`
-# も同じものを呼ぶ（Issue #978）。
+# 復旧手順のメッセージは scripts/check-generated-freshness.sh（生成物の鮮度）と
+# Makefile の static-check-fast / docs-check が正本で、pre-push を通らない経路
+# （scripts/signed-commit.py の GraphQL コミット）も同じものを呼ぶ（Issue #978 / #1155）。
+#
+# **なぜ CI の検査をここでも鳴らすのか**（Issue #1155）。ここが鳴らすのは
+# `build-and-test` が **required かつ無条件**に走らせるステップだけで、新しい規則は
+# 1 つも導入していない — 失敗を手元へ早めているだけ。これは #333（swift-format）と
+# #788（リファレンス画像）で 2 度下した判断と同じ基準で、「push 前に make ci-check」
+# という**文書ルールは実測で守られなかった**（#1020 の取りこぼし 14 ステップ、#978 の
+# 検査ゼロで入った 22 コミット）。
+#
+# 払うコストの上限も既に決まっている: ここは `Sources/**/*.swift` を触った push で
+# `make llms-txt`（= `swift build` + symbol graph 抽出）を丸ごと走らせる。今回足した
+# 2 本はその下に収まる（実測 static-check-fast 5 秒強 / docs-check 3 秒強）。
+# `scripts/tests`（実測 35 秒）だけは載せていない — 理由は Makefile の static-check 側。
+#
+# 降りたいときは `git push --no-verify`。CI が同じ検査を独立に走らせるので、
+# 降りても歯止めが消えるわけではない（早く気付けなくなるだけ）。
 #
 # トリガーを分けているのは、経路ごとに「何を見られるか」が違うため。ここは range
 # （`base..local_sha`）を見られるので、マージで陳腐化した生成物も拾える。作業ツリー
@@ -43,6 +58,14 @@
 #   - README.md / README.en.md / docs/README.md / docs/README.en.md / Examples/README.md
 #   - scripts/generate-tutorial-status.py
 #
+# DocC の警告 0（`make docs-check`）は、次に触れたときに検証される。判定は
+# scripts/changed-llms-inputs.sh --docc が正本で、ci.yml も同じ入口を呼ぶ:
+#   - llms.txt の入力（上の 3 つ）
+#   - Sources/**/*.docc/**（カタログ）
+#
+# ビルド不要な検査（`make static-check-fast`）だけはトリガーを持たず、削除だけの
+# push を除いて毎回走る。CI が無条件に走らせている集合と一致させるため。
+#
 # If a regenerated file differs from the checked-in version, the hook aborts
 # the push so the contributor can `git add` and amend.
 #
@@ -55,6 +78,7 @@ set -e
 # generated artifacts. Format: <local_ref> <local_sha> <remote_ref> <remote_sha>
 # When pushing a brand-new branch, remote_sha is 40 zeros — fall back to the
 # merge-base with origin/main.
+needs_static=0
 needs_llms=0
 needs_index=0
 needs_shaders=0
@@ -62,11 +86,18 @@ needs_tutorial=0
 needs_reference=0
 needs_status=0
 needs_format=0
+needs_docc=0
 zero=0000000000000000000000000000000000000000
 
 while read -r _ local_sha _ remote_sha; do
     # Skip deletes (local_sha == zero)
     [ "$local_sha" = "$zero" ] && continue
+
+    # ビルド不要な検査（static-check-fast）だけは range を見ない。CI が無条件に
+    # 走らせているものと**同じ集合**に保つためで、パスで絞ると 2 つの向きに壊れる:
+    # 絞りすぎれば取りこぼし、広げすぎれば「自分が入れていない指摘」で止まる。
+    # 11 本ぶんのトリガーリストを保守する費用も、5 秒を払う費用を上回る（#1155）。
+    needs_static=1
 
     if [ "$remote_sha" = "$zero" ]; then
         # New branch: compare against origin/main if available
@@ -79,6 +110,10 @@ while read -r _ local_sha _ remote_sha; do
             needs_tutorial=1
             needs_reference=1
             needs_status=1
+            # 「全部」と書いてあるのに needs_format だけ抜けていた（#1155 で気付いた
+            # 取りこぼし）。落ちるのは baseline を辿れない push だけなので目立たない。
+            needs_format=1
+            needs_docc=1
             break
         fi
     else
@@ -148,8 +183,35 @@ while read -r _ local_sha _ remote_sha; do
         | grep -q .; then
         needs_format=1
     fi
+    # DocC の警告検査。入力は llms.txt のそれ + カタログ（*.docc/**）で、判定は
+    # scripts/changed-llms-inputs.sh --docc が正本（ci.yml も同じ入口を呼ぶ — 以前
+    # カタログの分だけ ci.yml が自前で足していて、pre-push が同じものを別に持つと
+    # #995 のドリフトを再生産するため #1155 で寄せた）。
+    if scripts/changed-llms-inputs.sh --docc "$base" "$local_sha" | grep -q .; then
+        needs_docc=1
+    fi
 done
 
+# --- ビルド不要な検査 ---------------------------------------------------------
+#
+# 先頭に置くのは ci.yml と同じ理由。あちらも「ビルド不要なので手前に置く」で
+# lint 群を Build の前に並べてある。5 秒で分かる失敗を、下の `make llms-txt`
+# （= swift build）を待ってから見るのは無駄。
+if [ "$needs_static" -eq 1 ]; then
+    if ! make static-check-fast; then
+        echo "" >&2
+        echo "[pre-push] ❌ CI と同じ検査が落ちた（理由は上の出力）。直してから push してください:" >&2
+        echo "" >&2
+        echo "    make static-check-fast   # ここだけをもう一度" >&2
+        echo "    make ci-check            # CI と同条件で全部" >&2
+        echo "" >&2
+        echo "[pre-push] どうしても今 push するなら git push --no-verify（CI が同じ検査を独立に走らせます）。" >&2
+        exit 1
+    fi
+fi
+
+# --- 生成物の鮮度 -------------------------------------------------------------
+#
 # 鳴らす検査を集めて、実体へ一度で渡す（順序は実体側の並びが決める）。
 checks=""
 [ "$needs_llms" -eq 1 ] && checks="$checks llms"
@@ -163,6 +225,26 @@ checks=""
 if [ -n "$checks" ]; then
     # shellcheck disable=SC2086  # 検査名の並びは意図的に単語分割させる
     scripts/check-generated-freshness.sh --label '[pre-push]' $checks
+fi
+
+# --- DocC の警告 0 ------------------------------------------------------------
+#
+# 最後に置くのはビルドを要求するため。上の llms 検査が鳴った push では `make llms-txt`
+# が既にビルドを済ませているので、ここで増えるのは symbol graph の再抽出 + docc convert
+# だけ（実測 3.2 秒）。カタログだけを直した push では llms 検査が鳴らないので、ここが
+# 素の `swift build` を一度通る — CI の `Verify DocC builds without warnings` と同じ形。
+if [ "$needs_docc" -eq 1 ]; then
+    if ! make docs-check; then
+        echo "" >&2
+        echo "[pre-push] ❌ DocC の警告が 0 件ではない（CI の必須ステップと同じ検査）。" >&2
+        echo "[pre-push] ほとんどは解決できないシンボルリンク。シグネチャは llms.txt が正本です:" >&2
+        echo "" >&2
+        echo "    grep -nE 'func <名前>\\(' llms.txt" >&2
+        echo "    make docs-check          # 直したらもう一度" >&2
+        echo "" >&2
+        echo "[pre-push] どうしても今 push するなら git push --no-verify。" >&2
+        exit 1
+    fi
 fi
 
 exit 0

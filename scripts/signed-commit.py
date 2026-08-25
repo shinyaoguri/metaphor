@@ -32,23 +32,33 @@ way to exercise this outside a real release.
 
 **このスクリプトは pre-push フックを一切通りません。** `git push` ではなく GraphQL
 へ直接投げるためで、署名は外れません（GitHub 自身が署名し、ブランチ保護のルール
-セットもサーバー側で独立に効く）。外れるのは **pre-push が担っていた生成物の鮮度
-検査だけ**です（Issue #978）。実際 2026-08-18 の docs 一掃バッチでは 1Password の
-SSH エージェントがハングして本スクリプトが復旧手段になり、鮮度検査を通らない経路で
+セットもサーバー側で独立に効く）。外れるのは **pre-push が担っていた検査**です
+（Issue #978 / #1155）。実際 2026-08-18 の docs 一掃バッチでは 1Password の
+SSH エージェントがハングして本スクリプトが復旧手段になり、検査を通らない経路で
 22 コミットが main へ入りました（CI が拾ったので実害は出ませんでしたが、ローカルの
 歯止めはゼロでした）。「使う前に手で検査する」という文書ルールは、**本スクリプトを
 使う状況＝署名系が壊れているときほど守られません**。
 
-そこで送信の前に `scripts/check-generated-freshness.sh --all` を走らせ、陳腐化して
-いたら **1 バイトも送らずに** abort します。降りられるのは `--skip-freshness` を
-明示したときだけです。
+そこで送信の前に、pre-push と同じものを走らせ、落ちたら **1 バイトも送らずに**
+abort します。降りるにはそれぞれ明示のフラグが要ります。
 
-いま降りているのは release.yml だけで、理由は 2 つあります。runner の変更セット
-（`BUMP_PATHS`）には `Sources/MetaphorCore/Core/MetaphorVersion.swift` が入るので
-llms.txt の検査が起動して `make llms-txt` = `swift build` が丸ごと乗ること、そして
-リリースブランチの PR で CI が同じ検査を独立に回すことです。
+1. `make static-check-fast`（ビルド不要な CI 検査 11 本）— `--skip-ci-checks`
+2. `scripts/check-generated-freshness.sh --all`（生成物の鮮度）— `--skip-freshness`
+3. `make docs-check`（DocC の警告 0）— `--skip-ci-checks`
 
-`--dry-run` は何も送らないので、鮮度検査も走りません。
+1 と 3 で pre-push とトリガーが違うのは、この経路が見られるのが作業ツリーだけで
+「push する range」を持たないからです（2 が `--all` なのと同じ理由 — #978）。
+順序は ci.yml と同じでビルド不要なものが先。3 が最後なのは 2 の `make llms-txt` が
+ビルドを済ませたあとなら symbol graph の再抽出 + docc convert だけで済むためです。
+
+いま降りているのは release.yml だけで（両方のフラグを渡します）、理由は 2 つ
+あります。runner の変更セット（`BUMP_PATHS`）には
+`Sources/MetaphorCore/Core/MetaphorVersion.swift` が入るので llms.txt の検査が
+起動して `make llms-txt` = `swift build` が丸ごと乗ること、そしてリリースブランチの
+PR で CI が同じ検査を独立に回すことです。加えて 1 は ruff / actionlint /
+check-jsonschema の取得を伴うので、リリース経路に新しい失敗点を増やしません。
+
+`--dry-run` は何も送らないので、どの検査も走りません。
 """
 
 import argparse
@@ -62,6 +72,11 @@ from pathlib import Path
 # が、この経路が見られるのは作業ツリーだけなので、変更パスから絞ると `git merge
 # origin/main` 由来の陳腐化（#786 / #972）を取りこぼす。だから `--all`。
 FRESHNESS_SCRIPT = "scripts/check-generated-freshness.sh"
+
+# 同じく pre-push が呼ぶのと同じ実体（Issue #1155）。実体は Makefile が持つので
+# ここはターゲット名だけを知っていればよい。並びが実行順。
+CI_CHECK_TARGETS_BEFORE_FRESHNESS = ["static-check-fast"]
+CI_CHECK_TARGETS_AFTER_FRESHNESS = ["docs-check"]
 
 MUTATION = """
 mutation($input: CreateCommitOnBranchInput!) {
@@ -173,6 +188,31 @@ def check_freshness(repo_root: Path) -> int:
     ).returncode
 
 
+def check_ci_targets(repo_root: Path, targets: list[str]) -> int:
+    """Run `make <target>` for each target against `repo_root`; 0 means clean.
+
+    Same bodies pre-push runs (#1155). Output goes straight to this process's
+    streams for the same reason `check_freshness` does: the failing check's own
+    message is the recovery instruction.
+
+    A missing Makefile is an error, not a skip — degrading silently to "no
+    checks" is the failure this gate exists to close (#978).
+    """
+    if not (repo_root / "Makefile").is_file():
+        print(
+            f"::error::{repo_root / 'Makefile'} not found — cannot run the CI "
+            "checks. Pass --skip-ci-checks to commit anyway.",
+            file=sys.stderr,
+        )
+        return 1
+    for target in targets:
+        print(f"[signed-commit] make {target}")
+        code = subprocess.run(["make", target], cwd=str(repo_root)).returncode
+        if code != 0:
+            return code
+    return 0
+
+
 def resolve_head(ref: str, repo_root: Path) -> str:
     """Expand `ref` to the full 40-character SHA `expectedHeadOid` requires.
 
@@ -237,6 +277,15 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
+        "--skip-ci-checks",
+        action="store_true",
+        help=(
+            "Skip the per-PR CI checks pre-push also runs (make "
+            "static-check-fast / make docs-check). Only release.yml passes "
+            "this — see the module docstring for why."
+        ),
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Print what would be sent instead of sending it.",
@@ -258,6 +307,19 @@ def main(argv: list[str] | None = None) -> int:
     # Before the change set is read: the checks regenerate llms.txt and the
     # examples index in place, so a stale tree has to be caught (and aborted on)
     # while `git status` still reflects what the author actually meant to send.
+    #
+    # 順序は ci.yml と pre-push に合わせてある。ビルド不要な 11 本が先で、ビルドを
+    # 要求する 2 本があと（#1155）。
+    if not args.skip_ci_checks and not args.dry_run:
+        code = check_ci_targets(args.repo_root, CI_CHECK_TARGETS_BEFORE_FRESHNESS)
+        if code != 0:
+            print(
+                "::error::A per-PR CI check failed — nothing was sent. Fix it, "
+                "or pass --skip-ci-checks.",
+                file=sys.stderr,
+            )
+            return code
+
     if not args.skip_freshness and not args.dry_run:
         freshness = check_freshness(args.repo_root)
         if freshness != 0:
@@ -267,6 +329,16 @@ def main(argv: list[str] | None = None) -> int:
                 file=sys.stderr,
             )
             return freshness
+
+    if not args.skip_ci_checks and not args.dry_run:
+        code = check_ci_targets(args.repo_root, CI_CHECK_TARGETS_AFTER_FRESHNESS)
+        if code != 0:
+            print(
+                "::error::A per-PR CI check failed — nothing was sent. Fix it, "
+                "or pass --skip-ci-checks.",
+                file=sys.stderr,
+            )
+            return code
 
     command = ["git", "-C", str(args.repo_root), "status", "--porcelain"]
     if args.paths:
