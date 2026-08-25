@@ -63,8 +63,9 @@ struct TextWrapTests {
 
         // 等幅なので「n 文字ぶんの advance」がそのまま「n 文字入る箱」になる。
         // 端数で 1 文字ぶれないよう、ごく僅かに広げておく。
-        let boxWidth = helper.canvas.textWidth(
-            String(repeating: "a", count: boxWidthInCharacters)) + 1
+        let boxWidth =
+            helper.canvas.textWidth(
+                String(repeating: "a", count: boxWidthInCharacters)) + 1
 
         try helper.render { canvas in
             canvas.fill(255)
