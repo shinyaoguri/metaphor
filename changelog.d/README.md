@@ -41,13 +41,48 @@ no observable effect, website dependency bumps. Those pull requests are normally
 titled `chore` / `ci` / `docs` / `refactor` / `test`, which the check below
 leaves alone.
 
+## Link with absolute URLs, always
+
+**Every link in an entry must be a full `https://` URL** — never `../docs/x`,
+never `./x`, never a bare `docs/x`, and never a `#heading` anchor.
+
+The reason is that *an entry body is never rendered next to the entry file*. It
+is rendered in two other places, and neither one resolves a target from this
+directory:
+
+- `collect` folds the text into [`CHANGELOG.md`](../CHANGELOG.md), which sits at
+  the repository root — so `../docs/x` written here points outside the
+  repository once it lands there
+- `notes` copies the same text into the GitHub Release body, which is served
+  from `releases/tag/<version>` — and **a Release body cannot be corrected after
+  the release is cut**
+
+That second one is why this is a rule and not a review nit. Twelve such links
+were folded into `CHANGELOG.md` before anyone noticed (Issues #1151 / #1181);
+the copies in the v0.10.0 Release body are there for good.
+
+Write file targets as `blob/main/…` and directory targets as `tree/main/…`:
+
+```markdown
+- Tutorial sketches now live in
+  [`docs/tutorial/`](https://github.com/shinyaoguri/metaphor/tree/main/docs/tutorial/),
+  and [ADR-0010](https://github.com/shinyaoguri/metaphor/blob/main/docs/adr/0010-tutorial-images-via-gyazo.md)
+  records why ([#511](https://github.com/shinyaoguri/metaphor/issues/511)).
+```
+
+`changelog.py lint` enforces this on your pull request, so a slip is caught by
+the person who can still fix it. To *mention* a path without linking it, put it
+in a code span (`` `docs/tutorial/` ``) — code spans and fenced blocks are not
+scanned. This file is not an entry, so its own relative links are fine.
+
 ## What CI checks on your pull request
 
 Two steps of the required `build-and-test` job look at this directory.
 
 **`changelog.py lint`** validates the files that are here: the name has to be
-`<slug>.<category>.md` with a known category, and the file must not be empty. It
-never asks whether an entry exists.
+`<slug>.<category>.md` with a known category, the file must not be empty, and
+every link in it has to be an absolute URL (above). It never asks whether an
+entry exists.
 
 **`require-changelog-entry.py`** asks that separate question, using the rule the
 weekly release train already applies: when the pull request title is a type that
@@ -77,8 +112,9 @@ git diff --name-only --diff-filter=A origin/main... \
 
 `.github/workflows/release.yml` runs `changelog.py check` at the very start of
 the release job, which fails when this directory is empty *and* `## [Unreleased]`
-is empty (a release has to be able to say what changed), and when a filename
-here is malformed. The stable-release path then runs `changelog.py release`,
+is empty (a release has to be able to say what changed), and when a file here
+is malformed — the same well-formedness rules `lint` applies per pull request,
+re-checked at the last moment an entry can still be edited. The stable-release path then runs `changelog.py release`,
 which collects these files, promotes `## [Unreleased]` to the released version,
 and includes the deletions in the release commit.
 

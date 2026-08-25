@@ -10,15 +10,17 @@ Five subcommands, all but `collect` driven by CI:
     changelog.py check
         Fail when there is nothing to release: no entry files in `changelog.d/`
         AND an empty (or missing, or duplicated) `## [Unreleased]` section. Also
-        rejects malformed entry filenames, so a typo is caught here rather than
-        at collect time. Runs at the very start of the release job, before
+        rejects entry files that are malformed — a bad filename, an empty body,
+        a link that is not an absolute URL — so a typo is caught here rather
+        than at collect time. Runs at the very start of the release job, before
         anything irreversible (branch push, tag, GitHub Release) has happened.
 
     changelog.py lint
-        The filename/emptiness half of `check`, without the "something must be
-        pending" half. Runs per-PR in .github/workflows/ci.yml so a misnamed or
-        empty entry file is caught by its own author instead of by whoever cuts
-        the next release (Issue #405). Deliberately does NOT require an entry to
+        The well-formedness half of `check`, without the "something must be
+        pending" half. Runs per-PR in .github/workflows/ci.yml so a misnamed
+        entry file, an empty one, or one linking with a relative path is caught
+        by its own author instead of by whoever cuts the next release
+        (Issues #405 / #1181). Deliberately does NOT require an entry to
         exist: whether a change is user-facing is a judgement call CI cannot
         make, and internal-only work legitimately ships without one
         (Issues #335 / #404).
@@ -89,6 +91,19 @@ LINK_DEF_RE = re.compile(r"^\[([^\]]+)\]:\s*(\S+)\s*$")
 COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 LIST_ITEM_RE = re.compile(r"^\s*(?:[-*+]\s|\d+\.\s)")
 VERSION_RE = re.compile(r"^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$")
+
+# Markdown links in an entry body: `[text](target)` and `![alt](target)`. One
+# level of nested parentheses inside the target is allowed, because URLs carry
+# them. Same shape as the one in scripts/check-docs-links.py.
+ENTRY_LINK_RE = re.compile(
+    r"!?\[(?:[^\[\]]|\[[^\[\]]*\])*\]\((?P<target>[^()]*(?:\([^()]*\)[^()]*)*)\)"
+)
+# The only targets that resolve from *both* places an entry body is rendered.
+# `mailto:` is in because it is location-independent like `https://`; every
+# other scheme in a changelog entry is far likelier a typo than an intention.
+ABSOLUTE_TARGET_RE = re.compile(r"^(?:https?://|mailto:)", re.IGNORECASE)
+FENCE_RE = re.compile(r"^\s*(?P<marker>```+|~~~+)")
+INLINE_CODE_RE = re.compile(r"(?P<ticks>`+)(?P<code>.*?)(?P=ticks)")
 
 
 class ChangelogError(Exception):
@@ -180,6 +195,50 @@ def repo_url(lines: list[str]) -> str:
 # --------------------------------------------------------------------------
 # changelog.d/ entry files
 # --------------------------------------------------------------------------
+def strip_code(text: str) -> list[str]:
+    """The text with code removed, one entry per line (blanked, not dropped, so
+    line numbers survive).
+
+    An entry that *mentions* a path — ``- `image()` no longer resolves
+    `../foo`.`` — must not be read as a link. Same treatment, for the same
+    reason, as scripts/check-docs-links.py and scripts/check-reference-links.py.
+    """
+    lines: list[str] = []
+    fence: str | None = None
+    for line in text.splitlines():
+        match = FENCE_RE.match(line)
+        if fence is None:
+            if match:
+                fence = match.group("marker")[0]
+                lines.append("")
+                continue
+            lines.append(INLINE_CODE_RE.sub("", line))
+        else:
+            if match and match.group("marker")[0] == fence:
+                fence = None
+            lines.append("")
+    return lines
+
+
+def relative_links(text: str) -> list[tuple[int, str]]:
+    """`(line number, target)` for every link target that is not an absolute URL.
+
+    An entry body is never rendered next to the entry file, so a target that is
+    resolved against the *document* — `../docs/x`, `./x`, `x`, `#heading` — has
+    no stable meaning. See `validate()` for the message that says so.
+    """
+    found: list[tuple[int, str]] = []
+    for lineno, line in enumerate(strip_code(text), 1):
+        for match in ENTRY_LINK_RE.finditer(line):
+            target = match.group("target").strip()
+            # `](<https://example.com>)` is a valid way to write an absolute URL.
+            if target.startswith("<") and target.endswith(">"):
+                target = target[1:-1].strip()
+            if not ABSOLUTE_TARGET_RE.match(target):
+                found.append((lineno, target))
+    return found
+
+
 class Fragment:
     """One `changelog.d/<slug>.<category>.md` file."""
 
@@ -191,10 +250,12 @@ class Fragment:
     def heading(self) -> str:
         return CATEGORY_HEADINGS[self.category]
 
+    def text(self) -> str:
+        return self.path.read_text(encoding="utf-8")
+
     def lines(self) -> list[str]:
         """The entry as it should appear under its subheading."""
-        text = self.path.read_text(encoding="utf-8")
-        body = [line.rstrip() for line in text.split("\n")]
+        body = [line.rstrip() for line in self.text().split("\n")]
         while body and not body[0].strip():
             body.pop(0)
         while body and not body[-1].strip():
@@ -316,12 +377,37 @@ def validate(directory: Path) -> list[Fragment]:
     """Every entry file, with its name and contents already vetted.
 
     `fragments()` rejects a bad *name*; reading each one here additionally
-    rejects an empty file. Both are raised now rather than at collect time,
-    where the release is already half-written.
+    rejects an empty file and a link written as anything but an absolute URL.
+    All three are raised now rather than at collect time, where the release is
+    already half-written — and, for the links, where it is already too late
+    (see the message below).
     """
     pending = fragments(directory)
+    problems: list[str] = []
     for fragment in pending:
         fragment.lines()
+        problems += [
+            f"  {fragment.path}:{lineno}: `{target}`"
+            for lineno, target in relative_links(fragment.text())
+        ]
+    if problems:
+        count = len(problems)
+        raise ChangelogError(
+            f"{count} link{'' if count == 1 else 's'} in {directory}/ "
+            f"{'is' if count == 1 else 'are'} not an absolute URL:\n"
+            + "\n".join(problems)
+            + "\n"
+            "  An entry body is never rendered next to its own file. `collect`\n"
+            f"  folds it into {DEFAULT_PATH} at the repository root and `notes`\n"
+            "  copies the same text into the GitHub Release body; neither\n"
+            f"  resolves a target relative to {directory}/, and a Release body\n"
+            "  cannot be corrected once the release is cut.\n"
+            f"  Write the target in full: {FALLBACK_REPO_URL}/blob/main/<path>\n"
+            f"  for a file, {FALLBACK_REPO_URL}/tree/main/<path> for a directory.\n"
+            "  A same-file anchor (`](#heading)`) is no better — it would land on\n"
+            "  whichever heading the host document happens to have. To write a\n"
+            "  path without linking it, put it in a code span instead."
+        )
     return pending
 
 
