@@ -1,0 +1,15 @@
+# mokume の公開面 (push されるコミット・Issue/PR の投稿本文) に前身の名前を出さない
+# — 非知覚原則の機械強制 (根拠: 本リポ #1199 の段階移行計画・setup#121)。
+#
+# 正本: shinyaoguri/metaphor (private) の .claude/term-guard.d/mokume.rules (このファイル)
+# 機構: shinyaoguri/setup の claude/term-guard.sh (PreToolUse フック)
+# 配布: 各マシンで 1 回
+#   mkdir -p ~/.claude/term-guard.d
+#   ln -sf ~/Repos/metaphor/.claude/term-guard.d/mokume.rules ~/.claude/term-guard.d/mokume.rules
+#
+# term は ERE・大文字小文字を区別しない。"metaphor" の 1 パターンで旧 slug・URL・
+# モジュール名 (旧 Core/Log 等の接頭辞) まで実質すべて拾える。移行フェーズの M 番号は
+# Apple Silicon のチップ名 (M1/M2/…) と衝突する誤検知源なので入れない。
+repo mokume-metal/*
+path ~/Repos/mokume
+term metaphor
