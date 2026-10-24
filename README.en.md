@@ -2,6 +2,10 @@
 
 **English** | [日本語](README.md)
 
+> [!IMPORTANT]
+> **metaphor is no longer under development. It has been succeeded by [mokume](https://github.com/mokume-metal/mokume) ([mokume.org](https://mokume.org)).**
+> This repository is kept for reference only; no new features, bug fixes, or responses to issues / pull requests are planned. Please use mokume for new projects and migrations.
+
 [![Release](https://img.shields.io/github/v/release/shinyaoguri/metaphor?label=version)](https://github.com/shinyaoguri/metaphor/releases/latest)
 [![CI](https://github.com/shinyaoguri/metaphor/actions/workflows/ci.yml/badge.svg)](https://github.com/shinyaoguri/metaphor/actions/workflows/ci.yml)
 [![Reference](https://img.shields.io/badge/reference-DocC-8A2BE2)](https://shinyaoguri.github.io/metaphor/reference/documentation/metaphor/)
